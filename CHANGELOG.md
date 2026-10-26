@@ -13,6 +13,7 @@ Het formaat volgt [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) en he
 - The mail badge shows the real number of unread e-mails instead of "99+".
 
 ### Fixed
+- KU Loket afgemeld: Toledo+ vroeg het rooster om de paar minuten opnieuw op, en elke poging liet een aanmeldcookie achter. Na een tijd weigerde KU Loket alles (ook zelf aanmelden) met "Bad Request · Size of a request header field exceeds server limit". Nu stopt Toledo+ na één "niet aangemeld" 30 minuten met vragen (gedeeld over tabbladen); wie via "Aanmelden bij KU Loket" aanmeldt en terugkomt naar Toledo, of op "Opnieuw" klikt, krijgt meteen het rooster.
 - Going to toledo.kuleuven.be now really skips the start page: a network-level redirect (declarativeNetRequest, exact URL only, no extra install warning) instead of only a content script. Still switchable in Settings › Geavanceerd.
 - Zonder Ultra-sessie (Ultra nog niet geopend sinds het aanmelden) toonde Toledo+ "Je sessie is verlopen" terwijl Toledo gewoon werkte, en "Log opnieuw in" hielp niet. Nu verschijnt "Nog niet aangemeld bij Ultra" met een knop "Open Ultra"; terug in Toledo laden de deadlines vanzelf.
 - The logo illustration in empty states was squished; it now uses the logo's real proportions.
