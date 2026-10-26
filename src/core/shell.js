@@ -228,7 +228,6 @@
     shadow.addEventListener('click', onShellClick);
     shadow.addEventListener('input', onShellInput);
     shadow.addEventListener('keydown', onShellKeydown);
-    shadow.addEventListener('close', (ev) => { if (ev.target?.classList?.contains('tp-detail')) onDetailClosed(); }, true);
     document.body.prepend(host);
   }
 
@@ -304,6 +303,7 @@
       app.querySelector('.tp-toolbar')?.classList.toggle('tp-scrolled', !e.isIntersecting);
     }, { rootMargin: '-56px 0px 0px 0px' });
     titleObserver.observe(app.querySelector('.tp-large-title'));
+    app.querySelector('.tp-detail')?.addEventListener('close', () => setTimeout(onDetailClosed, 0));
     renderNav();
     renderMenu();
     renderBanners();
@@ -573,7 +573,10 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
   }
   function updateDetail(html) {
     const d = $('.tp-detail');
-    if (d?.open) d.querySelector('.tp-detail-body').innerHTML = html;
+    if (!d?.open) return;
+    const act = safe(() => shadow.activeElement?.dataset?.detailAction, null);
+    d.querySelector('.tp-detail-body').innerHTML = html;
+    if (act) d.querySelector(`[data-detail-action="${CSS.escape(act)}"]`)?.focus({ preventScroll: true });
   }
   function closeDetail() {
     const d = $('.tp-detail');
@@ -585,8 +588,13 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     let op = detail?.opener;
     const sel = detail?.sel;
     detail = null;
-    if ((!op || !op.isConnected) && sel) op = safe(() => app.querySelector(sel), null);
-    if (op && op.isConnected) safe(() => op.focus({ preventScroll: true }));
+    const restore = () => {
+      if ((!op || !op.isConnected) && sel) op = safe(() => app.querySelector(sel), null);
+      if (op && op.isConnected && shadow.activeElement !== op) safe(() => op.focus({ preventScroll: true }));
+    };
+    restore();
+    // a pending re-render (e.g. after "klaar") may replace the opener right after: once more when it settled
+    setTimeout(() => { if (!shadow.activeElement || shadow.activeElement === app) { op = null; restore(); } }, 200);
   }
 
   // ---------------- toast + live region ----------------
@@ -751,7 +759,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     let sel = null;
     if (a.id) sel = '#' + CSS.escape(a.id);
     else if (a.name) sel = `[name="${CSS.escape(a.name)}"]` + (a.type === 'radio' ? `[value="${CSS.escape(a.value)}"]` : '');
-    else if (a.dataset.action) sel = `[data-action="${CSS.escape(a.dataset.action)}"]` + (a.dataset.id ? `[data-id="${CSS.escape(a.dataset.id)}"]` : '');
+    else if (a.dataset.action) sel = `[data-action="${CSS.escape(a.dataset.action)}"]` + (a.dataset.id ? `[data-id="${CSS.escape(a.dataset.id)}"]` : '') + (a.dataset.key ? `[data-key="${CSS.escape(a.dataset.key)}"]` : '');
     if (!sel) return null;
     return { sel, start: safe(() => a.selectionStart, null), end: safe(() => a.selectionEnd, null) };
   }

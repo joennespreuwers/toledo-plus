@@ -151,6 +151,8 @@
       }
     }
     const app = K.icalAppUrl ? K.icalAppUrl() : null;
+    const login = L.error === 'auth' && K.loginUrl ? K.loginUrl() : null;
+    if (login) ics = `<a class="st-row st-link-row" href="${esc(login)}" target="_blank" rel="noopener" data-kul-login><span class="st-label st-strong">${esc(t('settings.agenda.login'))}</span><span class="st-trail">${TP.ui.icon('external', { size: 15 })}<span class="st-sr">${esc(t('settings.newTab'))}</span></span></a>` + ics;
     return block('agenda', t('settings.agenda'),
       `<div class="st-row"><span class="st-label">KU Loket</span><span class="st-value" data-kul-status>${esc(line)}</span></div>${ics}`
       + (app ? `<a class="st-row st-link-row" href="${esc(app)}" target="_blank" rel="noopener"><span class="st-label">${esc(t('settings.agenda.icsWhere'))}</span><span class="st-trail">${TP.ui.icon('external', { size: 15 })}<span class="st-sr">${esc(t('settings.newTab'))}</span></span></a>` : ''),

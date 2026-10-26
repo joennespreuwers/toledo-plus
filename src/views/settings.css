@@ -101,3 +101,4 @@
 .st-sec-row.drop-before { box-shadow: inset 0 2px 0 var(--tint-text); }
 .st-sec-row.drop-after { box-shadow: inset 0 -2px 0 var(--tint-text); }
 .st-sec-row > .tp-toggle { padding-left: 4px; }
+.st-strong { color: var(--tint-text, var(--tint)); font-weight: 600; }

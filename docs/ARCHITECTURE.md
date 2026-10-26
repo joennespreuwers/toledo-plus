@@ -17,9 +17,9 @@ Read `docs/DESIGN.md` (design spec from research) before writing UI.
    Fetch it with **default credentials** (NOT `credentials:'include'` – S3 rejects credentialed CORS), then save the blob
    via `<a download>`. "Open" = `window.open(absUrl)`.
 4. Portal API (same origin on toledo.kuleuven.be, `fetch` with `credentials:'include'`, header `Toledo-Language: nl|en`):
-   - `GET /portal/api/enrollments` → `[{id, learningUnitId, title:"Filmtaal 1 [N50265]", type:'course'|'community', semester:'SEMESTER1'|'SEMESTER2'|'YEAR'|'UNKNOWN', academicYear:2627|0, color:1..16, favorite, available, link}]`
+   - `GET /portal/api/enrollments` → `[{id, learningUnitId, title:"Filmtaal 1 [X10265]", type:'course'|'community', semester:'SEMESTER1'|'SEMESTER2'|'YEAR'|'UNKNOWN', academicYear:2627|0, color:1..16, favorite, available, link}]`
      (`link` = `https://icts-p-toledo-journey.cloud.icts.kuleuven.be/learningUnits/ultraLink?batchUid=<learningUnitId>` → redirects to the Ultra course outline)
-   - `GET /portal/api/events` → `[{id, title, source:"Filmtaal 1 [N50265]"|"Ad Valvas", sourceId:<learningUnitId>|'advalvas', date:ms, type:'notifications'|'advalvas', eventType:'update'|'message', subType, read, seen, dismissed, url, author, color}]`
+   - `GET /portal/api/events` → `[{id, title, source:"Filmtaal 1 [X10265]"|"Ad Valvas", sourceId:<learningUnitId>|'advalvas', date:ms, type:'notifications'|'advalvas', eventType:'update'|'message', subType, read, seen, dismissed, url, author, color}]`
      subTypes: `content` (new file/page), `other` (assignment/item made available), `due` (deadline; `date` = due time),
      `course` (course became available – title = course name; **not useful in feeds, skip**), `announcement` (course announcement), `advalvas` (school notice).
    - `PATCH /portal/api/batch/events` body `[{id, type, subType, read:true}]` (or `seen:true` / `dismissed:true`) – marks events in Toledo itself.
@@ -28,13 +28,13 @@ Read `docs/DESIGN.md` (design spec from research) before writing UI.
    - `GET /portal/api/emails/unread` → `{value:129}`
    - `GET /portal/api/links` → groups `[{label, links:[{label, translation, url, action}]}]`; useful labels: `LOGOUT` (url `Shibboleth.sso/Logout`, resolve against `https://toledo.kuleuven.be/`), `NOTIFICATION-SETTINGS-ULTRA`, `TOLBIZZ-ENROLL`, `KULOKET-UURROOSTER`, `ADVALVAS`, `BB-CALENDAR-ULTRA`, `LUCA-CAL`, `LUCA-STUDENT-WEBMAIL`, `KULOKET-STUDENT`, …
 5. Blackboard REST (same origin on ultra.edu.kuleuven.cloud, absolute URLs, `credentials:'include'`):
-   - `GET /learn/api/public/v3/courses/{cid}` → `{id:'_200661_1', courseId:<learningUnitId>, name}`; `GET /learn/api/public/v3/courses/courseId:<learningUnitId>` also works for lookup.
+   - `GET /learn/api/public/v3/courses/{cid}` → `{id:'_900661_1', courseId:<learningUnitId>, name}`; `GET /learn/api/public/v3/courses/courseId:<learningUnitId>` also works for lookup.
    - `GET /learn/api/public/v1/courses/{cid}/contents?limit=200` and `/contents/{id}/children?limit=200` → `[{id, title, description?, body?(HTML, documents), created, modified, hasChildren, availability:{available}, contentHandler:{id:'resource/x-bb-folder'|'x-bb-lesson'|'x-bb-file'|'x-bb-document'|'x-bb-externallink'(+url)|'x-bb-blti-link'|'x-bb-asmt-test-link'|…, file:{fileName, mimeType}}, links:[{href:'/ultra/redirect?…'}]}]`
    - `…/contents/{id}/attachments` → `[{id, fileName, mimeType}]`
    - `GET /learn/api/public/v1/courses/{cid}/announcements?limit=20` → `[{id, title, body(HTML), created, draft}]`; single: `…/announcements/{aid}`
    - `GET /learn/api/public/v2/courses/{cid}/gradebook/columns?limit=200` → use **only** `name`, `grading.due`, `contentId` (school does not use grades).
    - `GET /learn/api/public/v1/courses/{cid}/users?role=Instructor&expand=user` → `user.name.given/family`, `user.contact.email`.
-   - `GET /learn/api/public/v1/calendars/items?since=ISO&until=ISO&limit=100` → cross-course deadlines (`type:'GradebookColumn'`, `title`, `end`, `calendarName:"ULTRA-B-…: Filmtaal 1 [N50265]"`). Keep windows ≤ 60 days.
+   - `GET /learn/api/public/v1/calendars/items?since=ISO&until=ISO&limit=100` → cross-course deadlines (`type:'GradebookColumn'`, `title`, `end`, `calendarName:"ULTRA-B-…: Filmtaal 1 [X10265]"`). Keep windows ≤ 60 days.
    - Item deep link: `abs('/ultra/redirect?redirectType=nautilus&courseId={cid}&contentId={id}')`.
 6. The school does **not** use the gradebook (grades/submission status) nor discussions. Never show grades/submission state.
 7. **The portal's AngularJS router rewrites every unknown hash path to `#/home`** (`#/tplus/x`, `#/home/tplus/x`, `#!/x` – verified live),
@@ -81,8 +81,8 @@ TP.util.esc(s) → HTML-escaped string
 TP.util.abs(path) → absolute URL on the current origin (passes http(s) URLs through)
 TP.util.sanitize(html) → safe HTML string (drop script/style/iframe/object/embed/form/input/button/link/meta/base, on* attrs, style/class/id, javascript: urls; <a> get target=_blank rel=noopener)
 TP.util.plain(html) → text
-TP.util.courseName("Filmtaal 1 [N50265]") → "Filmtaal 1"   (also strips leading "- ")
-TP.util.courseCode(title) → "N50265" | ""
+TP.util.courseName("Filmtaal 1 [X10265]") → "Filmtaal 1"   (also strips leading "- ")
+TP.util.courseCode(title) → "X10265" | ""
 TP.util.pool(items, n, asyncFn) → results (bounded concurrency)
 TP.util.debounce(fn, ms)
 TP.util.uid() → string
@@ -110,21 +110,22 @@ the 8 KB per-item quota. Each item falls back to `chrome.storage.local` (`settin
 write; on load the newer of sync/local wins (`settingsSavedAt` / `customSavedAt`). Default per-course values are not stored.
 v1 settings with `custom` inside `settings` are migrated on load (written to `custom`, removed from `settings`, `v` → 2).
 `storage.onChanged` handles `settings`/`custom` (sync) and `settingsLocal`/`customLocal` (local), so other tabs update live.
-State lives in `chrome.storage.local` key `state`.
+State lives in `chrome.storage.local`, **one item per top-level key** (`state:<key>`, see below).
 ```
 await TP.settings.load()           // called once by boot; merges DEFAULTS deeply
 TP.settings.get() → object (read-only snapshot)
 await TP.settings.set(patchObject) // deep-merge patch, persist, notify
 TP.settings.subscribe(fn(settings, changedTopKeys)) → unsubscribe
 TP.settings.reset(), TP.settings.export() → JSON string, TP.settings.import(json)
-TP.settings.course(luId) → { nickname:'', color:null, hidden:false, pinned:null }  (merged with defaults; pinned null = no explicit choice)
+TP.settings.course(luId) → { nickname:'', color:null, hidden:false }  (merged with defaults)
 await TP.settings.setCourse(luId, patch)
-TP.state.get(), await TP.state.set(patch), TP.state.subscribe(fn)
+await TP.settings.flush()          // write a throttled change now (also on pagehide); never rejects
+TP.state.get(), await TP.state.set(patch, {replace?}), TP.state.subscribe(fn(state, keys)), await TP.state.flush(), TP.state.rev()
 ```
 DEFAULTS (exact):
 ```
 {
-  v: 2,
+  v: 3,
   language: 'system',                 // 'system'|'nl'|'en'|'fr'
   appearance: 'system',               // 'system'|'light'|'dark'
   accent: 'blue',                     // key of TP.util.PALETTE (not 'graphite' only… all allowed)
@@ -135,65 +136,112 @@ DEFAULTS (exact):
                           {id:'schedule',on:true}, {id:'announcements',on:true}, {id:'links',on:false} ] },
   feed: { includeAnnouncements: false, maxCourses: 5 },
   deadlines: { horizonDays: 42, urgentDays: 3, reminder: '1d' },   // reminder: 'none'|'1h'|'1d'|'2d' (ICS VALARM)
-  courses: { sort: 'activity', showCommunities: false, items: {} },  // sort: 'activity'|'name'|'manual'; items[luId] = {nickname,color,hidden,pinned}; manual order in courses.order: [luId]
-  sync: { markReadInToledo: true, favoritesToToledo: true },  // favoritesToToledo: pinned == Toledo favourite
+  courses: { sort: 'activity', showCommunities: false, items: {} },  // sort: 'activity'|'name'|'manual'; items[luId] = {nickname,color,hidden}; manual order in courses.order: [luId]
+  sync: { markReadInToledo: true },
   search: { indexAll: true },         // background-crawl all current courses for the ⌘K document index
   custom: [],                         // custom deadlines [{id, title, courseLuId|'', due:ms}] — persisted under sync key 'custom'
 }
 ```
-State (local, not synced): `{ visits:{[courseId]:ms}, feedSeenAt:0, done:{[deadlineKey]:true}, recent:[{title,url,courseName,courseLuId,kind,ts}] (max 12), cache:{}, cidMap:{[luId]:cid}, openFolders:{[cid]:[id]}, ui:{sidebarCollapsed}, focus:{cid,luId,id,at}|absent }`.
-`focus` is the palette's "show in course" hand-off (works across both origins); the course view consumes it (≤ 2 min old) and deletes it. The shell does not rerender on `ui`, `cache`, `visits`, `openFolders`, `recent`, `focus`.
+Migrations on load: v1/v2 → v3 drops `courses.items[*].pinned` and `sync.favoritesToToledo` (v1.2: **pins/favourites are gone**; `normalize()` strips them from every shape, also from other tabs/imports/old UI calls).
+
+State (local, not synced), one `chrome.storage.local` item per key `state:<key>`:
+```
+visits:{[cid]:ms}  done:{[deadlineKey]:ms (when marked)}  recent:[{title,url,courseName,courseLuId,kind,ts}] (max 12)
+cidMap:{[luId]:cid}  openFolders:{[cid]:[id]}  ui:{sidebarCollapsed}  focus:{cid,luId,id,at}|absent
+feedSeen:{ids:{[eventId]:date} (max 2000), floor:ms}   // B3: seen = id in ids, or date ≤ floor (floor rises when ids are evicted)
+read:{[eventId]:ms} (≤ 3000, ≤ 120 days)              // B4: local read-set, applied to cached/fresh events (also with sync off)
+pendingRead:{[eventId]:{id,type,subType,t}} (≤ 1000)   // B7: mark-read PATCHes still to send; flushed first by refresh()
+```
+Writes are debounced (150 ms) **read-merge-write** per key: the stored value is read back and this tab's patches are applied on top.
+Each write also stores `staterev:<key>` = `{n, by}`; when another tab wrote the same `n` concurrently, the losing tab re-applies its
+(idempotent) patches. Other tabs' writes arrive via `storage.onChanged` and notify subscribers with the changed keys.
+`TP.state.flush()` and `pagehide` write pending changes immediately. After an extension reload (context invalidated) writes are silent no-ops.
+Migration: the v1.1 single `state` item is split into `state:<key>` items and removed; `feedSeenAt` → `feedSeen.floor`; `done:true` → timestamp; dead `cache` dropped.
+Pruning (TP.data, after loads): read-set by age/size; done marks > 60 days old that no source references any more; visits/openFolders of non-current courses.
+`focus` is the palette's "show in course" hand-off (works across both origins); the course view consumes it (≤ 2 min old) and deletes it. The shell does not rerender on `ui`, `visits`, `openFolders`, `recent`, `focus` (and should ignore `read`, `pendingRead`, `cidMap`: data changes come as `change` events).
 
 ## TP.net (data)
 ```
-await TP.net.json(url, {method, body, headers}) → parsed JSON; throws Error with .status
+await TP.net.json(url, {method, body, headers, keepalive}) → parsed JSON (null for 204/empty); throws Error with .status
+await TP.net.text(url, {headers}) → string     (non-JSON feeds, e.g. the TimeEdit iCal feed via the relay)
 await TP.net.blob(url) → Blob   (default credentials – for S3 downloads)
+TP.net.isStale() → true when chrome.runtime.id is gone (extension updated/reloaded; this content script is orphaned)
+TP.net.resolve(path), TP.net.isSameOrigin(url)
 ```
-Same-origin URL → direct `fetch` (credentials:'include' except blob). Cross-origin (toledo ↔ ultra) → `chrome.runtime.sendMessage({type:'tp-fetch', url, method, body, headers})` handled by `background.js`, which does the fetch with `credentials:'include'` and returns `{ok, status, data}`. Cross-origin calls are **best-effort**: callers must handle failure (e.g. Ultra session not yet established) and degrade silently.
+Errors: `.status` (0 = network/timeout/relay), `.auth = true` = **session expired** (401/403, an HTML page where JSON was expected
+– e.g. the SSO login page with 200 –, a redirect to another origin/login URL, relay `error:'redirected'|'html'`), `.stale = true`
+(context invalidated; nothing is fetched), `.timeout`, `.relayDown` (no receiver), `.blocked` (relay allowlist).
+GETs are retried on 429/5xx up to 2 times (Retry-After, else 600 ms × 2ⁿ, max 8 s); PATCH is never retried.
+Same-origin URL → direct `fetch` (credentials:'include' except blob). Cross-origin → `chrome.runtime.sendMessage({type:'tp-fetch', url, method, body, headers, as, keepalive})` handled by `background.js`, which does the fetch with `credentials:'include'` and returns `{ok, status, data, retryAfter, error?}`.
+background.js only accepts messages from this extension's content scripts on Toledo/Ultra (sender `id` + `origin`/`url`) or its own pages, and only:
+GET/PATCH to `toledo.kuleuven.be` and `ultra.edu.kuleuven.cloud`, GET to `webwsp.aps.kuleuven.be` (KU Loket) and `cloud.timeedit.net`
+(= `host_permissions`, guarded by `tests/unit/manifest.test.js`). Redirects off those origins → `error:'redirected'`; HTML instead of JSON → `error:'html'`.
+Cross-origin calls are **best-effort**: callers must handle failure (e.g. Ultra session not yet established) and degrade silently.
 
 ## TP.data (data)
-Stale-while-revalidate: `TP.data.peek(key)` returns the last cached value (from `chrome.storage.local` `cache:<key>`, loaded at boot) or `null`; `TP.data.load(key, {force})` fetches, caches, emits `change`.
+Stale-while-revalidate: `TP.data.peek(key)` returns the last cached value (from `chrome.storage.local` item `cache:<key>` = `{v, t, rev, range?}`, one item per key, loaded at boot; the v1.1 single `cache` item is migrated) or `null`; `TP.data.load(key, {force})` fetches, caches, emits `change`.
+Multi-tab (B6): a fresh load has a newer `t`; an optimistic mutation (markRead) keeps `t` and bumps `rev`; other tabs adopt an entry when `(t, rev)` is newer.
 ```
 keys: 'enrollments','events','upcoming','mail','links','ultraDeadlines'
 TP.data.on('change', fn(key)) / off
 TP.data.on('course', fn({cid, result}))   // a full (non-partial) ultraCourse load finished – TP.index listens
-await TP.data.refresh()              // loads all portal keys (+ ultraDeadlines best-effort); used by shell pull-to-refresh / ⌘R-like button
-TP.data.lastUpdated() → ms|null
+TP.data.on('error', fn(key))              // a load failed (cached data stays)
+TP.data.on('auth', fn({expired, key}))     // session expired (expired:true) / back (false) — shell shows "Log opnieuw in" → TP.data.loginUrl()
+TP.data.on('stale', fn())                  // extension updated/reloaded: shell shows "Herlaad"; data stops listeners, writes and loads
+TP.data.on('courseCache', fn({cleared}))   // refresh() cleared the Ultra course cache — the course view should reload its course
+await TP.data.refresh() → {ok, errors:{key:Error}, auth, stale}   // sends queued mark-reads, then loads all portal keys (+ ultraDeadlines
+                                     // best-effort); clears the Ultra course cache; concurrent calls share one run; never rejects
+await TP.data.maybeRefresh({maxAge=5 min}) → result|null   // refresh only when lastUpdated() is older; data.js calls it itself on visibilitychange→visible
+await TP.data.flush()                // pending state/settings/cache writes + in-flight mark-read PATCHes; await before navigating away; never rejects
+TP.data.status(key) → {loading, error, auth, t} ; TP.data.authExpired() → bool ; TP.data.loginUrl() → Toledo LOGIN link or the portal
+TP.data.isStale() → bool ; TP.data.lastUpdated() → ms|null
 
 // models (sync, computed from peek() + settings + state; return [] when no data yet)
 TP.data.courses({includeHidden, includeCommunities, currentOnly}) → Course[]
   Course = { luId, enrollmentId, title, name (nickname||courseName), code, color (hex), colorKey, semester, year, type,
-             favorite, pinned, hidden, available, link, unread (events count for feed rules), latest (ms) }
+             hidden, available, link, unread (events count for feed rules), latest (ms) }        // no pinned/favorite since v1.2
+  sorted: courses before communities, then settings.courses.sort: 'manual' (courses.order; others after, by name) | 'name' | 'activity' (latest, then name)
   "current" = type==='course' && academicYear === max academicYear over courses; communities have type 'community'.
 TP.data.course(luId) → Course|null
-TP.data.feed() → FeedGroup[]  (unread notifications, NOT subType 'due'|'course', not dismissed, date > state.feedSeenAt;
+TP.data.feed() → FeedGroup[]  (unread notifications – not read in Toledo nor in state.read –, NOT subType 'due'|'course', not dismissed,
+                               not seen: id ∉ state.feedSeen.ids and date > state.feedSeen.floor (late-published items still appear);
                                announcements only if settings.feed.includeAnnouncements)
   FeedGroup = { luId, course: Course|null, name, color, items: Event[] (newest first), latest, counts:{file,video,page,assignment,announcement} }
-  sorted: pinned courses first, then groups with a deadline ≤ 48h, then latest desc
-  Course.pinned: **pinned == Toledo favourite.** settings item pinned true/false wins; if unset (null) the course is pinned
-  when settings.sync.favoritesToToledo && enrollment.favorite.
+  sorted: groups with a deadline ≤ 48h first, then latest desc
 TP.data.kindOf(event|contentNode) → 'file'|'video'|'image'|'page'|'assignment'|'link'|'tool'|'folder'|'announcement'|'notice'
-TP.data.deadlines({includeDone, horizonDays}) → Deadline[] sorted by due
-  Deadline = { key, title, courseName, courseLuId, color, due, url|null, source:'toledo'|'ultra'|'custom', done, customId? }
-  merges events subType 'due' + ultraDeadlines + settings.custom; dedupe by normalized title+course+due-day; done from state.done
+TP.data.deadlines({includeDone, horizonDays, pastDays=7}) → Deadline[] sorted by due
+  Deadline = { key, keys:[all merged source keys], title, courseName, courseLuId, color, due, url|null, source:'toledo'|'ultra'|'custom',
+               done, overdue (not done && due < now), ageDays (whole days past due, 0 when not due yet), customId? }
+  merges events subType 'due' + ultraDeadlines + settings.custom; Toledo/Ultra duplicates = same normalized title + course with due
+  within ±2 h (Toledo item wins, url filled from the duplicate); custom items never deduped. **Overdue items that are not done are
+  always returned, however old** (views group them, e.g. "Ouder dan een week"); done items only until pastDays after due.
+  Keys (v1.2, B13): 'd'+hash('t|'+event.id) (Toledo), 'd'+hash('u|'+calendarItem.id) (Ultra), 'c'+hash(customId) — a moved due date keeps
+  its done mark and ICS UID; v1.1 day-based keys in state.done are migrated automatically. done = any of `keys` in state.done.
+  Ultra calendar: refresh fetches now−14 d … now+max(horizonDays, largest horizon asked for in this tab) in ≤ 60-day windows (max 7);
+  asking deadlines() for more (e.g. the Deadlines view's 366 days) loads the missing range lazily and emits 'change'. Overdue, not-done
+  Ultra items that leave the fetch window are kept (≤ 365 days).
 TP.data.announcements({filter:'all'|'courses'|'school'|'unread'}) → Event[] (subType announcement|advalvas), newest first
 TP.data.schedule() → { [dayKey]: Upcoming[] }
 TP.data.link(label) → absolute url|null ; TP.data.quickLinks() → [{label, title, url}] (curated subset, titles from `translation`)
 
 // mutations
-await TP.data.markRead(events[])      // optimistic local update; PATCH batch/events if settings.sync.markReadInToledo
-await TP.data.markFeedSeen()          // state.feedSeenAt = now (+ markRead of those events if sync enabled)
-await TP.data.setPinned(luId, bool)   // the one pin control: settings item pinned + (if sync.favoritesToToledo) setFavorite; → false if the Toledo sync failed
-await TP.data.setFavorite(luId, bool) // PATCH enrollments/{id} if settings.sync.favoritesToToledo (used by setPinned)
-await TP.data.toggleDone(deadlineKey)
+await TP.data.markRead(events[]) → bool  // optimistic (events read:true, rev bump) + state.read; if settings.sync.markReadInToledo:
+                                      // PATCH batch/events in chunks of 100 with keepalive; failed chunks → state.pendingRead (→ false)
+await TP.data.markFeedSeen()          // feed item ids → state.feedSeen (+ markRead of those events if sync enabled)
+await TP.data.toggleDone(deadlineKey) → bool   // toggles every merged source key of that deadline
+// removed in v1.2: TP.data.setFavorite, the pin concept (Course.pinned/favorite, sync.favoritesToToledo, Toledo favourite → pinned).
+// TP.data.setPinned() is a temporary no-op (→ false, logs once) until the UI no longer calls it.
 await TP.data.addCustomDeadline({title, courseLuId, due}) / removeCustomDeadline(id)
 await TP.data.addRecent({title,url,courseName,courseLuId,kind})
 TP.data.ics(deadlines) → string (VCALENDAR; VALARM per settings.deadlines.reminder; Europe/Brussels times as UTC)
 
 // Ultra (same-origin on ultra, relay elsewhere)
-await TP.data.ultraCourse(cid, onProgress?) → { course:{id, courseId, name}, roots: Node[], announcements, deadlines:[{title,due,url}], staff:[{name,email}] }
-   Node = raw content item + kids:Node[]|undefined ; tree walked with bounded concurrency (6), depth ≤ 6, unavailable items dropped;
-   onProgress(partialResult) called after metadata and after the walk.
+await TP.data.ultraCourse(cid, onProgress?) → { course:{id, courseId, name}, roots: Node[], announcements, deadlines:[{title,due,url}], staff:[{name,email}],
+                                                partial, failedFolders, contentsError?:{status, auth, message} }
+   Node = raw content item + kids:Node[]|undefined (+ failed:true when its children could not be loaded after 2 retry rounds, 1 s / 3 s);
+   tree walked with bounded concurrency (6), depth ≤ 6, unavailable items dropped; onProgress(partialResult) after metadata and after the walk.
+   Cache (B5): only complete results (no contentsError, failedFolders 0), 10 min TTL, LRU of 5 courses; refresh() clears it.
+TP.data.clearCourseCache(cid?)
 await TP.data.ultraTree(cid, {concurrency=2}) → Node[]  // content tree only (same walk as ultraCourse), for the index crawl; rejects if the top level fails
 await TP.data.ultraDownload(cid, contentId, fileName?)  // attachments → blob → save (no fileName → the attachment's own name)
 await TP.data.ultraOpen(cid, contentId)               // window.open(download url or item link)

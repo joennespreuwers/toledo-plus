@@ -272,6 +272,50 @@ describe('portal shell', () => {
     assert.equal(await page.evaluate(() => document.querySelector('#tplus-root').shadowRoot.querySelector('dialog.tp-palette').open), false);
   });
 
+  it('consistent unread style; "Ad Valvas" segment; new badges are tint-soft (never solid like overdue)', async () => {
+    await openPortal(h, 'announcements');
+    const nl = strings('nl');
+    const r = await sr(page, (root) => {
+      const rows = [...root.querySelectorAll('.va-ann-list > *')];
+      const bad = rows.filter((el) => {
+        const unread = !!el.querySelector('.va-unread:not(.va-unread-off)');
+        const title = el.querySelector('.tp-row-title');
+        return unread !== !!(title && title.classList.contains('strong'));
+      }).length;
+      return { rows: rows.length, bad };
+    });
+    assert.ok(r.rows >= 3 && r.bad === 0, `every unread row = dot + 600 (${JSON.stringify(r)})`);
+    const segs = await page.locator('#tplus-root input[name="an-filter"] + span').allInnerTexts();
+    assert.ok(segs.includes('Ad Valvas') && !segs.includes('School'), `segments: ${segs}`);
+    assert.equal(nl['announcements.filter.school'], 'Ad Valvas');
+    await openPortal(h);
+    const badge = await sr(page, (root) => {
+      const b = root.querySelector('.va-feed .tp-badge-tint');
+      const red = root.querySelector('nav .tp-badge-red');
+      return b && red ? { tint: getComputedStyle(b).backgroundColor, red: getComputedStyle(red).backgroundColor } : null;
+    });
+    assert.ok(badge && badge.tint !== badge.red, 'new badge differs from the overdue badge');
+    let [rr, gg, bb] = badge.tint.match(/[\d.]+/g).map(Number).slice(-3);
+    if (/^color\(/.test(badge.tint)) [rr, gg, bb] = [rr, gg, bb].map((x) => x * 255);
+    assert.ok(rr > 200 && gg > 200 && bb > 200, `new badge is a soft tint, not a solid fill: ${badge.tint}`);
+  });
+
+  it('search on the overview filters the "Nieuw" count and hides empty day headers (B11)', async () => {
+    await openPortal(h);
+    const count = () => sr(page, (root) => root.querySelector('section[data-section="ov-new"] .tp-sec-title .tp-count')?.textContent || '');
+    const before = Number(await count());
+    await page.locator(S.search).fill('geluid');
+    await page.waitForTimeout(400);
+    const after = Number(await count());
+    const visible = await sr(page, (root) => [...root.querySelectorAll('.va-feed .va-feed-item:not(.is-read)')].filter((x) => !x.hidden && !x.closest('[hidden]')).length);
+    assert.ok(after < before && after === visible, `count follows the filter: ${before} → ${after} (visible ${visible})`);
+    const heads = await sr(page, (root) => [...root.querySelectorAll('[data-va-day]')].filter((d) => !d.hidden).map((d) => d.querySelectorAll('[data-q]:not([hidden])').length));
+    assert.ok(heads.every((n) => n > 0), `no empty day headers while searching: ${heads}`);
+    await page.locator(S.search).fill('');
+    await page.waitForTimeout(300);
+    assert.equal(Number(await count()), before, 'count restored');
+  });
+
   it('"mark all read" sends PATCH /portal/api/batch/events with the right body', async () => {
     await openPortal(h);
     h.rec.reset();
@@ -339,49 +383,6 @@ describe('portal shell', () => {
     assert.ok((await menu.innerText()).includes(nl['shell.notifSettings']));
     assert.equal(nl['shell.notifSettings'], 'Meldingsinstellingen in Toledo');
     await page.keyboard.press('Escape');
-  });
-
-  it('consistent unread style; "Ad Valvas" segment; new badges are tint-soft (never solid like overdue)', async () => {
-    await openPortal(h, 'announcements');
-    const nl = strings('nl');
-    const r = await sr(page, (root) => {
-      const rows = [...root.querySelectorAll('.va-ann-list > *')];
-      const bad = rows.filter((el) => {
-        const unread = !!el.querySelector('.va-unread:not(.va-unread-off)');
-        const title = el.querySelector('.tp-row-title');
-        return unread !== !!(title && title.classList.contains('strong'));
-      }).length;
-      return { rows: rows.length, bad };
-    });
-    assert.ok(r.rows >= 3 && r.bad === 0, `every unread row = dot + 600 (${JSON.stringify(r)})`);
-    const segs = await page.locator('#tplus-root input[name="an-filter"] + span').allInnerTexts();
-    assert.ok(segs.includes('Ad Valvas') && !segs.includes('School'), `segments: ${segs}`);
-    assert.equal(nl['announcements.filter.school'], 'Ad Valvas');
-    await openPortal(h);
-    const badge = await sr(page, (root) => {
-      const b = root.querySelector('.va-feed .tp-badge-tint');
-      const red = root.querySelector('nav .tp-badge-red');
-      return b && red ? { tint: getComputedStyle(b).backgroundColor, red: getComputedStyle(red).backgroundColor } : null;
-    });
-    assert.ok(badge && badge.tint !== badge.red, 'new badge differs from the overdue badge');
-    const [rr, gg, bb] = badge.tint.match(/\d+/g).map(Number);
-    assert.ok(rr > 200 && gg > 200 && bb > 200, `new badge is a soft tint, not a solid fill: ${badge.tint}`);
-  });
-
-  it('search on the overview filters the "Nieuw" count and hides empty day headers (B11)', async () => {
-    await openPortal(h);
-    const count = () => sr(page, (root) => root.querySelector('section[data-section="ov-new"] .tp-sec-title .tp-count')?.textContent || '');
-    const before = Number(await count());
-    await page.locator(S.search).fill('geluid');
-    await page.waitForTimeout(400);
-    const after = Number(await count());
-    const visible = await sr(page, (root) => [...root.querySelectorAll('.va-feed .va-feed-item:not(.is-read)')].filter((x) => !x.hidden && !x.closest('[hidden]')).length);
-    assert.ok(after < before && after === visible, `count follows the filter: ${before} → ${after} (visible ${visible})`);
-    const heads = await sr(page, (root) => [...root.querySelectorAll('[data-va-day]')].filter((d) => !d.hidden).map((d) => d.querySelectorAll('[data-q]:not([hidden])').length));
-    assert.ok(heads.every((n) => n > 0), `no empty day headers while searching: ${heads}`);
-    await page.locator(S.search).fill('');
-    await page.waitForTimeout(300);
-    assert.equal(Number(await count()), before, 'count restored');
   });
 
   it('default course colours are unique among the current courses', async () => {
@@ -501,8 +502,9 @@ describe('deadlines: overdue, detail sheet, onboarding (v1.4)', () => {
     // Esc closes and returns focus to the row
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => !document.querySelector('#tplus-root').shadowRoot.querySelector('dialog.tp-detail').open, null, { timeout: 3000 });
-    const focused = await sr(page, (r) => r.activeElement?.classList.contains('va-dl-open'));
-    assert.ok(focused, 'focus back on the row');
+    await page.waitForTimeout(200);
+    const focused = await sr(page, (r) => r.activeElement ? r.activeElement.className + '|' + r.activeElement.tagName : 'none');
+    assert.ok(/va-dl-open/.test(focused), `focus back on the row (${focused})`);
   });
 
   it('"Open in vak" lands on the course with the assignment focused (state.focus)', async () => {

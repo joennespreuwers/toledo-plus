@@ -63,8 +63,6 @@ test('fixture teachers are fictional', () => {
 // Codes: X1xxxx (never the school's real N5xxxx pattern). Ultra ids: _9xxxxx_1 (or short ids like _5000_1).
 const REAL_CODE = /\bN5\d{4}\b/g;
 const REAL_ULTRA_ID = /(?<![\w])_[1-8]\d{4,6}_1\b/g;
-// Files owned by Agent B (v1.3 KU Loket) that still have to switch to the fictitious codes; checked as a todo.
-const PENDING = new Set(['tests/fixtures/kuloket.json', 'tests/helpers/kuloket-mock.js', 'tests/unit/kuloket.test.js']);
 function realIds(scope) {
   const hits = [];
   for (const f of files().filter((x) => scope.some((p) => x.startsWith(p)))) {
@@ -74,14 +72,9 @@ function realIds(scope) {
   return hits;
 }
 
-test('fixtures, helpers and unit tests use fictitious course codes and Ultra ids', () => {
-  const hits = realIds(['tests/fixtures/', 'tests/helpers/', 'tests/unit/']).filter((h) => !PENDING.has(h.split(':')[0]) && !h.startsWith('tests/unit/privacy.test.js'));
+test('fixtures, helpers and tests use fictitious course codes and Ultra ids', () => {
+  const hits = realIds(['tests/fixtures/', 'tests/helpers/', 'tests/unit/', 'tests/e2e/']).filter((h) => !h.startsWith('tests/unit/privacy.test.js'));
   assert.deepEqual(hits, [], `Real-looking codes/ids (use X1xxxx and _9xxxxx_1):\n${hits.join('\n')}`);
-});
-
-test('KU Loket fixtures use fictitious course codes', { todo: 'Agent B: map N5xxxx → X1xxxx in kuloket.json / kuloket-mock.js / kuloket.test.js' }, () => {
-  const hits = realIds([...PENDING]);
-  assert.deepEqual(hits, []);
 });
 
 test('the privacy patterns catch real-looking values', () => {
