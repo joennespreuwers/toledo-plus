@@ -118,7 +118,8 @@
     {
       "resources": [
         "ui.css",
-        "src/views/*.css"
+        "src/views/*.css",
+        "fonts/*.woff2"
       ],
       "matches": [
         "https://toledo.kuleuven.be/*",

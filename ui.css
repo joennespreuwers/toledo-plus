@@ -43,6 +43,19 @@
   --shadow-seg: 0 1px 3px rgba(0, 0, 0, .14), 0 0 0 .5px rgba(0, 0, 0, .04);
   --scrim: rgba(0, 0, 0, .28);
   --hairline: .5px;
+  color-scheme: light;
+  font-family: var(--font);
+  font-size: var(--fs-body); line-height: var(--lh-body);
+  font-optical-sizing: auto;
+  color: var(--label);
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+@media (max-resolution: 1.5dppx) { .tp-theme { --hairline: 1px; } }
+/* ========================================================================== motion tokens (v1.5)
+   Self-contained: only durations/easings for TP.motion (src/core/motion.js mirrors them). No colour/font tokens here. */
+.tp-theme {
   /* motion (v1.5) — mirrored by TP.motion.DUR / TP.motion.EASE (src/core/motion.js). Interactions stay instant:
      nothing longer than --dur-4, only opacity/transform where possible. */
   --dur-1: 120ms;  /* hover, press, small fades, reduced-motion fades */
@@ -56,16 +69,7 @@
   --ease-smooth: cubic-bezier(.2, .8, .2, 1);      /* moves, sheets */
 
   interpolate-size: allow-keywords; /* lets <details> animate to height:auto (Chrome 129+) */
-  color-scheme: light;
-  font-family: var(--font);
-  font-size: var(--fs-body); line-height: var(--lh-body);
-  font-optical-sizing: auto;
-  color: var(--label);
-  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
-  text-size-adjust: 100%;
-  -webkit-tap-highlight-color: transparent;
 }
-@media (max-resolution: 1.5dppx) { .tp-theme { --hairline: 1px; } }
 /* Spring curves (damped spring sampled into linear(), Chrome 113+): ζ≈.72 (≈4 % overshoot) and ζ≈.9 */
 @supports (transition-timing-function: linear(0, 1)) {
   .tp-theme {
