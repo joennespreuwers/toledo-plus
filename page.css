@@ -1,0 +1,22 @@
+/* Injected in the Toledo page itself: hide the original portal while Toledo+ is shown. */
+html.tplus-on body > *:not(#tplus-root) { display: none !important; }
+html.tplus-on body { padding: 0 !important; margin: 0 !important; background: #F2F2F7 !important; }
+html.tplus-on, html.tplus-on body { overflow: auto !important; height: auto !important; min-height: 100% !important; position: static !important; }
+@media (prefers-color-scheme: dark) { html.tplus-on body { background: #000 !important; } }
+#tplus-root { display: block; }
+html:not(.tplus-on) #tplus-root { display: none !important; }
+
+/* Pill shown on the classic portal to switch back */
+#tplus-switch {
+  position: fixed; right: 20px; bottom: 20px; z-index: 2147483000;
+  font: 600 15px/1 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  height: 44px; padding: 0 18px; border-radius: 22px; border: 0.5px solid rgba(0,0,0,0.12);
+  background: rgba(255,255,255,0.72); color: #007AFF; cursor: pointer;
+  -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+html.tplus-on #tplus-switch { display: none; }
+#tplus-switch.left { right: auto; left: 20px; }
+@media (prefers-color-scheme: dark) {
+  #tplus-switch { background: rgba(30,30,30,0.72); color: #0A84FF; border-color: rgba(255,255,255,0.12); }
+}
