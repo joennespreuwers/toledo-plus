@@ -39,6 +39,12 @@ async function type(page, q) {
   await page.locator(INPUT).fill(q);
   await page.waitForTimeout(250);
 }
+/** Poll the palette until pred(state) holds (the index may still be filling in the background): no fixed sleeps. */
+async function until(page, pred, what, timeout = 8000) {
+  const t0 = Date.now(); let st;
+  while (Date.now() - t0 < timeout) { st = await palState(page); if (pred(st)) return st; await page.waitForTimeout(100); }
+  assert.fail(`${what}: ${JSON.stringify(st)}`);
+}
 async function waitIndexed(page, min = 10) {
   await page.waitForFunction((min) => {
     const sr = document.querySelector('#tplus-root').shadowRoot;
@@ -201,11 +207,14 @@ describe('⌘K palette on Ultra', () => {
     await page.waitForFunction(() => !!document.querySelector('#tplus-root').shadowRoot.querySelector('details.cv-folder'), null, { timeout: 15000 });
     await waitForIdle(page); await waitForQuiet(page);
     await openPalette(page);
-    await type(page, 'kwartel');
-    assert.ok((await palState(page)).options.includes('Diepe_bron_Kwartel.pdf'), 'item of the open course is indexed (nested)');
+    // the open course is indexed when its tree has loaded ('course' event) — re-type until the result shows
+    const t0 = Date.now();
+    let st;
+    do { await type(page, 'kwartel'); st = await palState(page); } while (!st.options.includes('Diepe_bron_Kwartel.pdf') && Date.now() - t0 < 8000);
+    assert.ok(st.options.includes('Diepe_bron_Kwartel.pdf'), `item of the open course is indexed (nested): ${JSON.stringify(st.options)}`);
     await waitIndexed(page, 20);
     await type(page, 'regie reader');
-    assert.equal((await palState(page)).active, 'Regie_reader.pdf');
+    await until(page, (x) => x.active === 'Regie_reader.pdf', 'Regie_reader.pdf is the active result');
     const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 10000 }), page.keyboard.press('Control+Enter')]);
     assert.equal(dl.suggestedFilename(), 'Regie_reader.pdf');
     assert.equal((await palState(page)).open, false);

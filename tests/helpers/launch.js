@@ -51,6 +51,7 @@ async function launch(o = {}) {
     timezoneId: 'Europe/Brussels',
     acceptDownloads: true,
     serviceWorkers: 'allow',
+    ...(o.recordVideo ? { recordVideo: o.recordVideo } : {}),
   });
   // Motion off unless a test asks for it (o.motion: true): animations finish instantly, so tests stay fast and
   // deterministic. TP.motion reads <html data-tp-motion="off"> (shared between page and content-script worlds).
