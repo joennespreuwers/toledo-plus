@@ -514,7 +514,7 @@
     restoreFocus(ctx.root, focus);
     updateNow();
     if (S.q) applySearch();
-    if (S.pop && S.popKind === 'filter') refreshFilterPop(g.all);
+    if (S.pop && S.popKind === 'ag-pop-filter') refreshFilterPop(g.all);
   }
 
   /** Scroll the time grid to its start hour; retried on the next paint/frame while the view isn't laid out yet. */

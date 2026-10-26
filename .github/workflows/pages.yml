@@ -2,6 +2,8 @@ name: Website
 
 # Deploys website/ (toledoplus.be) to GitHub Pages.
 # One-time setup: Settings → Pages → Source: "GitHub Actions" (see website/README.md).
+# The demo (toledoplus.be/demo/) runs the real extension UI: its files are copied into the
+# artifact at build time (never duplicated in git). website/tools/ (dev scripts) is not deployed.
 
 on:
   push:
@@ -9,6 +11,12 @@ on:
     paths:
       - "website/**"
       - ".github/workflows/pages.yml"
+      # the demo ships the extension UI
+      - "manifest.json"
+      - "src/**"
+      - "ui.css"
+      - "page.css"
+      - "icons/**"
   workflow_dispatch:
 
 permissions:
@@ -31,9 +39,17 @@ jobs:
 
       - uses: actions/configure-pages@v5
 
+      - name: Assemble site (+ demo/ext from the extension)
+        run: |
+          mkdir _site
+          cp -R website/. _site/
+          rm -rf _site/tools _site/.screens _site/README.md _site/.gitignore _site/demo/ext
+          mkdir -p _site/demo/ext
+          cp -R manifest.json ui.css page.css src icons _site/demo/ext/
+
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: website
+          path: _site
 
       - id: deployment
         uses: actions/deploy-pages@v4

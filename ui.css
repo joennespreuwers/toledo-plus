@@ -705,11 +705,11 @@ a.tp-row:active, button.tp-row:active, summary.tp-row:active { background: var(-
   display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 2px; padding: 2px;
   border-radius: 9px; background: var(--fill); max-width: 100%;
 }
-.tp-seg { position: relative; display: block; cursor: pointer; }
+.tp-seg { position: relative; display: block; min-width: 0; cursor: pointer; }
 .tp-seg input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
 .tp-seg span {
   display: grid; place-items: center; height: 28px; padding: 0 12px; border-radius: 7px;
-  font-size: var(--fs-subhead); font-weight: 500; white-space: nowrap; color: var(--label);
+  font-size: var(--fs-subhead); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--label);
   transition: background-color .15s ease, box-shadow .15s ease;
 }
 .tp-theme[data-density="comfortable"] .tp-seg span { height: 32px; }
@@ -828,6 +828,8 @@ a.tp-row:active, button.tp-row:active, summary.tp-row:active { background: var(-
 }
 
 /* ========================================================================== touch / narrow (device table) */
+/* ≤ 360px: segments size to their label and may shrink (ellipsis) instead of pushing the page wider */
+@media (max-width: 360px) { .tp-segmented { grid-auto-columns: minmax(0, auto); } .tp-seg span { display: block; padding: 0 7px; line-height: 28px; text-align: center; } }
 @media (max-width: 699px) {
   /* metadata wraps instead of hiding behind hover-only title attributes */
   .tp-row-sub { white-space: normal; overflow-wrap: anywhere; }

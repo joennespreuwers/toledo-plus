@@ -637,3 +637,36 @@ test('maybeRefresh: only when data is older than 5 minutes', async () => {
   assert.ok(r && r.ok);
   assert.ok(n > after);
 });
+
+// ---- user's first name (greeting, v1.5) ---------------------------------
+test('firstName: first given name only, trimmed, no control characters, bounded', async () => {
+  const { TP } = await boot();
+  const f = TP.data._test.firstName;
+  assert.equal(f({ name: { given: 'Alex Jan', family: 'Voorbeeld' } }), 'Alex');
+  assert.equal(f({ name: { given: '  Anne-Marie ' } }), 'Anne-Marie');
+  assert.equal(f({ name: { given: 'Al\u0007ex' } }), 'Alex');
+  assert.equal(f({ name: { given: '' } }), '');
+  assert.equal(f(null), '');
+  assert.equal(f({ name: { given: 'x'.repeat(80) } }).length, 40);
+});
+
+test('loadUser: Ultra users/me → state.me (local only); cached a week; failure is silent and keeps the session state', async () => {
+  const net = { json: async (url) => { return /users\/me$/.test(url) ? { name: { given: 'Alex Jan' } } : null; } };
+  const b = await boot({ net });
+  const { TP, world: w } = b;
+  assert.equal(TP.data.userName(), '');
+  assert.equal(await TP.data.loadUser(), 'Alex');
+  await settle();
+  assert.equal(TP.data.userName(), 'Alex');
+  assert.equal(w.stores.local['state:me'].given, 'Alex', 'chrome.storage.local');
+  assert.ok(!JSON.stringify(w.stores.sync || {}).includes('Alex'), 'never synced');
+  // within a week: no new request
+  let asked = 0;
+  TP.net.json = async () => { asked++; return { name: { given: 'Other' } }; };
+  assert.equal(await TP.data.loadUser(), 'Alex');
+  assert.equal(asked, 0);
+  // a failing call never flags the session as expired and keeps the cached name
+  TP.net.json = async () => { throw Object.assign(new Error('401'), { status: 401, auth: true }); };
+  assert.equal(await TP.data.loadUser({ force: true }), 'Alex');
+  assert.equal(TP.data.authExpired(), false);
+});

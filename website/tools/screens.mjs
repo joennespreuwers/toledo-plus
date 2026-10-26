@@ -105,7 +105,7 @@ async function main() {
     const out = {};
     out['overview-light.webp'] = await toWebp(enc, shots.light, 2400, 0.8);
     out['overview-dark.webp'] = await toWebp(enc, shots.dark, 2400, 0.8);
-    out['overview-light.png'] = await toPng(enc, shots.light, 1440);
+    out['overview-light.png'] = await toPng(enc, shots.light, sharp ? 1440 : 1200); // lossless without sharp: keep it small
     out['og.png'] = await ogImage(ctx, shots.light);
     await enc.close();
 

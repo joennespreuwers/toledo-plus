@@ -605,3 +605,76 @@ describe('session expired (portal API answers with the HTML login page)', () => 
     await banner.waitFor({ state: 'detached', timeout: 15000 });
   });
 });
+
+describe('greeting with first name + mail button (v1.5)', () => {
+  let h; let page;
+  before(async () => { h = await launch(); page = h.page; });
+  after(async () => { await h?.close(); });
+  const GREET = /^(Goedemorgen|Goedemiddag|Goedenavond|Goedenacht)/;
+
+  it('"Goedenavond, Alex": first name from Ultra users/me (via the relay), cached locally, never sent anywhere', async () => {
+    await openPortal(h, 'overview');
+    await page.waitForFunction(() => /, Alex$/.test(document.querySelector('#tplus-root').shadowRoot.querySelector('.tp-large-title')?.textContent || ''), null, { timeout: 8000 });
+    const title = await page.locator(S.title).innerText();
+    assert.match(title, GREET, `Dutch greeting spelling: ${title}`);
+    assert.match(title, /^Goede(morgen|middag|navond|nacht), Alex$/, 'only the first given name');
+    assert.ok(h.rec.find((r) => /\/learn\/api\/public\/v1\/users\/me$/.test(r.url)).length >= 1, 'users/me asked');
+    const st = await h.getState();
+    assert.equal(st.me?.given, 'Alex', 'cached in state (chrome.storage.local)');
+    const sync = await h.getSettings();
+    assert.ok(!JSON.stringify(sync).includes('Alex'), 'never in synced settings');
+    assert.ok(!h.rec.requests.some((r) => (r.body || '').includes('Alex') || /Alex/.test(r.url)), 'never sent in any request');
+    // cached: a reload shows it without asking again
+    const n = h.rec.find((r) => /users\/me$/.test(r.url)).length;
+    await openPortal(h, 'overview');
+    assert.match(await page.locator(S.title).innerText(), /, Alex$/);
+    assert.equal(h.rec.find((r) => /users\/me$/.test(r.url)).length, n, 'not fetched again within a week');
+    assert.deepEqual(h.errors, []);
+  });
+
+  it('toolbar mail button: envelope, ≥ 24px, grey unread badge, opens Outlook in a new tab; also in the account menu; More sheet on phones', async () => {
+    await openPortal(h, 'overview');
+    const mail = page.locator('#tplus-root .tp-toolbar a.tp-mail');
+    assert.ok(await mail.isVisible(), 'visible on desktop');
+    assert.equal(await mail.getAttribute('href'), 'https://outlook.office.com/mail/');
+    assert.equal(await mail.getAttribute('target'), '_blank');
+    assert.match(await mail.getAttribute('rel'), /noopener/);
+    const b = await mail.boundingBox();
+    assert.ok(b.width >= 24 && b.height >= 24, `target ${b.width}×${b.height}`);
+    const n = Number(h.fx.portal.mail.value);
+    const badge = mail.locator('.tp-mail-badge');
+    if (n) {
+      assert.equal((await badge.innerText()).trim(), n > 99 ? '99+' : String(n));
+      assert.match(await mail.getAttribute('aria-label'), new RegExp(`${n} ongelezen`));
+      assert.equal(await page.locator('#tplus-root .tp-avatar-dot').isVisible(), false, 'no second mail dot on the avatar ≥ 700px');
+    }
+    assert.equal(await mail.getAttribute('title').then((x) => x.startsWith('Mail')), true, 'tooltip');
+    // still in the account menu
+    await page.locator(S.menuBtn).click();
+    assert.equal(await page.locator('#tplus-root .tp-menu a[href="https://outlook.office.com/mail/"]').count(), 1);
+    await page.keyboard.press('Escape');
+    // phones: not in the crowded toolbar, but in the More sheet
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openPortal(h, 'overview');
+    assert.equal(await mail.isVisible(), false, 'hidden in the phone toolbar');
+    await page.locator(`${S.tabbar} [data-shell="more"]`).click();
+    const row = page.locator('#tplus-root dialog.tp-sheet a[href="https://outlook.office.com/mail/"]');
+    await row.waitFor({ state: 'visible', timeout: 3000 });
+    assert.equal(await row.getAttribute('target'), '_blank');
+    await page.keyboard.press('Escape');
+    await page.setViewportSize({ width: 1440, height: 900 });
+    assert.deepEqual(h.errors, []);
+  });
+});
+
+describe('greeting without a known name', () => {
+  let h;
+  before(async () => { h = await launch({ mock: { noUser: true } }); });
+  after(async () => { await h?.close(); });
+  it('keeps the plain greeting (no comma, no placeholder)', async () => {
+    await openPortal(h, 'overview');
+    await h.page.waitForTimeout(800);
+    assert.match(await h.page.locator(S.title).innerText(), /^Goede(morgen|middag|navond|nacht)$/);
+    assert.equal((await h.getState())?.me?.given, undefined);
+  });
+});
