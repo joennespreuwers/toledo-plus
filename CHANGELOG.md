@@ -6,6 +6,21 @@ Het formaat volgt [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) en he
 
 ## [Unreleased]
 
+### Added
+- **"Zet in zijbalk"**: choose which courses appear in the sidebar's "Vakken" group (and the icon rail) — from the course page header ("Zet in zijbalk" / "Uit zijbalk"), the small toggle on each course card, or the "In zijbalk" switch in Vakken › Bewerk. Purely local, nothing changes in Toledo. ⌘K still searches every course.
+- **Mail button** back in the toolbar: envelope with a small grey unread count, opens Outlook web in a new tab. On phones it sits in the "Meer" sheet; the account menu keeps it too.
+- **Greeting with your first name** ("Goedenavond, Alex"), read from Ultra (`users/me`) and kept only in local storage — never synced, never sent anywhere. Without a name the plain greeting stays.
+
+### Changed
+- The sidebar "Vakken" group lists only the courses you added and is hidden when there are none (settings v4: existing installs start with an empty group).
+- **Layout on wide screens**: one centred content column (max 1240 px: main + side column) right of the sidebar instead of a strip next to an empty area; list views (Deadlines, Mededelingen, KU Loket, Instellingen) use a centred 760 px column. The toolbar's controls line up with the content edge at every width.
+- Spacing pass along the design scale: welcome card padding and button spacing, side column width (280–340 px), day headers aligned with section titles, settings section gap.
+
+### Fixed
+- The sidebar (and icon rail / tab bar) could scroll horizontally; long course names now ellipsize and badges no longer push the width.
+- Dutch greetings are spelled "Goedemorgen / Goedemiddag / Goedenavond" (was "Goeie…").
+- Segmented controls (e.g. Mededelingen filter) no longer overflow at 320 px.
+
 ## [1.4.0] - 2026-10-26
 
 Bundelt v1.2 (betrouwbaarheid), v1.3 (Agenda & KU Loket) en v1.4 (UX-opschoning) uit de review van 26 oktober. / Bundles v1.2 (reliability), v1.3 (Agenda & KU Loket) and v1.4 (UX cleanup) from the 26 October review.

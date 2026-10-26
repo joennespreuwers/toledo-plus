@@ -283,7 +283,7 @@
     return `<div class="ag-cal ag-timegrid${wide ? ' ag-dayview' : ''}" role="region" aria-label="${esc(t('agenda.region'))}" style="--days:${days.length}" data-scroll="${scrollHour(timed, r)}">
   <div class="ag-head"><div class="ag-gutter"><span class="ag-tz">${esc(t('agenda.weekShort', { n: isoWeekNo(r.from) }))}</span></div>${head}</div>
   ${allday}
-  <div class="ag-scroll" tabindex="-1"><div class="ag-grid"><div class="ag-hours" aria-hidden="true">${hours.join('')}</div>${cols}</div></div>
+  <div class="ag-scroll" tabindex="0" role="group" aria-label="${esc(t('agenda.timeline'))}"><div class="ag-grid"><div class="ag-hours" aria-hidden="true">${hours.join('')}</div>${cols}</div></div>
 </div>`;
   }
 
@@ -426,7 +426,7 @@
       const cells = [];
       for (let i = 0; i < 7; i++) {
         const d = addDays(from, w * 7 + i);
-        const inR = d >= r.from && d < r.to;
+        const inR = mode() !== 'month' && d >= r.from && d < r.to;
         cells.push(`<td><button type="button" class="ag-mini-d${new Date(d).getMonth() !== m ? ' is-out' : ''}${d === today ? ' is-today' : ''}${inR ? ' in-range' : ''}${d === sod(S.anchor) ? ' is-sel' : ''}" data-action="ag-goto-day" data-day="${d}" aria-label="${esc(cap(fdate(d, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })))}"${d === today ? ' aria-current="date"' : ''}${inR ? ' aria-pressed="true"' : ' aria-pressed="false"'}>${esc(fdate(d, { day: 'numeric' }))}</button></td>`);
       }
       rows.push(`<tr>${cells.join('')}</tr>`);
@@ -600,8 +600,12 @@
     d.addEventListener('close', () => {
       if (S.pop === d) { S.pop = null; S.popKind = ''; }
       d.remove();
-      const el = back && S.ctx && S.ctx.root.querySelector(back);
-      if (el) el.focus({ preventScroll: true });
+      const refocus = () => {
+        const el = back && S.ctx && S.ctx.root.querySelector(back);
+        if (el && el.getRootNode().activeElement !== el && !S.pop) el.focus({ preventScroll: true });
+      };
+      refocus();
+      setTimeout(refocus, 0); // the browser's own dialog focus fix-up may land on a node a repaint replaced
     });
     try { d.showModal(); } catch (_) { d.setAttribute('open', ''); }
     position(d, opener, place);

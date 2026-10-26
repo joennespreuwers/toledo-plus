@@ -300,8 +300,10 @@
 @media (max-width: 699px) {
   .ag-view { --hh: 44px; --gut: 38px; }
   .ag-bar { flex-direction: column; align-items: stretch; }
-  .ag-nav { flex-wrap: wrap; }
-  .ag-range { flex: 1 1 100%; order: -1; font-size: var(--fs-headline); }
+  .ag-nav { flex-wrap: nowrap; }
+  .ag-range { flex: 1 1 0; order: -1; font-size: var(--fs-headline); line-height: var(--lh-headline); }
+  .ag-wk { display: none; }
+  .ag-nav .ag-today { padding-inline: 10px; }
   .ag-controls { flex-wrap: nowrap; }
   .ag-controls .tp-segmented { flex: 1; min-width: 0; }
   .ag-keys-btn, .ag-keyhint, .ag-tz { display: none; }

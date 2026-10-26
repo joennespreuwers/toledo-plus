@@ -509,7 +509,7 @@ describe('agenda — views, keyboard, layout, filters (desktop 1440)', () => {
     await pop.locator('input[name="ag-show"][value="deadline"]').check();
     await page.keyboard.press('Escape');
     await pop.waitFor({ state: 'detached' });
-    assert.equal(await inShadow(page, (sr) => sr.activeElement?.dataset.action), 'ag-filter', 'focus returns to the filter button');
+    assert.ok(await waitFor(async () => (await inShadow(page, (sr) => sr.activeElement?.dataset.action)) === 'ag-filter', { timeout: 1500 }), 'focus returns to the filter button');
     await page.setViewportSize({ width: 1440, height: 900 });
   });
 

@@ -1032,6 +1032,8 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
         default: break;
       }
     }
+    // External links in the menu / More sheet (mail → new tab): close the popover behind them.
+    if (el.tagName === 'A' && el.target && el.closest('.tp-menu, .tp-sheet')) { closeMenu(false); closeSheet(); return; }
     // Internal links: navigate in place when possible (keeps modifier-clicks / new tabs working).
     if (el.tagName === 'A' && !ev.defaultPrevented && plainClick(ev) && !el.target) {
       if (el.dataset.route && origin === 'portal' && el.dataset.route !== 'course') {
