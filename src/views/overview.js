@@ -149,10 +149,12 @@
       try { const el = root.querySelector(key); if (el) el.focus({ preventScroll: true }); } catch { /* ignore */ }
     },
 
-    /** Replace root content, preserving focus. */
+    /** Replace root content, preserving focus. Rows that stay glide to their new place, new ones fade up,
+        removed ones fade out (TP.motion.flip; a no-op inside the shell's own re-render flip). */
     paint(root, html) {
       const fk = VA.focusKey(root);
-      root.innerHTML = html;
+      const swap = () => { root.innerHTML = html; };
+      if (TP.motion && root.firstElementChild) TP.motion.flip(root, swap); else swap();
       VA.restoreFocus(root, fk);
     },
 

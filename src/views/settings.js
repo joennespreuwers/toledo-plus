@@ -255,7 +255,7 @@
     restoreFocus(root, focus);
   }
   // Async callers only repaint while the settings view is still what the container shows.
-  const rerender = () => { if (cur && cur.root.querySelector(':scope > .st-view')) render(cur); };
+  const rerender = () => { if (cur && cur.root.querySelector(':scope > .st-view')) (TP.motion ? TP.motion.flip(cur.root, () => render(cur)) : render(cur)); };
 
   // ---------- interactions ----------
   function patchFor(path, value) {

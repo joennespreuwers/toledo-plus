@@ -19,9 +19,8 @@ const localKeys = (h) => h.sw.evaluate(async () => Object.keys(await chrome.stor
 const localRemove = (h, keys) => h.sw.evaluate((k) => chrome.storage.local.remove(k), keys);
 
 function assertClean(h) {
-  // (the anonymous telemetry ping/update check is the shell's business, not the agenda's)
-  const foreign = h.rec.foreign.filter((u) => !/^https:\/\/api\.toledoplus\.be\/v1\/(ping|latest)$/.test(u));
-  assert.deepEqual(foreign, [], `no requests to unexpected origins: ${JSON.stringify(foreign)}`);
+  // (the shared mock answers the anonymous ping/update check, so nothing needs to be ignored here)
+  assert.deepEqual(h.rec.foreign, [], `no requests to unexpected origins: ${JSON.stringify(h.rec.foreign)}`);
   assert.deepEqual(h.rec.cdn, [], 'no relative-URL bugs');
   const writes = h.rec.requests.filter((r) => /webwsp\.aps\.kuleuven\.be|cloud\.timeedit\.net/.test(r.url) && r.method !== 'GET');
   assert.deepEqual(writes, [], 'KU Loket is read-only');

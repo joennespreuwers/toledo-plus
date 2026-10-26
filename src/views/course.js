@@ -148,6 +148,11 @@
     st.key = p.cid ? 'c:' + p.cid : 'l:' + (p.luId || '');
     st.cid = p.cid || null;
     st.luId = p.luId || null;
+    // Perceived speed: on Ultra we only know the cid; the luId from state.cidMap lets the header (name, code,
+    // semester) come straight from the cached enrollments instead of waiting for the course to load.
+    if (!st.luId && st.cid) {
+      try { const m = (TP.state.get() || {}).cidMap || {}; st.luId = Object.keys(m).find((k) => m[k] === st.cid) || null; } catch { st.luId = null; }
+    }
     st.data = null; st.partial = true; st.error = null; st.prevVisit = 0; st.openIds = null; st.busy.clear(); st.focusUsed = false;
     const token = ++st.token;
     load(token);
@@ -477,8 +482,15 @@
       computeFeedNew();
       body = TP.ui.cols(recentHtml() + treeHtml(), nextLessonHtml() + deadlinesHtml() + announcementsHtml() + teachersHtml());
     }
-    root.innerHTML = `<div class="cv-view">${headerHtml()}${body}<div class="cv-noresults" hidden></div></div>`;
-    if (hadView) root.querySelectorAll('.cv-view details[data-keep]').forEach((d) => { d.open = keep.has(d.dataset.keep); });
+    const html = `<div class="cv-view">${headerHtml()}${body}<div class="cv-noresults" hidden></div></div>`;
+    // Skeleton → content, partial → full tree, "Alleen nieuw": rows fade/glide instead of popping (TP.motion.flip).
+    const swap = () => {
+      root.innerHTML = html;
+      if (hadView) root.querySelectorAll('.cv-view details[data-keep]').forEach((d) => { d.open = keep.has(d.dataset.keep); });
+    };
+    if (TP.motion && hadView) TP.motion.flip(root, swap); else swap();
+    root.dataset.busyOwn = '1';
+    if (!st.error && (!st.data || st.partial)) root.setAttribute('aria-busy', 'true'); else root.removeAttribute('aria-busy');
     syncTitle();
     restoreFocus(root, focus);
     if (st.q) applySearch(root, st.q);

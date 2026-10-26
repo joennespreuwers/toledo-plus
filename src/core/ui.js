@@ -198,7 +198,9 @@
   function segmented(name, options, value, o = {}) {
     const segs = (options || []).map((opt) =>
       `<label class="tp-seg"><input type="radio" name="${esc(name)}" value="${esc(opt.value)}"${String(opt.value) === String(value) ? ' checked' : ''}><span>${esc(opt.label)}</span></label>`).join('');
-    return `<div class="tp-segmented" role="radiogroup"${o.label ? ` aria-label="${esc(o.label)}"` : ''}>${segs}</div>`;
+    // The pill (last child, so .tp-seg:nth-child(n) is the n-th option) slides under the checked label (ui.css).
+    const n = Math.max(1, (options || []).length);
+    return `<div class="tp-segmented" role="radiogroup"${o.label ? ` aria-label="${esc(o.label)}"` : ''} style="--n:${n}">${segs}<span class="tp-seg-pill" aria-hidden="true"></span></div>`;
   }
 
   function toggle(name, checked, label, o = {}) {

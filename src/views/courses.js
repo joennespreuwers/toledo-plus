@@ -235,10 +235,12 @@
   }
 
   const live = () => !!(cur && cur.root.querySelector(':scope > .cs-view'));
+  // Re-render from an interaction (scope, sort, move, hide…): cards glide to their new place (TP.motion.flip).
+  const repaint = () => (TP.motion ? TP.motion.flip(cur.root, () => render(cur)) : render(cur));
 
   function toggleEdit() {
     ui.edit = !ui.edit;
-    if (live()) render(cur);
+    if (live()) repaint();
     TP.shell.announce?.(t(ui.edit ? 'courses.editOn' : 'courses.editOff'));
   }
 
@@ -274,7 +276,7 @@
     const patch = { courses: { order: global } };
     if (s.courses?.sort !== 'manual') { patch.courses.sort = 'manual'; TP.shell.announce?.(t('courses.sortManualOn')); }
     save(TP.settings.set(patch));
-    if (live()) render(cur);
+    if (live()) repaint();
   }
   function visibleIds(s) {
     const { inView } = lists(s);
@@ -330,15 +332,15 @@
         case 'cs-retry': ev.preventDefault(); Promise.resolve(TP.data.load('enrollments', { force: true })).catch(() => {}); return;
         default: return;
       }
-      if (live()) render(cur);
+      if (live()) repaint();
     });
 
     root.addEventListener('change', async (ev) => {
       const el = ev.target;
       if (!el.closest('.cs-view') || !el.name) return;
-      if (el.name === 'cs-scope') { ui.scope = el.value; if (cur) render(cur); return; }
-      if (el.name === 'cs-sem') { ui.sem = el.value; if (cur) render(cur); return; }
-      if (el.name === 'cs-sort') { save(TP.settings.set({ courses: { sort: el.value } })); if (live()) render(cur); return; }
+      if (el.name === 'cs-scope') { ui.scope = el.value; if (cur) repaint(); return; }
+      if (el.name === 'cs-sem') { ui.sem = el.value; if (cur) repaint(); return; }
+      if (el.name === 'cs-sort') { save(TP.settings.set({ courses: { sort: el.value } })); if (live()) repaint(); return; }
       const k = el.name.indexOf(SEP);
       if (k < 0) return;
       const kind = el.name.slice(0, k), lu = el.name.slice(k + SEP.length);
@@ -348,9 +350,9 @@
       else if (kind === 'sidebar') TP.shell.setInSidebar(lu, el.checked);
       else return;
       // A nickname commits on blur: repaint after focus has moved on, so it lands on the next control.
-      if (kind === 'nick') setTimeout(() => { if (live()) render(cur); }, 0);
-      else if (kind === 'color') { if (live()) { render(cur); root.querySelector(`[data-fk="color:${cssEsc(lu)}"]`)?.focus({ preventScroll: true }); } }
-      else if (live()) render(cur);
+      if (kind === 'nick') setTimeout(() => { if (live()) repaint(); }, 0);
+      else if (kind === 'color') { if (live()) { repaint(); root.querySelector(`[data-fk="color:${cssEsc(lu)}"]`)?.focus({ preventScroll: true }); } }
+      else if (live()) repaint();
     });
 
     root.addEventListener('keydown', (ev) => {

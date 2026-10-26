@@ -21,6 +21,7 @@ const JOURNEY = 'https://icts-p-toledo-journey.cloud.icts.kuleuven.be';
 const ULTRA = 'https://ultra.edu.kuleuven.cloud';
 const FILES = 'https://files.mock-storage.test';
 const CDN = 'https://cdn.example.invalid';
+const API = 'https://api.toledoplus.be'; // Toledo+'s own API (ping/latest/feedback)
 
 // Emulates the live portal's AngularJS router (verified live): any hash whose path is not a known
 // route ('#/tplus/x', '#/home/tplus/x', '#!/x', …) is rewritten to '#/home' shortly after load/hashchange;
@@ -70,11 +71,11 @@ const strip = (l) => l.map(({ _kids, _attachments, ...r }) => r);
  * @returns recorder { requests, patches, foreign, cdn, downloads, unknown, find(fn), reset() }
  */
 async function install(ctx, fx, opts = {}) {
-  const rec = { requests: [], patches: [], foreign: [], cdn: [], downloads: [], unknown: [] };
+  const rec = { requests: [], patches: [], foreign: [], cdn: [], downloads: [], unknown: [], api: [] };
   // Redirect targets are served by a real local HTTPS server (see files-server.js).
   if (opts.files) opts.files.onRequest((d) => { rec.downloads.push(d); rec.requests.push({ method: 'GET', url: d.url, headers: d.headers, body: null }); });
   rec.find = (fn) => rec.requests.filter(fn);
-  rec.reset = () => { for (const k of ['requests', 'patches', 'foreign', 'cdn', 'downloads', 'unknown']) rec[k].length = 0; };
+  rec.reset = () => { for (const k of ['requests', 'patches', 'foreign', 'cdn', 'downloads', 'unknown', 'api']) rec[k].length = 0; };
   const P = fx.portal; const U = fx.ultra;
   const delay = () => (opts.latency ? new Promise((r) => setTimeout(r, opts.latency)) : null);
   const log = (req) => {
@@ -154,10 +155,23 @@ async function install(ctx, fx, opts = {}) {
   // ---- base-href CDN (must never be hit)
   await ctx.route(`${CDN}/**`, async (route) => { rec.cdn.push(route.request().url()); log(route.request()); return route.fulfill({ status: 404, body: 'relative URL bug' }); });
 
+  // ---- Toledo+ API (anonymous ping + update check): answered here so no test has to ignore it.
+  //      "latest" = the version under test, so no update banner appears (feedback.e2e overrides this route).
+  const VERSION = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '..', '..', 'manifest.json'), 'utf8')).version;
+  await ctx.route(`${API}/**`, async (route) => {
+    const req = route.request(); log(req);
+    const u = new URL(req.url());
+    rec.api.push({ method: req.method(), path: u.pathname });
+    if (req.method() === 'GET' && u.pathname === '/v1/latest') return json(route, { version: VERSION, url: null, notes: '' });
+    if (req.method() === 'POST' && (u.pathname === '/v1/ping' || u.pathname === '/v1/forget')) return route.fulfill({ status: 204 });
+    rec.unknown.push({ method: req.method(), url: req.url() });
+    return json(route, { error: 'not mocked' }, 404);
+  });
+
   // ---- Everything else = third party → forbidden
   await ctx.route(/^https?:\/\//, async (route) => {
     const u = route.request().url();
-    if ([PORTAL, JOURNEY, ULTRA, FILES, CDN].some((o) => u.startsWith(o))) return route.fallback();
+    if ([PORTAL, JOURNEY, ULTRA, FILES, CDN, API].some((o) => u.startsWith(o))) return route.fallback();
     rec.foreign.push(u); log(route.request());
     return route.abort('blockedbyclient');
   });

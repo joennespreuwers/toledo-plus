@@ -52,4 +52,28 @@
     <loc>https://toledoplus.be/demo/</loc>
     <lastmod>2026-10-26</lastmod>
   </url>
+  <url>
+    <loc>https://toledoplus.be/terms.html</loc>
+    <lastmod>2026-10-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="nl" href="https://toledoplus.be/terms.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://toledoplus.be/en/terms.html"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://toledoplus.be/fr/terms.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://toledoplus.be/terms.html"/>
+  </url>
+  <url>
+    <loc>https://toledoplus.be/en/terms.html</loc>
+    <lastmod>2026-10-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="nl" href="https://toledoplus.be/terms.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://toledoplus.be/en/terms.html"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://toledoplus.be/fr/terms.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://toledoplus.be/terms.html"/>
+  </url>
+  <url>
+    <loc>https://toledoplus.be/fr/terms.html</loc>
+    <lastmod>2026-10-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="nl" href="https://toledoplus.be/terms.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://toledoplus.be/en/terms.html"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://toledoplus.be/fr/terms.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://toledoplus.be/terms.html"/>
+  </url>
 </urlset>

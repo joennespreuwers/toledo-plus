@@ -570,10 +570,15 @@
       })
       .catch(() => {});
   }
-  function go(announce = true) {
+  // dir: 1 = later period (slides in from the right), -1 = earlier (from the left), 0 = mode/today (fade).
+  // The segmented pill glides to the new mode across the repaint (TP.motion.flip).
+  function go(announce = true, dir = 0) {
     closePop(false);
     S.mini = null;
-    paint();
+    const view = S.ctx && S.ctx.root.querySelector(':scope > .ag-view');
+    if (TP.motion && view && view.firstElementChild) TP.motion.flip(view, paint); else paint();
+    const cal = S.ctx && S.ctx.root.querySelector('.ag-calwrap');
+    if (TP.motion && cal) TP.motion.enter(cal, { from: dir > 0 ? 'right' : dir < 0 ? 'left' : 'none', duration: TP.motion.DUR[2] });
     load();
     if (announce) TP.shell.announce(S.ctx.root.querySelector('.ag-range')?.textContent.trim() || '');
   }
@@ -582,7 +587,7 @@
     S.mode = m; S.prefs.mode = m; savePrefs();
     go();
   }
-  function step(dir) { S.anchor = stepAnchor(mode(), S.anchor, dir); go(); }
+  function step(dir) { S.anchor = stepAnchor(mode(), S.anchor, dir); go(true, dir); }
 
   // ------------------------------------------------------------------ dialogs (event detail, filters, go to date, shortcuts)
   function openDialog({ cls, html, label, labelledby, opener, place }) {
@@ -599,7 +604,8 @@
     S.popOpener = back;
     d.addEventListener('close', () => {
       if (S.pop === d) { S.pop = null; S.popKind = ''; }
-      d.remove();
+      // let the CSS exit transition (agenda.css) finish before the node goes; focus returns right away
+      if (TP.motion && !TP.motion.disabled && !TP.motion.reduced()) setTimeout(() => d.remove(), TP.motion.DUR[2]); else d.remove();
       const refocus = () => {
         const el = back && S.ctx && S.ctx.root.querySelector(back);
         if (el && el.getRootNode().activeElement !== el && !S.pop) el.focus({ preventScroll: true });
@@ -781,7 +787,7 @@ ${src ? `<p class="ag-pop-src">${esc(t('agenda.pop.source.' + src))}${l.source =
       case 'ag-close': ev.preventDefault(); closePop(); return;
       case 'ag-prev': step(-1); return;
       case 'ag-next': step(1); return;
-      case 'ag-today': S.anchor = sod(Date.now()); go(); return;
+      case 'ag-today': { const was = S.anchor; S.anchor = sod(Date.now()); go(true, Math.sign(S.anchor - was)); return; }
       case 'ag-day': if (day) { S.anchor = day; S.mode = 'day'; S.prefs.mode = 'day'; savePrefs(); go(); } return;
       case 'ag-goto-day': if (day) { S.anchor = day; closePop(false); paint(); load(); TP.shell.announce(S.ctx.root.querySelector('.ag-range')?.textContent.trim() || ''); } return;
       case 'ag-jump': {

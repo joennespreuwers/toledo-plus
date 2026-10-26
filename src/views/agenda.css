@@ -334,3 +334,21 @@
   .ag-view .ag-ev, .ag-view .ag-chip { border: 1px solid CanvasText; }
   .ag-now, .ag-now::before { background: Highlight; }
 }
+
+/* motion (v1.5, TP.motion tokens): popovers scale + fade in from their anchor, phone sheets slide up; both also on close
+   (the node is removed after the transition). Reduced motion: ui.css keeps opacity only. */
+.ag-pop {
+  opacity: 0; scale: .96;
+  transition: opacity var(--dur-2) var(--ease), scale var(--dur-2) var(--ease-smooth), translate var(--dur-3) var(--ease-smooth),
+    overlay var(--dur-2) allow-discrete, display var(--dur-2) allow-discrete;
+}
+.ag-pop[open] { opacity: 1; scale: 1; translate: 0 0; }
+.ag-pop:not([open]) { pointer-events: none; transition-duration: var(--dur-1); transition-timing-function: var(--ease-in); }
+.ag-pop.is-sheet:not([open]) { scale: 1; translate: 0 32px; }
+@starting-style {
+  .ag-pop[open] { opacity: 0; scale: .96; }
+  .ag-pop.is-sheet[open] { scale: 1; translate: 0 48px; }
+}
+.ag-pop.is-sheet::backdrop, .ag-pop.is-center::backdrop { transition: opacity var(--dur-2) var(--ease), overlay var(--dur-2) allow-discrete, display var(--dur-2) allow-discrete; }
+@starting-style { .ag-pop.is-sheet[open]::backdrop, .ag-pop.is-center[open]::backdrop { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .ag-pop, .ag-pop:not([open]), .ag-pop.is-sheet:not([open]) { scale: none; translate: none; } }

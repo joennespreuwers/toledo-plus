@@ -40,6 +40,9 @@
   let titleObserver = null;
 
   const settings = () => TP.settings?.get?.() || TP.settings?.DEFAULTS || {};
+  // TP.motion (src/core/motion.js) — a no-op stand-in keeps the shell working if it is missing.
+  const M = () => TP.motion || null;
+  const motion = (fn, ...a) => { const m = M(); if (!m || typeof m[fn] !== 'function') return null; try { return m[fn](...a); } catch (e) { console.warn('[Toledo+] motion', fn, e); return null; } };
   const safe = (fn, fallback) => { try { return fn(); } catch (_) { return fallback; } };
 
   // ---------------- location → route ----------------
@@ -110,6 +113,8 @@
     if (route === 'course') {
       if (params.cid) return `${ULTRA}/ultra/courses/${encodeURIComponent(params.cid)}/outline`;
       if (params.luId) {
+        const direct = prefetchedCid.get(params.luId); // resolved on hover (see onPrefetchHint): no journey hop
+        if (direct) return `${ULTRA}/ultra/courses/${encodeURIComponent(direct)}/outline`;
         const c = safe(() => TP.data?.course?.(params.luId), null);
         let link = c?.link;
         if (!link) {
@@ -130,6 +135,7 @@
     if (inPlace) {
       const h = hashFor(route, params);
       if (location.hash === h) { onLocation(true); return; }
+      hist.intent = 'push';
       location.hash = h; // → hashchange → onLocation
       return;
     }
@@ -225,10 +231,16 @@
     shadow.appendChild(app);
     buildChrome();
     applyThemeAll();
+    motion('sync', app);
     styleRoot(shadow, CSS_FILES).then(() => { app.hidden = false; });
     shadow.addEventListener('click', onShellClick);
     shadow.addEventListener('input', onShellInput);
     shadow.addEventListener('keydown', onShellKeydown);
+    // <details> without ::details-content support (Chrome < 131): animate the opening in JS. 'toggle' doesn't bubble.
+    shadow.addEventListener('toggle', (ev) => { if (ev.target?.tagName === 'DETAILS') motion('detailsToggled', ev.target); }, true);
+    // Perceived speed: resolve a course's Ultra id while the pointer rests on / focus lands on its link (debounced).
+    shadow.addEventListener('pointerover', onPrefetchHint, { passive: true });
+    shadow.addEventListener('focusin', onPrefetchHint);
     document.body.prepend(host);
   }
 
@@ -296,7 +308,7 @@
     <button type="button" class="tp-tb-btn" data-shell="detail-close" aria-label="${esc(t('shell.close'))}">${icon('xmark', { size: 18 })}</button></div>
   <div class="tp-detail-body"></div>
 </dialog>
-<div class="tp-toast" aria-hidden="true"></div>
+<div class="tp-toasts" aria-hidden="true"></div>
 <div class="tp-live tp-sr" role="status" aria-live="polite" aria-atomic="true"></div>`;
     const wrap = app.querySelector('.tp-view-wrap');
     if (keepRoot) wrap.appendChild(keepRoot);
@@ -426,11 +438,16 @@
     if (tabbar) {
       const act = activeNav();
       const moreActive = MORE.includes(act);
-      tabbar.innerHTML = `<ul class="tp-tabs">${TABS.map((r) => {
+      const idx = moreActive ? TABS.length : TABS.indexOf(act);
+      const ind = `<li class="tp-tab-ind" role="presentation" aria-hidden="true" data-flip="tab-ind" style="--i:${Math.max(0, idx)}"${idx < 0 ? ' hidden' : ''}></li>`;
+      const paint = () => { tabbar.innerHTML = `<ul class="tp-tabs">${ind}${TABS.map((r) => {
         const a = act === r;
         const dotHtml = r === 'deadlines' && counts.overdue ? `<span class="tp-tab-dot" aria-hidden="true"></span><span class="tp-sr">${esc(t('shell.overdue', { n: counts.overdue }))}</span>` : '';
         return `<li><a class="tp-tab${a ? ' active' : ''}" href="${esc(href(r))}" data-route="${r}"${a ? ' aria-current="page"' : ''}>${icon(r, { size: 22 })}<span class="tp-tab-label">${esc(t('nav.' + r))}</span>${dotHtml}</a></li>`;
-      }).join('')}<li><button type="button" class="tp-tab${moreActive ? ' active' : ''}" data-shell="more" aria-haspopup="dialog"${moreActive ? ' aria-current="page"' : ''}>${icon('ellipsis', { size: 22 })}<span class="tp-tab-label">${esc(t('nav.more'))}</span></button></li></ul>`;
+      }).join('')}<li><button type="button" class="tp-tab${moreActive ? ' active' : ''}" data-shell="more" aria-haspopup="dialog"${moreActive ? ' aria-current="page"' : ''}>${icon('ellipsis', { size: 22 })}<span class="tp-tab-label">${esc(t('nav.more'))}</span></button></li></ul>`; };
+      // The selection pill slides to the new tab (FLIP across the re-render); only when the tab bar is shown.
+      if (M() && tabbar.offsetParent && tabbar.querySelector('.tp-tab-ind:not([hidden])')) TP.motion.flip(tabbar, paint, { selector: '.tp-tab-ind' });
+      else paint();
     }
     const sheet = app.querySelector('[data-shell-region="sheet"]');
     if (sheet) {
@@ -504,13 +521,17 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     renderMenu();
     menu.hidden = false;
     btn.setAttribute('aria-expanded', 'true');
+    motion('enter', menu, { from: 'scale', scale: 0.95, duration: TP.motion?.DUR?.[2] });
     if (focusFirst) menu.querySelector('.tp-menu-item')?.focus();
   }
   function closeMenu(returnFocus) {
     const menu = $('.tp-menu'), btn = $('.tp-avatar');
-    if (!menu || menu.hidden) return false;
-    menu.hidden = true;
+    if (!menu || menu.hidden || motion('leaving', menu)) return false;
     btn.setAttribute('aria-expanded', 'false');
+    // Focus moves at once; the menu fades/scales out (pointer-events off) and is hidden at the end.
+    menu.style.pointerEvents = 'none';
+    const done = () => { menu.hidden = true; menu.style.pointerEvents = ''; };
+    if (!M()) done(); else motion('leave', menu, { to: 'scale', scale: 0.97, onDone: done });
     if (returnFocus) btn.focus();
     return true;
   }
@@ -551,16 +572,27 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
       app.classList.toggle('sb-collapsed', c);
       safe(() => TP.state?.set?.({ ui: { sidebarCollapsed: c } }));
       syncSidebar();
+      if (!c) fadeSidebarLabels();
       announce(t(c ? 'shell.sidebarRail' : 'shell.sidebarExpanded'));
     } else {
       setOverlay(!app.classList.contains('sb-open'));
     }
+  }
+  // Rail → expanded: the column widens (CSS grid transition) and the labels fade in just behind it.
+  function fadeSidebarLabels() {
+    app?.querySelectorAll('.tp-sidebar .tp-sb-label, .tp-sidebar .tp-brand-name, .tp-sidebar .tp-sb-group-btn, .tp-sidebar .tp-sb-count, .tp-sidebar .tp-sb-item > .tp-badge')
+      .forEach((el) => motion('animate', el, [{ opacity: 0 }, { opacity: 1 }], { duration: TP.motion.DUR[2], delay: 60, easing: TP.motion.EASE.out }));
   }
   function setOverlay(open) {
     app.classList.toggle('sb-open', open);
     const scrim = $('.tp-scrim');
     if (scrim) scrim.hidden = !open;
     syncSidebar();
+    if (open) {
+      motion('enter', $('.tp-sidebar'), { from: 'left', duration: TP.motion?.DUR?.[3] });
+      motion('fade', scrim, { duration: TP.motion?.DUR?.[2] });
+      fadeSidebarLabels();
+    }
     if (open) $('.tp-sidebar .tp-sb-item')?.focus();
   }
   safe(() => mqWide.addEventListener('change', () => { if (app?.classList.contains('sb-open')) setOverlay(false); else syncSidebar(); }));
@@ -582,8 +614,23 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
       const u = banners.update;
       html += `<div class="tp-banner" data-banner="update">${icon('download', { size: 17 })}<span class="tp-banner-text"><strong>${esc(t('update.banner', { version: u.version }))}</strong> · ${esc(t('update.how'))}</span>${TP.ui.button(t('update.get'), { kind: 'tinted', attrs: { href: u.url, target: '_blank', rel: 'noopener' } })}${TP.ui.button(t('update.dismiss'), { kind: 'plain', attrs: { 'data-shell': 'update-dismiss' } })}</div>`;
     }
-    if (el.innerHTML !== html) el.innerHTML = html;
+    if (el.innerHTML === html) return;
+    const kinds = (root) => new Set([...root.querySelectorAll('.tp-banner')].map((b) => b.dataset.banner));
+    const before = kinds(el);
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    const next = kinds(tmp);
+    const removed = [...el.querySelectorAll('.tp-banner')].filter((b) => !next.has(b.dataset.banner));
+    const apply = () => {
+      if (el.innerHTML === html) return;
+      el.innerHTML = html;
+      el.querySelectorAll('.tp-banner').forEach((b) => { if (!before.has(b.dataset.banner)) motion('expand', b); });
+    };
+    if (removed.length && M() && !TP.motion.disabled) Promise.all(removed.map((b) => TP.motion.collapse(b))).then(() => { if (bannersHtml === html) apply(); });
+    else apply();
+    bannersHtml = html;
   }
+  let bannersHtml = null;
   function setUpdate(u) { banners.update = u || null; renderBanners(); }
   function setBanner(kind, on) {
     if (banners[kind] === !!on) return;
@@ -637,15 +684,32 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
   }
 
   // ---------------- toast + live region ----------------
-  let toastTimer = null;
+  // Toasts stack (max 3, newest at the bottom); each slides up in and fades down out. The same text twice
+  // just restarts its timer. Screen readers get the text via the live region.
+  const TOAST_MS = 3500, TOAST_MAX = 3;
   function toast(text) {
-    const el = $('.tp-toast') || deepShadow?.querySelector('.tp-toast');
+    text = String(text ?? '');
     announce(text);
-    if (!el) return;
-    el.textContent = text;
-    el.classList.add('show');
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
+    const box = (mode === 'shell' && $('.tp-toasts')) || deepShadow?.querySelector('.tp-toasts') || $('.tp-toasts');
+    if (!box || !text) return;
+    let el = [...box.children].find((x) => x.textContent === text && !motion('leaving', x));
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'tp-toast show';
+      el.textContent = text;
+      box.appendChild(el);
+      motion('enter', el, { from: 'up', duration: TP.motion?.DUR?.[3] });
+      const live = [...box.children].filter((x) => !motion('leaving', x));
+      while (live.length > TOAST_MAX) dismissToast(live.shift());
+    }
+    clearTimeout(el.__tpT);
+    el.__tpT = setTimeout(() => dismissToast(el), TOAST_MS);
+  }
+  function dismissToast(el) {
+    clearTimeout(el.__tpT);
+    el.classList.remove('show');
+    if (!M()) { el.remove(); return; }
+    motion('leave', el, { to: 'down', duration: TP.motion.DUR[2], onDone: () => el.remove() });
   }
   function announce(text) {
     const live = $('.tp-live');
@@ -721,11 +785,14 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     const q = searchQ;
     const nores = $('.tp-noresults');
     if (current.view?.onSearch) {
-      safe(() => current.view.onSearch(current.ctx, q));
+      const run = () => safe(() => current.view.onSearch(current.ctx, q));
+      if (M()) TP.motion.flip(current.root, run); else run();
       if (nores) nores.hidden = true;
       return;
     }
-    const n = defaultFilter(current.root, q);
+    let n = 0;
+    const run = () => { n = defaultFilter(current.root, q); };
+    if (M()) TP.motion.flip(current.root, run); else run();
     if (nores) {
       nores.hidden = !q || n > 0;
       nores.innerHTML = q && n === 0 ? TP.ui.noResults(q) : '';
@@ -821,17 +888,31 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
       return;
     }
     const focus = safe(captureFocus, null);
+    // New rows after ↻ get a brief tint (once, within a few seconds of the refresh).
+    const hl = highlightUntil > Date.now();
     try {
-      await cur.view.render(cur.ctx);
+      // FLIP across the re-render: moved rows glide, new rows fade up, removed rows fade out (TP.motion.flip).
+      const run = () => cur.view.render(cur.ctx);
+      if (M()) await TP.motion.flip(cur.root, run, { highlight: hl });
+      else await run();
+      if (hl && cur.root.childElementCount) highlightUntil = 0;
     } catch (e) {
       console.warn('[Toledo+] render failed', cur.route, e);
       if (cur === current) cur.root.innerHTML = TP.ui.group(TP.ui.errorRow(t('shell.renderError'), 'tp-retry-view'));
     }
     if (seq !== renderSeq || cur !== current) return;
+    syncBusy(cur.root);
     syncWidth();
     updateHead();
     restoreFocus(focus);
     if (searchQ) applySearch();
+  }
+  let highlightUntil = 0;
+  // Screen readers: the view is busy while it shows loading placeholders (views with async paints set it themselves).
+  function syncBusy(root) {
+    if (!root || root.dataset.busyOwn) return;
+    const busy = !!root.querySelector('.tp-skeleton');
+    if (busy) root.setAttribute('aria-busy', 'true'); else root.removeAttribute('aria-busy');
   }
   // Content width (v1.5): list views (.tp-narrow) get a centred ~760px column, the rest a centred column of at
   // most --content-wide (main + side column). The toolbar's trailing controls follow the same right edge.
@@ -852,8 +933,41 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     renderNav(); renderMenu(); renderBanners(); updateHead(); renderView();
   }, 60);
 
+  // Navigation direction (route slide) and scroll memory per route.
+  //  deeper (e.g. a list → its detail, courses → course) = 'forward' (slides in from the right), shallower = 'back'
+  //  (from the left), sidebar/tab jumps between top-level views = 'none' (plain fade). Browser back/forward use the
+  //  history direction; going back restores where you were scrolled.
+  const depthOf = (route, params) => (route === 'course' ? 2 : params && (params.id || params.luId || params.cid) ? 1 : 0);
+  const scrollMem = new Map();
+  const hist = { stack: [], pos: -1, intent: null };
+  function historyDirection() {
+    const h = origin === 'portal' ? location.hash : location.pathname;
+    const intent = hist.intent;
+    hist.intent = null;
+    if (intent !== 'push') {
+      if (hist.pos > 0 && hist.stack[hist.pos - 1] === h) { hist.pos--; return 'back'; }
+      if (hist.stack[hist.pos + 1] === h) { hist.pos++; return 'forward'; }
+    }
+    if (hist.stack[hist.pos] === h) return null;
+    hist.stack = hist.stack.slice(0, hist.pos + 1);
+    hist.stack.push(h);
+    if (hist.stack.length > 50) hist.stack.shift();
+    hist.pos = hist.stack.length - 1;
+    return null;
+  }
+  // Outermost list rows of a view (for the first-paint stagger).
+  function rowsOf(root) {
+    const all = [...root.querySelectorAll('[data-q], [data-lq], [data-flip], .tp-group > .tp-row, .tp-section > .tp-sec-head')]
+      .filter((el) => !el.closest('.tp-skeleton'));
+    const set = new Set(all);
+    return all.filter((el) => { for (let p = el.parentElement; p && p !== root; p = p.parentElement) if (set.has(p)) return false; return true; });
+  }
+
   function switchView(route, params) {
-    if (current?.view?.destroy) safe(() => current.view.destroy(current.ctx));
+    const prev = current;
+    const histDir = safe(historyDirection, null);
+    if (prev?.view?.destroy) safe(() => prev.view.destroy(prev.ctx));
+    if (prev) scrollMem.set(prev.key, window.scrollY);
     const root = document.createElement('div');
     root.className = 'tp-view';
     root.dataset.route = route;
@@ -873,11 +987,21 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     updateSearchUi();
     renderNav();
     updateHead();
-    renderView();
+    const rendered = renderView();
+    const key = current.key;
     if (!firstView) {
+      const dir = histDir || (prev ? (depthOf(route, params) > depthOf(prev.route, prev.params) ? 'forward'
+        : depthOf(route, params) < depthOf(prev.route, prev.params) ? 'back' : 'none') : 'none');
+      const y = histDir === 'back' ? scrollMem.get(key) : null;
       window.scrollTo(0, 0);
+      if (y) Promise.resolve(rendered).then(() => requestAnimationFrame(() => { if (current?.key === key) window.scrollTo(0, y); }));
+      // The new view is in the DOM already (input never waits): it fades/slides in over it.
+      motion('transition', root, null, { direction: dir });
       $('.tp-large-title')?.focus({ preventScroll: true });
       announce(t('shell.navigated', { title: viewTitle() }));
+    } else {
+      // First paint: rows fade up in a short stagger (cached data renders synchronously; async views when ready).
+      Promise.resolve(rendered).then(() => { if (current?.key === key) motion('stagger', rowsOf(root)); });
     }
     firstView = false;
   }
@@ -929,6 +1053,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
         const root = document.createElement('div');
         root.className = 'tp-theme tp-deep-root';
         root.hidden = true;
+        motion('sync', root);
         deepShadow.appendChild(root);
         styleRoot(deepShadow, ['ui.css']).then(() => { root.hidden = false; });
       }
@@ -944,7 +1069,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
   <span class="tp-deep-spacer"></span>
   <a class="tp-deep-link" href="${esc(href('deadlines'))}">${icon('deadlines', { size: 16 })}<span>${esc(t('deep.deadlines'))}</span></a>
   <a class="tp-deep-link" href="${esc(href('overview'))}">${icon('overview', { size: 16 })}<span>${esc(t('deep.overview'))}</span></a>
-</nav><div class="tp-toast" aria-hidden="true"></div>`;
+</nav><div class="tp-toasts" aria-hidden="true"></div>`;
       if (cid && !courseNames.has(cid)) {
         deepCourseName(cid).then((name) => { if (name && mode === 'deep') renderDeep(); });
       }
@@ -1012,7 +1137,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
         case 'palette': { const fromSheet = !!el.closest('.tp-sheet'); closeSheet(); openPalette(fromSheet ? $('[data-shell="more"]') : el); return; }
         case 'search-clear': setSearch('', true); $('[data-shell="search"]')?.focus(); return;
         case 'refresh': doRefresh(); return;
-        case 'menu': { const m = $('.tp-menu'); if (m?.hidden) openMenu(ev.detail === 0); else closeMenu(false); return; }
+        case 'menu': { const m = $('.tp-menu'); if (m?.hidden || motion('leaving', m)) { m.style.pointerEvents = ''; openMenu(ev.detail === 0); } else closeMenu(false); return; }
         case 'classic':
           closeMenu(false);
           safe(() => TP.settings.set({ wrap: origin === 'ultra' ? { courses: false } : { portal: false } }));
@@ -1107,6 +1232,38 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
       if (closeMenu(true)) { ev.preventDefault(); return; }
       if (app.classList.contains('sb-open')) { ev.preventDefault(); setOverlay(false); $('.tp-sb-toggle')?.focus(); }
     }
+    // View shortcuts (agenda: t/d/w/m/a/j/k/g/?…) anywhere in the app — never while typing or with ⌘/Ctrl/Alt.
+    if (!mod && !ev.altKey && !ev.defaultPrevented && !isEditable(target) && !$('.tp-detail')?.open && current?.view?.onKey) {
+      safe(() => current.view.onKey(current.ctx, ev));
+    }
+  }
+
+  // ---------------- prefetch (perceived performance) ----------------
+  // Resting on a course link resolves its Ultra id (TP.data.resolveCourseId, cached in state.cidMap) and points the
+  // link straight at the Ultra outline, skipping the journey redirect hop when it is clicked. Debounced 120 ms;
+  // at most one lookup per course per page; failures are ignored (the journey link keeps working).
+  const prefetched = new Set();
+  const prefetchedCid = new Map(); // luId → cid resolved this page
+  let prefetchTimer = null;
+  function onPrefetchHint(ev) {
+    const a = ev.target?.closest?.('a[href]');
+    if (!a || !/icts-p-toledo-journey|ultraLink/.test(a.getAttribute('href') || '')) return;
+    const lu = a.dataset.lu || a.closest('[data-lu]')?.dataset.lu || safe(() => new URL(a.href).searchParams.get('batchUid'), null);
+    if (!lu || prefetched.has(lu)) return;
+    clearTimeout(prefetchTimer);
+    prefetchTimer = setTimeout(() => {
+      if (prefetched.has(lu) || typeof TP.data?.resolveCourseId !== 'function') return;
+      prefetched.add(lu);
+      Promise.resolve().then(() => TP.data.resolveCourseId(lu)).then((cid) => {
+        if (!cid || !/^_\d+_\d+$/.test(cid)) return;
+        prefetchedCid.set(lu, cid);
+        const url = `${ULTRA}/ultra/courses/${encodeURIComponent(cid)}/outline`;
+        shadow?.querySelectorAll('a[href]').forEach((x) => {
+          const xl = x.dataset.lu || x.closest('[data-lu]')?.dataset.lu || safe(() => new URL(x.href).searchParams.get('batchUid'), null);
+          if (xl === lu && /icts-p-toledo-journey|ultraLink/.test(x.getAttribute('href') || '')) x.setAttribute('href', url);
+        });
+      }).catch(() => {});
+    }, 120);
   }
 
   // Stale-while-revalidate: views render from cache immediately; refresh silently when stale.
@@ -1134,6 +1291,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     const before = feedCount();
     try {
       await TP.data.refresh();
+      highlightUntil = Date.now() + 4000;
       const after = feedCount();
       const diff = Math.max(0, after - before);
       toast(diff ? t('shell.refreshedNew', { n: diff }) : `${t('shell.refreshed')} ${TP.fmt.time(Date.now())}`);

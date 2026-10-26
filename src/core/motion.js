@@ -290,9 +290,10 @@
    * Only rows near the viewport animate. mutate() may return a promise (the settle waits for it).
    * o: { selector, highlight (tint pulse on new rows), stagger }. → mutate()'s result
    */
+  let flipDepth = 0; // nested flip() calls (a view painting inside the shell's flip) just run: the outer one animates
   function flip(container, mutate, o = {}) {
-    const run = () => mutate();
-    if (!container || off() || !container.isConnected) return run();
+    const run = () => { flipDepth++; try { return mutate(); } finally { flipDepth--; } };
+    if (!container || flipDepth > 0 || off() || !container.isConnected) return run();
     clearGhosts(container);
     const sel = o.selector || FLIP_SEL;
     const before = measure(container, sel);

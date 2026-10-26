@@ -33,6 +33,8 @@ const IGNORED_ERRORS = [
  * @param {{width,height}} [o.viewport]
  * @param {object} [o.settings]  settings patch written to chrome.storage.sync before the first page loads
  * @param {object} [o.mock]      options for mock.install
+ * @param {boolean} [o.motion]   keep animations on (default: off via <html data-tp-motion="off">)
+ * @param {'reduce'|'no-preference'} [o.reducedMotion]
  */
 async function launch(o = {}) {
   const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tplus-e2e-'));
@@ -44,11 +46,21 @@ async function launch(o = {}) {
     ignoreHTTPSErrors: !!files,
     viewport: o.viewport || DESKTOP,
     colorScheme: o.colorScheme || 'light',
+    reducedMotion: o.reducedMotion || 'no-preference',
     locale: o.locale || 'nl-BE',
     timezoneId: 'Europe/Brussels',
     acceptDownloads: true,
     serviceWorkers: 'allow',
   });
+  // Motion off unless a test asks for it (o.motion: true): animations finish instantly, so tests stay fast and
+  // deterministic. TP.motion reads <html data-tp-motion="off"> (shared between page and content-script worlds).
+  if (!o.motion) {
+    await ctx.addInitScript(() => {
+      const set = () => document.documentElement && document.documentElement.setAttribute('data-tp-motion', 'off');
+      if (document.documentElement) set();
+      else new MutationObserver((_, mo) => { if (document.documentElement) { set(); mo.disconnect(); } }).observe(document, { childList: true });
+    });
+  }
   const fx = fixtures.load();
   const rec = await mock.install(ctx, fx, { ...(o.mock || {}), files });
   const errors = [];
