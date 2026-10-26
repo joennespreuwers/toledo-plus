@@ -1,0 +1,159 @@
+'use strict';
+// Launches Chromium with the unpacked extension, installs the mock network and
+// collects console/page errors. One browser context per test file keeps tests fast;
+// call `fresh()` style helpers (clearState) between tests when needed.
+process.env.TZ = process.env.TZ || 'Europe/Brussels';
+process.env.PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS = '1';
+
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const { chromium } = require('./pw');
+const fixtures = require('./fixtures');
+const mock = require('./mock');
+
+const ROOT = path.resolve(__dirname, '..', '..');
+const ARTIFACTS = path.join(ROOT, 'tests', 'artifacts');
+const HEADLESS = process.env.HEADED ? false : true;
+const DESKTOP = { width: 1440, height: 900 };
+const PHONE = { width: 390, height: 844 };
+
+// Console noise that is not the extension's fault.
+const IGNORED_ERRORS = [
+  /Failed to load resource: the server responded with a status of 404 .*cdn\.example\.invalid/, // asserted separately
+  /net::ERR_BLOCKED_BY_CLIENT/, // foreign requests, asserted separately
+];
+
+/**
+ * @param {object} o
+ * @param {'light'|'dark'} [o.colorScheme]
+ * @param {{width,height}} [o.viewport]
+ * @param {object} [o.settings]  settings patch written to chrome.storage.sync before the first page loads
+ * @param {object} [o.mock]      options for mock.install
+ */
+async function launch(o = {}) {
+  const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tplus-e2e-'));
+  const ctx = await chromium.launchPersistentContext(userDataDir, {
+    channel: 'chromium', // "new" headless – required for extensions
+    headless: HEADLESS,
+    args: [`--disable-extensions-except=${ROOT}`, `--load-extension=${ROOT}`, '--no-first-run', '--no-default-browser-check'],
+    viewport: o.viewport || DESKTOP,
+    colorScheme: o.colorScheme || 'light',
+    locale: o.locale || 'nl-BE',
+    timezoneId: 'Europe/Brussels',
+    acceptDownloads: true,
+    serviceWorkers: 'allow',
+  });
+  const fx = fixtures.load();
+  const rec = await mock.install(ctx, fx, o.mock || {});
+  const errors = [];
+  const watch = (page) => {
+    page.on('console', (m) => { if (m.type() === 'error' && !IGNORED_ERRORS.some((r) => r.test(m.text()))) errors.push(`[console] ${page.url()} ${m.text()}`); });
+    page.on('pageerror', (e) => errors.push(`[pageerror] ${page.url()} ${e.stack || e}`));
+  };
+  ctx.on('page', watch);
+
+  const sw = await getServiceWorker(ctx);
+  const extId = sw ? new URL(sw.url()).host : null;
+  const h = {
+    ctx, fx, rec, errors, sw, extId, userDataDir,
+    page: null,
+    async newPage() { const p = await ctx.newPage(); watch(p); h.page = p; return p; },
+    async setSettings(patch) { return storage(h, 'sync', 'settings', patch); },
+    async getSettings() { return storageGet(h, 'sync', 'settings'); },
+    async setState(patch) { return storage(h, 'local', 'state', patch); },
+    async getState() { return storageGet(h, 'local', 'state'); },
+    async close() {
+      await ctx.close().catch(() => {});
+      try { fs.rmSync(userDataDir, { recursive: true, force: true }); } catch (_) { /* ignore */ }
+    },
+  };
+  if (o.settings) await h.setSettings(o.settings);
+  // pages opened by ctx before our listener
+  for (const p of ctx.pages()) { watch(p); h.page = p; }
+  if (!h.page) await h.newPage();
+  return h;
+}
+
+async function getServiceWorker(ctx) {
+  let [sw] = ctx.serviceWorkers();
+  if (!sw) sw = await ctx.waitForEvent('serviceworker', { timeout: 5000 }).catch(() => null);
+  return sw;
+}
+
+// chrome.storage access from inside the extension (service worker, or an extension page as fallback).
+async function inExtension(h, fn, arg) {
+  if (h.sw) return h.sw.evaluate(fn, arg);
+  throw new Error('No extension service worker found – is background.js registered in manifest.json?');
+}
+async function storage(h, area, key, patch) {
+  return inExtension(h, async ({ area, key, patch }) => {
+    const merge = (a, b) => {
+      if (Array.isArray(b) || b === null || typeof b !== 'object') return b;
+      const out = { ...(a && typeof a === 'object' && !Array.isArray(a) ? a : {}) };
+      for (const [k, v] of Object.entries(b)) out[k] = merge(out[k], v);
+      return out;
+    };
+    const cur = (await chrome.storage[area].get(key))[key] || {};
+    const next = merge(cur, patch);
+    await chrome.storage[area].set({ [key]: next });
+    return next;
+  }, { area, key, patch });
+}
+async function storageGet(h, area, key) {
+  return inExtension(h, async ({ area, key }) => (await chrome.storage[area].get(key))[key] || null, { area, key });
+}
+
+// ---------- page helpers ----------
+
+/** Wait until the Toledo+ shell has rendered real content inside its shadow root. */
+async function waitForShell(page, { timeout = 15000 } = {}) {
+  await page.waitForFunction(() => {
+    const host = document.querySelector('#tplus-root');
+    const sr = host && host.shadowRoot;
+    if (!sr) return false;
+    const main = sr.querySelector('main, [role="main"]');
+    return !!(main && main.textContent.trim().length > 20);
+  }, null, { timeout, polling: 100 });
+}
+
+/** Wait until the current view has no skeleton/loading rows left. */
+async function waitForIdle(page, { timeout = 10000 } = {}) {
+  await page.waitForFunction(() => {
+    const sr = document.querySelector('#tplus-root')?.shadowRoot;
+    if (!sr) return false;
+    return !sr.querySelector('main .skeleton, main [aria-busy="true"]');
+  }, null, { timeout, polling: 100 }).catch(() => { /* views may keep a busy marker for background refresh; not fatal */ });
+}
+
+/** Evaluate inside the shadow root: fn(shadowRoot, arg). */
+function inShadow(page, fn, arg) {
+  return page.evaluate(([src, a]) => {
+    const sr = document.querySelector('#tplus-root')?.shadowRoot;
+    // eslint-disable-next-line no-new-func
+    return new Function('sr', 'arg', `return (${src})(sr, arg);`)(sr, a);
+  }, [fn.toString(), arg]);
+}
+
+/** Locator scoped to the shell (Playwright CSS pierces open shadow roots). */
+const shell = (page) => page.locator('#tplus-root');
+
+async function screenshot(page, name) {
+  fs.mkdirSync(ARTIFACTS, { recursive: true });
+  const file = path.join(ARTIFACTS, `${name}.png`);
+  await page.screenshot({ path: file, fullPage: false });
+  return file;
+}
+
+/** Wait for a predicate on the mock recorder. */
+async function waitFor(pred, { timeout = 5000, interval = 50 } = {}) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < timeout) { const v = await pred(); if (v) return v; await new Promise((r) => setTimeout(r, interval)); }
+  return pred();
+}
+
+module.exports = { launch, waitForShell, waitForIdle, inShadow, shell, screenshot, waitFor, ROOT, ARTIFACTS, DESKTOP, PHONE,
+  PORTAL_HOME: 'https://toledo.kuleuven.be/portal/#/home',
+  portalRoute: (r, p) => `https://toledo.kuleuven.be/portal/#/tplus/${r}${p ? '/' + encodeURIComponent(p) : ''}`,
+  COURSE_URL: 'https://ultra.edu.kuleuven.cloud/ultra/courses/_200661_1/outline',
+};

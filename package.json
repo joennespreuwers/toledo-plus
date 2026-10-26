@@ -1,0 +1,21 @@
+{
+  "name": "toledo-plus",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Toledo+ — a calmer, clearer KU Leuven Toledo (unofficial Chrome/Edge extension).",
+  "license": "MIT",
+  "author": "Joenne Spreuwers",
+  "homepage": "https://github.com/joennespreuwers/toledo-plus#readme",
+  "repository": { "type": "git", "url": "git+https://github.com/joennespreuwers/toledo-plus.git" },
+  "bugs": { "url": "https://github.com/joennespreuwers/toledo-plus/issues" },
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "test": "npm run test:unit && npm run test:e2e",
+    "test:unit": "node scripts/run-tests.mjs unit",
+    "test:e2e": "node scripts/run-tests.mjs e2e",
+    "pack": "node scripts/pack.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
+  }
+}

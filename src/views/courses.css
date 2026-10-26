@@ -1,0 +1,86 @@
+/* Toledo+ — Courses view (views-B). Colours only through semantic variables. */
+.cs-view { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.cs-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.cs-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; justify-content: space-between; }
+.cs-filter { min-width: 0; max-width: 100%; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.cs-filter::-webkit-scrollbar { display: none; }
+.cs-sort { flex: 0 0 auto; }
+.cs-hint { margin: 0; color: var(--label-2); font-size: .8125rem; line-height: 1.4; }
+
+.cs-grid {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+}
+.cs-grid.is-editing { grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
+
+.cs-card { background: var(--bg-2); border-radius: 12px; min-width: 0; display: flex; flex-direction: column; }
+.cs-card[hidden] { display: none; }
+.cs-card-main {
+  display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 12px 14px;
+  color: var(--label); text-decoration: none; border-radius: 12px; min-width: 0;
+}
+a.cs-card-main:hover { background: var(--fill); }
+a.cs-card-main:focus-visible { outline: 2px solid var(--tint); outline-offset: 2px; }
+.cs-card.is-unavailable .cs-card-main { opacity: .55; cursor: default; }
+
+.cs-swatch { flex: 0 0 auto; width: 10px; align-self: stretch; min-height: 36px; border-radius: 999px; }
+.cs-swatch-sm { width: 10px; height: 10px; min-height: 0; align-self: center; }
+.cs-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; }
+.cs-name { font-weight: 600; font-size: 1rem; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.cs-meta { color: var(--label-2); font-size: .8125rem; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-unavail { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 999px; background: var(--fill); color: var(--label-2); font-size: .75rem; font-weight: 600; }
+.cs-meta:empty + .cs-unavail, .cs-meta > .cs-unavail:first-child { margin-left: 0; }
+.cs-trail { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; color: var(--label-2); }
+.cs-flag { display: inline-flex; color: var(--label-2); }
+.cs-flag-fav { color: var(--orange); }
+
+.cs-move { flex: 0 0 auto; display: inline-flex; gap: 4px; }
+.cs-icon-btn {
+  display: inline-grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 8px;
+  background: var(--fill); color: var(--tint-text, var(--tint)); cursor: pointer; font: inherit;
+}
+.cs-icon-btn:disabled { color: var(--label-3); cursor: default; }
+.cs-icon-btn:focus-visible, .cs-link-btn:focus-visible, .cs-fav-btn:focus-visible, .cs-input:focus-visible, .cs-hidden-sum:focus-visible {
+  outline: 2px solid var(--tint); outline-offset: 2px;
+}
+
+.cs-edit { display: flex; flex-direction: column; gap: 12px; padding: 4px 14px 14px; border-top: .5px solid var(--separator); padding-top: 12px; }
+.cs-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.cs-field > label, .cs-field-label { font-size: .8125rem; color: var(--label-2); }
+.cs-input {
+  font: inherit; font-size: .9375rem; color: var(--label); background: var(--fill); border: 0; border-radius: 8px;
+  padding: 8px 10px; min-height: 36px; width: 100%; box-sizing: border-box;
+}
+.cs-input::placeholder { color: var(--label-3); }
+.cs-swatches { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.cs-toggles { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.cs-link-btn {
+  border: 0; background: none; padding: 4px 6px; min-height: 28px; border-radius: 6px;
+  color: var(--tint-text, var(--tint)); font: inherit; font-size: .875rem; cursor: pointer;
+}
+.cs-link-btn:hover { background: var(--fill); }
+.cs-fav-btn {
+  display: inline-flex; align-items: center; gap: 6px; border: 0; border-radius: 8px; padding: 6px 10px; min-height: 32px;
+  background: var(--fill); color: var(--label); font: inherit; font-size: .875rem; cursor: pointer;
+}
+.cs-fav-btn[aria-pressed="true"] svg { color: var(--orange); }
+
+.cs-hidden { margin-top: 12px; background: var(--bg-2); border-radius: 12px; }
+.cs-hidden-sum {
+  list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  min-height: 44px; padding: 0 16px; cursor: pointer; color: var(--label-2); font-weight: 600; border-radius: 12px;
+}
+.cs-hidden-sum::-webkit-details-marker { display: none; }
+.cs-hidden-sum svg { transition: transform .2s ease-out; color: var(--label-3); }
+.cs-hidden[open] > .cs-hidden-sum svg { transform: rotate(90deg); }
+.cs-hidden-list { list-style: none; margin: 0; padding: 0 0 4px; }
+.cs-hidden-row { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px 0 16px; border-top: .5px solid var(--separator); }
+.cs-hidden-row[hidden] { display: none; }
+.cs-hidden-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--label-2); }
+
+.cs-noresults { margin: 8px 0; text-align: center; color: var(--label-2); }
+
+@media (prefers-reduced-motion: reduce) { .cs-hidden-sum svg { transition: none; } }
+@media (prefers-contrast: more) { .cs-card, .cs-hidden { outline: 1px solid var(--separator); } }
