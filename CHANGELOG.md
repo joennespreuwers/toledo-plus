@@ -6,6 +6,8 @@ Het formaat volgt [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) en he
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-10-27
+
 ### Changed
 - Alle tabbladen gebruiken dezelfde breedte: Deadlines, Mededelingen, KU Loket en Instellingen springen niet meer naar een smallere kolom.
 - Geen losse kleine teksten meer onderaan de pagina, ver van waar ze over gaan: de uitleg over het agendabestand staat in de melding na het downloaden, "alleen-lezen" bij KU Loket staat onder de titel, en herhaalde of overbodige hints (Agenda: iCal en sneltoetsen, Deadlines: "Klaar", Mededelingen: nieuw tabblad) zijn weg.
