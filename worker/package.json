@@ -1,0 +1,18 @@
+{
+  "name": "toledo-plus-api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Toledo+ API (Cloudflare Worker): anonymous usage ping, feedback, latest version.",
+  "license": "MIT",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "schema:local": "wrangler d1 execute toledo-plus --local --file=schema.sql",
+    "schema:remote": "wrangler d1 execute toledo-plus --remote --file=schema.sql",
+    "test": "node --test ../tests/unit/worker.test.js"
+  },
+  "devDependencies": {
+    "wrangler": "^4.36.0"
+  }
+}

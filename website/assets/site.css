@@ -94,9 +94,9 @@ a { color: var(--tint-text); text-decoration: none; }
 a:hover { text-decoration: underline; text-underline-offset: .15em; }
 p { margin: 0 0 1em; }
 h1, h2, h3 { font-family: var(--font-display); margin: 0; letter-spacing: -.02em; line-height: 1.1; }
-code, kbd { font-family: var(--font-mono); font-size: .9em; }
+code { font-family: var(--font-mono); font-size: .9em; }
 kbd {
-  display: inline-block; min-width: 1.6em; padding: .05em .4em; border-radius: 6px;
+  display: inline-block; min-width: 1.6em; padding: .05em .4em; border-radius: 6px; font: 500 .85em var(--font);
   border: 1px solid var(--separator); background: var(--card); text-align: center; line-height: 1.4;
 }
 :focus-visible { outline: 2px solid var(--tint-text); outline-offset: 2px; border-radius: 4px; }
@@ -228,6 +228,12 @@ kbd {
 .section:not(.alt) .card { background: var(--card-alt); }
 .card h3 { font-size: 1.25rem; font-weight: 600; letter-spacing: -.02em; line-height: 1.25; margin: 18px 0 8px; }
 .card p { margin: 0; color: var(--label-2); font-size: 1rem; line-height: 1.5; }
+@media (max-width: 599px) {
+  .grid.four:not(.isteps) .card { display: grid; grid-template-columns: 44px 1fr; column-gap: 16px; padding: 20px; }
+  .grid.four:not(.isteps) .card h3 { margin: 0 0 4px; align-self: center; }
+  .grid.four:not(.isteps) .card p { grid-column: 2; }
+  .grid { gap: 12px; }
+}
 .icon {
   width: 44px; height: 44px; border-radius: 11px; display: grid; place-items: center;
   background: var(--tint-soft); color: var(--tint-text);
@@ -335,6 +341,12 @@ kbd {
 @media (min-width: 734px) { .grid.two { grid-template-columns: repeat(2, 1fr); } }
 .info { max-width: 1120px; margin-inline: auto; }
 .info .card h3 { margin-top: 0; }
+.stack { display: grid; gap: 16px; align-content: start; }
+.istep code { white-space: nowrap; }
+.signal { display: flex; gap: 18px; align-items: flex-start; max-width: 1120px; margin: 16px auto 0; }
+.signal h3 { margin: 0 0 6px; }
+.signal .icon { flex: none; }
+.browser-list .ok .addr code { font-size: .8125rem; }
 .info .card p + p, .info .card p + ol { margin-top: 10px; }
 .addr { display: inline-flex; align-items: center; gap: 2px; flex-wrap: wrap; vertical-align: baseline; }
 .addr code, .card code { background: var(--fill); padding: 1px 6px; border-radius: 5px; font-size: .875em; color: var(--label); overflow-wrap: anywhere; }
@@ -381,7 +393,7 @@ kbd {
 .final .cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 16px; margin-top: 32px; }
 
 /* ------------------------------------------------------------ footer */
-.footer { background: var(--bg-alt); color: var(--label-2); font-size: .8125rem; line-height: 1.5; padding: 32px 0 40px; }
+.footer { border-top: .5px solid var(--separator); background: var(--bg-alt); color: var(--label-2); font-size: .8125rem; line-height: 1.5; padding: 32px 0 40px; }
 .footer .wrap { display: grid; gap: 14px; }
 .footer-links { display: flex; flex-wrap: wrap; gap: 6px 20px; list-style: none; padding: 0; margin: 0; }
 .footer-links a { color: var(--label); }

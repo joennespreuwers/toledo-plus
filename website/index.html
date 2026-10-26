@@ -230,27 +230,32 @@
     </div>
     <ol class="grid four isteps">
       <li class="card istep reveal"><div class="art art-zip" aria-hidden="true"><span class="file"><b>ZIP</b>toledo-plus.zip</span><span class="arrow">→</span><span class="folder"><svg aria-hidden="true" focusable="false"><use href="#i-folder"/></svg>toledo-plus</span></div><div class="istep-body"><span class="step-num" aria-hidden="true">1</span><h3>Pak het zip-bestand uit</h3><p>Zet de map op een vaste plek, bijvoorbeeld <code>Documenten/toledo-plus</code>. Laat ze daar staan: je browser laadt Toledo+ uit die map.</p></div></li>
-      <li class="card istep reveal"><div class="art art-addr" aria-hidden="true"><div class="bar"><span class="lockdot"></span>chrome://extensions<span class="caret"></span></div></div><div class="istep-body"><span class="step-num" aria-hidden="true">2</span><h3>Open de extensiepagina</h3><p>Typ <span class="addr"><code>chrome://extensions</code><button type="button" class="copy" data-copy="chrome://extensions" data-copied="Gekopieerd" aria-label="Kopieer: chrome://extensions" hidden>Kopieer</button></span> in de adresbalk. In Edge is dat <span class="addr"><code>edge://extensions</code><button type="button" class="copy" data-copy="edge://extensions" data-copied="Gekopieerd" aria-label="Kopieer: edge://extensions" hidden>Kopieer</button></span>.</p></div></li>
+      <li class="card istep reveal"><div class="art art-addr" aria-hidden="true"><div class="bar"><span class="lockdot"></span>chrome://extensions<span class="caret"></span></div></div><div class="istep-body"><span class="step-num" aria-hidden="true">2</span><h3>Open de extensiepagina</h3><p>Typ <code>chrome://extensions</code> in de adresbalk. In Edge is dat <code>edge://extensions</code>.</p></div></li>
       <li class="card istep reveal"><div class="art art-toggle" aria-hidden="true"><span>Ontwikkelaarsmodus</span><span class="switch"></span></div><div class="istep-body"><span class="step-num" aria-hidden="true">3</span><h3>Zet Ontwikkelaarsmodus aan</h3><p>In Chrome staat de schakelaar rechtsboven, in Edge links onder het menu.</p></div></li>
       <li class="card istep reveal"><div class="art art-load" aria-hidden="true"><span class="mockbtn">Uitgepakte extensie laden</span><svg class="cursor" viewBox="0 0 24 24"><path d="M5 3l14 8-6 1.6L10 19z" fill="#1d1d1f" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg></div><div class="istep-body"><span class="step-num" aria-hidden="true">4</span><h3>Kies “Uitgepakte extensie laden”</h3><p>Selecteer de map <code>toledo-plus</code> (die met <code>manifest.json</code>). Open daarna Toledo en log in zoals altijd.</p></div></li>
     </ol>
     <div class="grid two info">
       <div class="card reveal" id="browsers">
         <h3>Welke browser?</h3>
-        <ul class="browser-list"><li class="ok"><span class="b"><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg>Chrome</span><span class="v">chrome://extensions</span></li><li class="ok"><span class="b"><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg>Microsoft Edge</span><span class="v">edge://extensions</span></li><li class="ok"><span class="b"><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg>Brave, Arc, Opera, Vivaldi</span><span class="v">Werkt hetzelfde, via hun eigen extensiepagina (bv. brave://extensions)</span></li><li class="no"><span class="b"><svg aria-hidden="true" focusable="false"><use href="#i-minus"/></svg>Firefox</span><span class="v">Niet ondersteund (nog): Firefox gebruikt een eigen extensieformaat</span></li><li class="no"><span class="b"><svg aria-hidden="true" focusable="false"><use href="#i-minus"/></svg>Safari</span><span class="v">Niet ondersteund (nog): Safari vraagt een aparte Mac-app</span></li></ul>
+        <ul class="browser-list"><li class="ok"><span class="b"><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg>Chrome</span><span class="v"><span class="addr"><code>chrome://extensions</code><button type="button" class="copy" data-copy="chrome://extensions" data-copied="Gekopieerd" aria-label="Kopieer: chrome://extensions" hidden>Kopieer</button></span></span></li><li class="ok"><span class="b"><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg>Microsoft Edge</span><span class="v"><span class="addr"><code>edge://extensions</code><button type="button" class="copy" data-copy="edge://extensions" data-copied="Gekopieerd" aria-label="Kopieer: edge://extensions" hidden>Kopieer</button></span></span></li><li class="ok"><span class="b"><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg>Brave, Arc, Opera, Vivaldi</span><span class="v">Werkt hetzelfde, via hun eigen extensiepagina (bv. brave://extensions)</span></li><li class="no"><span class="b"><svg aria-hidden="true" focusable="false"><use href="#i-minus"/></svg>Firefox</span><span class="v">Niet ondersteund (nog): Firefox gebruikt een eigen extensieformaat</span></li><li class="no"><span class="b"><svg aria-hidden="true" focusable="false"><use href="#i-minus"/></svg>Safari</span><span class="v">Niet ondersteund (nog): Safari vraagt een aparte Mac-app</span></li></ul>
       </div>
-      <div class="card reveal" id="update">
-        <h3>Updaten</h3>
-        <p>Toledo+ toont een melding zodra er een nieuwe versie is. Dan:</p>
-        <ol class="mini-steps"><li>Download de nieuwe zip.</li><li>Vervang de inhoud van je map <code>toledo-plus</code> door de nieuwe bestanden.</li><li>Klik op ↻ (opnieuw laden) bij Toledo+ op de extensiepagina en herlaad Toledo. Je instellingen blijven bewaard.</li></ol>
+      <div class="stack">
+        <div class="card reveal" id="update">
+          <h3>Updaten</h3>
+          <p>Toledo+ toont een melding zodra er een nieuwe versie is. Dan:</p>
+          <ol class="mini-steps"><li>Download de nieuwe zip.</li><li>Vervang de inhoud van je map <code>toledo-plus</code> door de nieuwe bestanden.</li><li>Klik op ↻ (opnieuw laden) bij Toledo+ op de extensiepagina en herlaad Toledo. Je instellingen blijven bewaard.</li></ol>
+        </div>
+        <div class="card reveal">
+          <h3>Een melding over ontwikkelaarsmodus?</h3>
+          <p>Chrome kan bij het opstarten melden dat er extensies in ontwikkelaarsmodus actief zijn. Dat gebeurt bij elke extensie die niet uit de Chrome Web Store komt, niet omdat er iets mis is. Je kunt Toledo+ gerust laten staan: de code is openbaar op GitHub en de extensie heeft alleen toegang tot Toledo, KU Loket en <code>api.toledoplus.be</code>. Sluit de melding gewoon.</p>
+        </div>
       </div>
-      <div class="card reveal">
-        <h3>Een melding over ontwikkelaarsmodus?</h3>
-        <p>Chrome kan bij het opstarten melden dat er extensies in ontwikkelaarsmodus actief zijn. Dat gebeurt bij elke extensie die niet uit de Chrome Web Store komt, niet omdat er iets mis is. Je kunt Toledo+ gerust laten staan: de code is openbaar op GitHub en de extensie heeft alleen toegang tot Toledo, KU Loket en <code>api.toledoplus.be</code>. Sluit de melding gewoon.</p>
-      </div>
-      <div class="card reveal" id="signal">
+    </div>
+    <div class="card signal reveal" id="signal">
+      <span class="icon green" aria-hidden="true"><svg><use href="#i-shield"/></svg></span>
+      <div>
         <h3>Anoniem gebruikssignaal</h3>
-        <p>Om te weten hoeveel studenten Toledo+ gebruiken en welke versies nog draaien, stuurt Toledo+ één keer per dag een anoniem signaal naar <code>api.toledoplus.be</code>: een willekeurige installatie-id, de versie, de browser en de taal. Geen naam, geen studentennummer, geen Toledo-gegevens; je IP-adres wordt niet bewaard. Uitzetten kan in <strong>Instellingen → Privacy</strong> of meteen in de welkomstkaart.</p>
+        <p>Om te weten hoeveel studenten Toledo+ gebruiken en welke versies nog draaien, stuurt Toledo+ één keer per dag een anoniem signaal naar <code>api.toledoplus.be</code>: een willekeurige installatie-id, de versie, de browser en de taal. Geen naam, geen studentennummer, geen Toledo-gegevens; je IP-adres wordt niet bewaard. Uitzetten kan in <strong>Instellingen → Privacy</strong> of meteen in de welkomstkaart. <a class="link-arrow" href="privacy.html#signal">Lees het privacybeleid</a></p>
       </div>
     </div>
   </div>
@@ -280,8 +285,8 @@
     <h2 class="h2" id="final-h">Klaar voor een rustigere Toledo?</h2>
     <p class="lead">Gratis, open source en in een minuut geïnstalleerd.</p>
     <div class="cta">
-      <a class="btn btn-primary" href="#install">Installeer Toledo+</a>
-      <a class="btn btn-secondary" href="https://github.com/joennespreuwers/toledo-plus"><svg aria-hidden="true" focusable="false"><use href="#i-github"/></svg>Bekijk op GitHub</a>
+      <a class="btn btn-primary btn-large" href="https://github.com/joennespreuwers/toledo-plus/releases/latest/download/toledo-plus.zip" download><svg aria-hidden="true" focusable="false"><use href="#i-download"/></svg>Download Toledo+</a>
+      <a class="btn btn-secondary btn-large" href="https://github.com/joennespreuwers/toledo-plus"><svg aria-hidden="true" focusable="false"><use href="#i-github"/></svg>Bekijk op GitHub</a>
     </div>
   </div>
 </section>

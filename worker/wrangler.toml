@@ -1,0 +1,44 @@
+# Toledo+ API — Cloudflare Worker config. See README.md for the setup steps.
+name = "toledo-plus-api"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+# Custom domain: uncomment once the toledoplus.be zone is active on Cloudflare (DNS record is created for you).
+# routes = [
+#   { pattern = "api.toledoplus.be", custom_domain = true }
+# ]
+
+# D1 database (create with `npx wrangler d1 create toledo-plus`, paste the id below).
+[[d1_databases]]
+binding = "DB"
+database_name = "toledo-plus"
+database_id = "00000000-0000-0000-0000-000000000000"
+
+# Workers Rate Limiting API (GA, wrangler >= 4.36): approximate per-location burst guard.
+# period must be 10 or 60 seconds. The exact hourly/daily limits are enforced in D1 by the worker itself.
+[[ratelimits]]
+name = "RL"
+namespace_id = "1001"
+  [ratelimits.simple]
+  limit = 6
+  period = 60
+
+# Daily cleanup of rate-limit counters and stale usage rows.
+[triggers]
+crons = ["17 3 * * *"]
+
+[vars]
+LATEST_VERSION = ""
+LATEST_URL = "https://github.com/joennespreuwers/toledo-plus/releases/latest"
+LATEST_NOTES = ""
+GITHUB_REPO = "joennespreuwers/toledo-plus"
+# Optional: comma-separated extension ids allowed by CORS (empty = any chrome-extension:// / extension:// origin).
+EXTENSION_IDS = ""
+
+# Secrets (never in this file):  npx wrangler secret put SALT | STATS_TOKEN | GITHUB_TOKEN
+
+# Privacy: keep Workers Logs / Logpush OFF. Invocation logs record request metadata (incl. the client IP),
+# which this API promises never to store. The worker itself only logs error messages, never request data.
+[observability]
+enabled = false

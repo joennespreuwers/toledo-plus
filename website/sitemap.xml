@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://toledoplus.be/</loc>
+    <lastmod>2026-10-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="nl" href="https://toledoplus.be/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://toledoplus.be/en/"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://toledoplus.be/fr/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://toledoplus.be/"/>
+  </url>
+  <url>
+    <loc>https://toledoplus.be/en/</loc>
+    <lastmod>2026-10-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="nl" href="https://toledoplus.be/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://toledoplus.be/en/"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://toledoplus.be/fr/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://toledoplus.be/"/>
+  </url>
+  <url>
+    <loc>https://toledoplus.be/fr/</loc>
+    <lastmod>2026-10-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="nl" href="https://toledoplus.be/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://toledoplus.be/en/"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://toledoplus.be/fr/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://toledoplus.be/"/>
+  </url>
+  <url>
+    <loc>https://toledoplus.be/privacy.html</loc>
+    <lastmod>2026-10-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="nl" href="https://toledoplus.be/privacy.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://toledoplus.be/en/privacy.html"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://toledoplus.be/fr/privacy.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://toledoplus.be/privacy.html"/>
+  </url>
+  <url>
+    <loc>https://toledoplus.be/en/privacy.html</loc>
+    <lastmod>2026-10-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="nl" href="https://toledoplus.be/privacy.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://toledoplus.be/en/privacy.html"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://toledoplus.be/fr/privacy.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://toledoplus.be/privacy.html"/>
+  </url>
+  <url>
+    <loc>https://toledoplus.be/fr/privacy.html</loc>
+    <lastmod>2026-10-26</lastmod>
+    <xhtml:link rel="alternate" hreflang="nl" href="https://toledoplus.be/privacy.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://toledoplus.be/en/privacy.html"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://toledoplus.be/fr/privacy.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://toledoplus.be/privacy.html"/>
+  </url>
+</urlset>

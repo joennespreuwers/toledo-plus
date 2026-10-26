@@ -230,27 +230,32 @@
     </div>
     <ol class="grid four isteps">
       <li class="card istep reveal"><div class="art art-zip" aria-hidden="true"><span class="file"><b>ZIP</b>toledo-plus.zip</span><span class="arrow">→</span><span class="folder"><svg aria-hidden="true" focusable="false"><use href="#i-folder"/></svg>toledo-plus</span></div><div class="istep-body"><span class="step-num" aria-hidden="true">1</span><h3>Unzip the file</h3><p>Put the folder somewhere permanent, for example <code>Documents/toledo-plus</code>. Leave it there: your browser loads Toledo+ from that folder.</p></div></li>
-      <li class="card istep reveal"><div class="art art-addr" aria-hidden="true"><div class="bar"><span class="lockdot"></span>chrome://extensions<span class="caret"></span></div></div><div class="istep-body"><span class="step-num" aria-hidden="true">2</span><h3>Open the extensions page</h3><p>Type <span class="addr"><code>chrome://extensions</code><button type="button" class="copy" data-copy="chrome://extensions" data-copied="Copied" aria-label="Copy: chrome://extensions" hidden>Copy</button></span> into the address bar. In Edge it’s <span class="addr"><code>edge://extensions</code><button type="button" class="copy" data-copy="edge://extensions" data-copied="Copied" aria-label="Copy: edge://extensions" hidden>Copy</button></span>.</p></div></li>
+      <li class="card istep reveal"><div class="art art-addr" aria-hidden="true"><div class="bar"><span class="lockdot"></span>chrome://extensions<span class="caret"></span></div></div><div class="istep-body"><span class="step-num" aria-hidden="true">2</span><h3>Open the extensions page</h3><p>Type <code>chrome://extensions</code> into the address bar. In Edge it’s <code>edge://extensions</code>.</p></div></li>
       <li class="card istep reveal"><div class="art art-toggle" aria-hidden="true"><span>Developer mode</span><span class="switch"></span></div><div class="istep-body"><span class="step-num" aria-hidden="true">3</span><h3>Turn on Developer mode</h3><p>In Chrome the switch is at the top right; in Edge it’s on the left, below the menu.</p></div></li>
       <li class="card istep reveal"><div class="art art-load" aria-hidden="true"><span class="mockbtn">Load unpacked</span><svg class="cursor" viewBox="0 0 24 24"><path d="M5 3l14 8-6 1.6L10 19z" fill="#1d1d1f" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg></div><div class="istep-body"><span class="step-num" aria-hidden="true">4</span><h3>Choose “Load unpacked”</h3><p>Select the <code>toledo-plus</code> folder (the one with <code>manifest.json</code>). Then open Toledo and sign in as usual.</p></div></li>
     </ol>
     <div class="grid two info">
       <div class="card reveal" id="browsers">
         <h3>Which browser?</h3>
-        <ul class="browser-list"><li class="ok"><span class="b"><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg>Chrome</span><span class="v">chrome://extensions</span></li><li class="ok"><span class="b"><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg>Microsoft Edge</span><span class="v">edge://extensions</span></li><li class="ok"><span class="b"><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg>Brave, Arc, Opera, Vivaldi</span><span class="v">Works the same, through their own extensions page (e.g. brave://extensions)</span></li><li class="no"><span class="b"><svg aria-hidden="true" focusable="false"><use href="#i-minus"/></svg>Firefox</span><span class="v">Not supported (yet): Firefox uses its own extension format</span></li><li class="no"><span class="b"><svg aria-hidden="true" focusable="false"><use href="#i-minus"/></svg>Safari</span><span class="v">Not supported (yet): Safari needs a separate Mac app</span></li></ul>
+        <ul class="browser-list"><li class="ok"><span class="b"><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg>Chrome</span><span class="v"><span class="addr"><code>chrome://extensions</code><button type="button" class="copy" data-copy="chrome://extensions" data-copied="Copied" aria-label="Copy: chrome://extensions" hidden>Copy</button></span></span></li><li class="ok"><span class="b"><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg>Microsoft Edge</span><span class="v"><span class="addr"><code>edge://extensions</code><button type="button" class="copy" data-copy="edge://extensions" data-copied="Copied" aria-label="Copy: edge://extensions" hidden>Copy</button></span></span></li><li class="ok"><span class="b"><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg>Brave, Arc, Opera, Vivaldi</span><span class="v">Works the same, through their own extensions page (e.g. brave://extensions)</span></li><li class="no"><span class="b"><svg aria-hidden="true" focusable="false"><use href="#i-minus"/></svg>Firefox</span><span class="v">Not supported (yet): Firefox uses its own extension format</span></li><li class="no"><span class="b"><svg aria-hidden="true" focusable="false"><use href="#i-minus"/></svg>Safari</span><span class="v">Not supported (yet): Safari needs a separate Mac app</span></li></ul>
       </div>
-      <div class="card reveal" id="update">
-        <h3>Updating</h3>
-        <p>Toledo+ shows a notice when a new version is out. Then:</p>
-        <ol class="mini-steps"><li>Download the new zip.</li><li>Replace the contents of your <code>toledo-plus</code> folder with the new files.</li><li>Click ↻ (reload) on Toledo+ on the extensions page and reload Toledo. Your settings are kept.</li></ol>
+      <div class="stack">
+        <div class="card reveal" id="update">
+          <h3>Updating</h3>
+          <p>Toledo+ shows a notice when a new version is out. Then:</p>
+          <ol class="mini-steps"><li>Download the new zip.</li><li>Replace the contents of your <code>toledo-plus</code> folder with the new files.</li><li>Click ↻ (reload) on Toledo+ on the extensions page and reload Toledo. Your settings are kept.</li></ol>
+        </div>
+        <div class="card reveal">
+          <h3>A warning about developer mode?</h3>
+          <p>Chrome may mention at startup that developer-mode extensions are active. It does that for every extension that doesn’t come from the Chrome Web Store, not because something is wrong. It’s safe to keep Toledo+: the code is public on GitHub and the extension only has access to Toledo, KU Loket and <code>api.toledoplus.be</code>. Just close the notice.</p>
+        </div>
       </div>
-      <div class="card reveal">
-        <h3>A warning about developer mode?</h3>
-        <p>Chrome may mention at startup that developer-mode extensions are active. It does that for every extension that doesn’t come from the Chrome Web Store, not because something is wrong. It’s safe to keep Toledo+: the code is public on GitHub and the extension only has access to Toledo, KU Loket and <code>api.toledoplus.be</code>. Just close the notice.</p>
-      </div>
-      <div class="card reveal" id="signal">
+    </div>
+    <div class="card signal reveal" id="signal">
+      <span class="icon green" aria-hidden="true"><svg><use href="#i-shield"/></svg></span>
+      <div>
         <h3>Anonymous usage ping</h3>
-        <p>To know how many students use Toledo+ and which versions are still around, Toledo+ sends one anonymous ping a day to <code>api.toledoplus.be</code>: a random install id, the version, the browser and the language. No name, no student number, no Toledo data; your IP address is not stored. Turn it off in <strong>Settings → Privacy</strong> or right in the welcome card.</p>
+        <p>To know how many students use Toledo+ and which versions are still around, Toledo+ sends one anonymous ping a day to <code>api.toledoplus.be</code>: a random install id, the version, the browser and the language. No name, no student number, no Toledo data; your IP address is not stored. Turn it off in <strong>Settings → Privacy</strong> or right in the welcome card. <a class="link-arrow" href="../privacy.html#signal">Read the privacy policy</a></p>
       </div>
     </div>
   </div>
@@ -280,8 +285,8 @@
     <h2 class="h2" id="final-h">Ready for a calmer Toledo?</h2>
     <p class="lead">Free, open source and installed in a minute.</p>
     <div class="cta">
-      <a class="btn btn-primary" href="#install">Install Toledo+</a>
-      <a class="btn btn-secondary" href="https://github.com/joennespreuwers/toledo-plus"><svg aria-hidden="true" focusable="false"><use href="#i-github"/></svg>View on GitHub</a>
+      <a class="btn btn-primary btn-large" href="https://github.com/joennespreuwers/toledo-plus/releases/latest/download/toledo-plus.zip" download><svg aria-hidden="true" focusable="false"><use href="#i-download"/></svg>Download Toledo+</a>
+      <a class="btn btn-secondary btn-large" href="https://github.com/joennespreuwers/toledo-plus"><svg aria-hidden="true" focusable="false"><use href="#i-github"/></svg>View on GitHub</a>
     </div>
   </div>
 </section>
