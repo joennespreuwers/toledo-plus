@@ -52,7 +52,7 @@ jobs:
           find _site -maxdepth 2 -name 'index.html' -not -path '_site/demo/*' -exec sed -i -E "s/((Versie|Version) )[0-9]+\.[0-9]+\.[0-9]+/\1${MV}/g; s/(Toledo\+ )[0-9]+\.[0-9]+\.[0-9]+(<\/h3>)/\1${MV}\2/g; s/(\"softwareVersion\": \")[^\"]*(\")/\1${MV}\2/g" {} +
           # Cache-busting: GitHub Pages caches for 10 min, so a new page could load an old stylesheet/script.
           V="${GITHUB_SHA::8}"
-          find _site -name '*.html' -not -path '_site/demo/ext/*' -exec sed -i -E "s#((src|href)=\"[^\"?]*\.(css|js|webp|png))\"#\1?v=${V}\"#g" {} +
+          find _site -name '*.html' -not -path '_site/demo/ext/*' -exec sed -i -E "s#((src|srcset|href)=\"[^\"?]*\.(css|js|webp|png))\"#\1?v=${V}\"#g" {} +
           sed -i "s/__BUILD__/${V}/" _site/demo/demo.js
           # Social previews (WhatsApp, Discord, …) cache by image URL: version og:image / twitter:image too.
           find _site -name '*.html' -not -path '_site/demo/ext/*' -exec sed -i -E "s#(content=\"https://toledoplus\.be/[^\"?]*\.png)\"#\1?v=${V}\"#g" {} +

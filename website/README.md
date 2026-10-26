@@ -8,11 +8,14 @@ privacy.html          privacy policy (NL)   en/privacy.html, fr/privacy.html
 404.html              served by GitHub Pages for unknown paths (root-absolute URLs)
 assets/site.css       brand tokens (Inter, orange/ink), layout, motion (the app's --dur/--ease tokens); light/dark via
                       prefers-color-scheme or <html data-theme> (theme toggle; an inline <head> script applies it before paint)
-assets/site.js        progressive enhancement: theme toggle (localStorage 'tp-theme', shared with the demo), copy buttons,
+                      and the hero screenshot follows it (.shot-light / .shot-dark)
+assets/site.js        progressive enhancement: theme toggle Light ⇄ Dark (follows the system until the first click, which
+                      flips the theme you see; localStorage 'tp-theme', shared with the demo), copy buttons,
                       scroll reveal, Lenis smooth wheel scrolling + anchor offsets (not under reduced motion, not on touch)
 assets/fonts/         Inter (latin + latin-ext, variable) + OFL-Inter.txt — self-hosted, also used by the demo
 assets/vendor/lenis/  Lenis 1.3.27 (MIT, LICENSE) — loaded on demand by site.js, never in /demo/
-assets/img/           overview-{light,dark}.webp, og.png (1200×630) — generated
+assets/img/           per language (nl/en/fr): overview-{light,dark}-<lang>.webp, overview-light-<lang>.png (no-WebP
+                      fallback), og-<lang>.png (1200×630) — generated; each page uses only its own language's set
 demo/                 toledoplus.be/demo/: the real extension UI with fake data (see below)
   index.html          page + demo bar ("Demo met nepdata · Installeer Toledo+ ›", NL/EN/FR)
   demo.js             chrome.* shim, network guard, link → in-page route mapping, loads the content scripts
@@ -42,11 +45,13 @@ NODE_PATH=$(npm root -g) node website/tools/screens.mjs
 ```
 
 Loads the unpacked extension in Playwright's Chromium, serves `demo/data/*.json` through `demo/mock.js`
-(everything else is blocked), opens the overview with the welcome card dismissed and banners/toasts hidden, and writes
-`assets/img/overview-light.webp`, `overview-dark.webp` (2400 px wide) and `og.png` (brand card).
+(everything else is blocked), opens the overview with the welcome card dismissed and banners/toasts hidden, once per app
+language (setting `language` = nl, en, fr: the UI chrome matches the page, the fictitious data stays Dutch), and writes
+`assets/img/overview-{light,dark}-<lang>.webp` (2400 px wide), `overview-light-<lang>.png` (1440 px fallback) and
+`og-<lang>.png` (brand card). `index.html`, `en/` and `fr/` (and their privacy/terms pages) point at their own set.
 It also writes the version from `manifest.json` into the three index pages (hero, download card, JSON-LD) and refreshes
-`demo/ext/`. Uses `sharp` when installed (smaller PNGs), otherwise Chromium's encoder. Keep `assets/img/` under ~800 KB
-(the script prints the sizes). Needs Playwright with Chromium (`npx playwright install chromium`).
+`demo/ext/`. Uses `sharp` when installed (smaller PNGs), otherwise Chromium's encoder. Keep `assets/img/` under ~1.5 MB
+(the script prints the sizes; `check.mjs` fails above that). Needs Playwright with Chromium (`npx playwright install chromium`).
 
 The script only relies on `#tplus-root`'s shadow root having a `<main>` with content, so UI changes don't break it.
 To change what the screenshots (and the demo) show, edit `demo/data/*.json`: fictitious, generic, a bit cheeky about
@@ -60,11 +65,12 @@ NODE_PATH=$(npm root -g) node website/tools/check.mjs          # add --shots for
 ```
 
 Every page in light/dark at 320/390/768/1440/2560: no horizontal scroll, no console errors, no requests outside the
-site, images with alt/width/height, internal links and anchors resolve. Theme toggle (cycle, stored choice applied before paint,
+site, images with alt/width/height, internal links and anchors resolve. Every page references only its own language's og/hero images. Theme toggle (every click flips the visible theme with
+the system in light and in dark, icon/label/screenshot follow, stored choice applied before paint,
 text/link/button contrast ≥ 4.5:1 in both themes), Lenis + anchor offset + keyboard scrolling, reduced motion (no Lenis, nothing hidden, no
 running animations) and no-JS (nothing hidden). Demo: all routes, a course page and ⌘K in
 NL/EN/FR, light/dark, desktop/phone, with no console errors and no requests outside the page origin; the demo bar's
-"‹ Terug naar toledoplus.be" link (→ "‹ Home" at 320 px) and theme toggle (drives the app's appearance setting); motion stays on in the demo.
+"‹ Terug naar toledoplus.be" link (→ "‹ Home" at 320 px) and theme toggle (Light ⇄ Dark like the site, drives the app's appearance setting); motion stays on in the demo.
 
 ## The demo
 
