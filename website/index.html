@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Toledo+ — Toledo, maar rustig</title>
+<meta name="description" content="Gratis browserextensie voor Chrome en Edge die Toledo en KU Loket in één rustige app giet: deadlines eerst, wat nieuw is per vak, je volledige uurrooster en ⌘K-zoeken in al je vakken. Je gegevens blijven in je browser.">
+<link rel="canonical" href="https://toledoplus.be/">
+<link rel="alternate" hreflang="nl" href="https://toledoplus.be/">
+<link rel="alternate" hreflang="en" href="https://toledoplus.be/en/">
+<link rel="alternate" hreflang="fr" href="https://toledoplus.be/fr/">
+<link rel="alternate" hreflang="x-default" href="https://toledoplus.be/">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<link rel="icon" href="favicon.ico" sizes="32x32">
+<link rel="icon" href="assets/icon128.png" type="image/png" sizes="128x128">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Toledo+">
+<meta property="og:url" content="https://toledoplus.be/">
+<meta property="og:title" content="Toledo+ — Toledo, maar rustig">
+<meta property="og:description" content="Gratis browserextensie voor Chrome en Edge die Toledo en KU Loket in één rustige app giet: deadlines eerst, wat nieuw is per vak, je volledige uurrooster en ⌘K-zoeken in al je vakken. Je gegevens blijven in je browser.">
+<meta property="og:image" content="https://toledoplus.be/assets/img/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Toledo+: het overzicht met deadlines, rooster en nieuwe items per vak, in een browservenster.">
+<meta property="og:locale" content="nl_BE">
+<meta property="og:locale:alternate" content="en_GB">
+<meta property="og:locale:alternate" content="fr_BE">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Toledo+ — Toledo, maar rustig">
+<meta name="twitter:description" content="Gratis browserextensie voor Chrome en Edge die Toledo en KU Loket in één rustige app giet: deadlines eerst, wat nieuw is per vak, je volledige uurrooster en ⌘K-zoeken in al je vakken. Je gegevens blijven in je browser.">
+<meta name="twitter:image" content="https://toledoplus.be/assets/img/og.png">
+<link rel="stylesheet" href="assets/site.css">
+<link rel="preload" as="image" type="image/webp" href="assets/img/overview-light.webp" media="(prefers-color-scheme: light)" fetchpriority="high">
+<link rel="preload" as="image" type="image/webp" href="assets/img/overview-dark.webp" media="(prefers-color-scheme: dark)" fetchpriority="high">
+<script>document.documentElement.classList.add('js');</script>
+<script src="assets/site.js" defer></script>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "SoftwareApplication", "name": "Toledo+", "url": "https://toledoplus.be/", "description": "Gratis browserextensie voor Chrome en Edge die Toledo en KU Loket in één rustige app giet: deadlines eerst, wat nieuw is per vak, je volledige uurrooster en ⌘K-zoeken in al je vakken. Je gegevens blijven in je browser.", "applicationCategory": "BrowserApplication", "operatingSystem": "Chrome, Microsoft Edge", "inLanguage": ["nl", "en", "fr"], "isAccessibleForFree": true, "license": "https://opensource.org/licenses/MIT", "softwareVersion": "1.1.0", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "EUR"}, "author": {"@type": "Person", "name": "Joenne Spreuwers"}, "codeRepository": "https://github.com/joennespreuwers/toledo-plus", "image": "https://toledoplus.be/assets/img/og.png"}</script>
+</head>
+<body id="top">
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+<symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.6 2.2M9.5 2.8h5M19 6l1.4-1.4"/></symbol>
+<symbol id="i-tray" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 13.5h4.2l1.6 2.5h5.4l1.6-2.5h4.2"/><path d="M6.2 5h11.6a1.5 1.5 0 0 1 1.4 1l1.3 6.5v5a2.5 2.5 0 0 1-2.5 2.5H6a2.5 2.5 0 0 1-2.5-2.5v-5L4.8 6a1.5 1.5 0 0 1 1.4-1z"/></symbol>
+<symbol id="i-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2.2h7.5A2.5 2.5 0 0 1 21 9.7v7.8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/><path d="M3 10.5h18"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></symbol>
+<symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="M7.5 13.5h2M11 13.5h2M14.5 13.5h2M7.5 16.8h2M11 16.8h2"/></symbol>
+<symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19z"/><path d="M10 20.5v-5h4v5"/></symbol>
+<symbol id="i-checkcircle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="m8.2 12.4 2.6 2.6 5-5.4"/></symbol>
+<symbol id="i-sliders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h9M18 7h2M4 17h3M12 17h8"/><circle cx="15.5" cy="7" r="2.3"/><circle cx="9.5" cy="17" r="2.3"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 19 6v5.5c0 4.4-2.9 7.9-7 9.5-4.1-1.6-7-5.1-7-9.5V6z"/><path d="m9 12 2.2 2.2L15.2 10"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+<symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14"/></symbol>
+<symbol id="i-puzzle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M10 5.5a2 2 0 1 1 4 0V7h3a1 1 0 0 1 1 1v3h-1.5a2 2 0 1 0 0 4H18v3a1 1 0 0 1-1 1h-3v-1.5a2 2 0 1 0-4 0V19H7a1 1 0 0 1-1-1v-3h1.5a2 2 0 1 0 0-4H6V8a1 1 0 0 1 1-1h3z"/></symbol>
+<symbol id="i-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4.5"/><path d="m11.3 11.7 8.2-8.2M16.5 6.5l2.5 2.5M14 9l2 2"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></symbol>
+<symbol id="i-github" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></symbol>
+<symbol id="i-minus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 12h12"/></symbol>
+</svg>
+<a class="skip-link" href="#main">Naar de inhoud</a>
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="./#top"><img src="assets/icon48.png" width="28" height="28" alt="">Toledo+</a>
+    <nav aria-label="Hoofdnavigatie"><ul class="nav-links"><li><a href="#features">Functies</a></li><li><a href="#how">Hoe het werkt</a></li><li><a href="#privacy">Privacy</a></li><li><a href="#faq">Vragen</a></li></ul></nav>
+    <div class="nav-end">
+      <nav class="lang" aria-label="Taal"><a href="./" hreflang="nl" lang="nl" aria-current="true"><abbr title="Nederlands" style="text-decoration:none">NL</abbr><span class="visually-hidden"> – Nederlands</span></a><a href="en/" hreflang="en" lang="en"><abbr title="English" style="text-decoration:none">EN</abbr><span class="visually-hidden"> – English</span></a><a href="fr/" hreflang="fr" lang="fr"><abbr title="Français" style="text-decoration:none">FR</abbr><span class="visually-hidden"> – Français</span></a></nav>
+      <a class="btn btn-primary btn-small" href="#install">Download</a>
+    </div>
+  </div>
+</header>
+<main id="main">
+<section class="hero" aria-labelledby="hero-h">
+  <div class="wrap">
+    <span class="eyebrow">Gratis extensie voor Chrome en Edge</span>
+    <h1 id="hero-h">Toledo, <span class="nowrap">maar rustig.</span></h1>
+    <p class="lead">Toledo+ giet Toledo en KU Loket in één kalme app. Je deadlines eerst, wat nieuw is per vak, je volledige uurrooster en alles doorzoekbaar met één toets.</p>
+    <div class="cta">
+      <a class="btn btn-primary btn-large" href="https://github.com/joennespreuwers/toledo-plus/releases/latest/download/toledo-plus.zip" download><svg aria-hidden="true" focusable="false"><use href="#i-download"/></svg>Download Toledo+</a>
+      <a class="btn btn-secondary btn-large" href="#install">Zo installeer je het</a>
+    </div>
+    <p class="fine"><span>Versie 1.1.0</span><span>Gratis en open source</span><span>Onofficieel studentenproject</span></p>
+  </div>
+  <div class="stage">
+    <div class="window">
+  <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span class="url">toledo.kuleuven.be</span></div>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/img/overview-dark.webp" type="image/webp">
+    <source srcset="assets/img/overview-light.webp" type="image/webp">
+    <img src="assets/img/overview-light.png" width="1440" height="900" alt="Het overzicht in Toledo+: een lijst met deadlines en hoeveel tijd je nog hebt, het rooster van vandaag en morgen, wat nieuw is per vak en de laatste mededelingen." fetchpriority="high" loading="eager" decoding="async">
+  </picture>
+</div>
+    <div class="phone"><picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/img/phone-dark.webp" type="image/webp">
+    <source srcset="assets/img/phone-light.webp" type="image/webp">
+    <img src="assets/img/phone-light.png" width="390" height="844" alt="Hetzelfde overzicht op een smartphone, met een tabbalk onderaan." loading="lazy" decoding="async">
+  </picture></div>
+  </div>
+</section>
+
+<section class="section alt" id="features" aria-labelledby="features-h">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Wat is er anders</span>
+      <h2 id="features-h">Alles wat je nodig hebt.<br>Niets wat je afleidt.</h2>
+      <p>Toledo+ leest wat Toledo je al toont en zet het in een vorm die logisch is voor studenten.</p>
+    </div>
+    <ul class="grid four">
+      <li class="card reveal"><span class="icon red" aria-hidden="true"><svg><use href="#i-clock"/></svg></span><h3>Deadlines eerst</h3><p>Toledo, Ultra en je eigen taken in één lijst, met hoeveel tijd je nog hebt. Afvinken kan, en met één klik staan ze in je agenda (.ics).</p></li>
+      <li class="card reveal"><span class="icon " aria-hidden="true"><svg><use href="#i-tray"/></svg></span><h3>Nieuw, per vak</h3><p>Geen eindeloze meldingen: één regel per vak, zoals “2 bestanden · 1 video”. Klap open wat je interesseert.</p></li>
+      <li class="card reveal"><span class="icon orange" aria-hidden="true"><svg><use href="#i-folder"/></svg></span><h3>Elk vak dezelfde vorm</h3><p>Alle bestanden en mappen in een overzichtelijke boom, zoeken door het hele vak en downloaden met één klik.</p></li>
+      <li class="card reveal"><span class="icon purple" aria-hidden="true"><svg><use href="#i-search"/></svg></span><h3>⌘K zoekt overal</h3><p>Vind dat ene document in al je vakken, plus deadlines en mededelingen. De zoekindex blijft op je toestel.</p></li>
+      <li class="card reveal"><span class="icon teal" aria-hidden="true"><svg><use href="#i-calendar"/></svg></span><h3>Je volledige rooster</h3><p>Agenda met je KU Loket-uurrooster per dag, week of maand, samen met je examens en deadlines.</p></li>
+      <li class="card reveal"><span class="icon green" aria-hidden="true"><svg><use href="#i-home"/></svg></span><h3>KU Loket, zonder zoeken</h3><p>Examens, het rooster van vandaag en snelkoppelingen naar inschrijvingen, attesten en meer.</p></li>
+      <li class="card reveal"><span class="icon " aria-hidden="true"><svg><use href="#i-checkcircle"/></svg></span><h3>Gelezen is gelezen</h3><p>Wat je in Toledo+ als gelezen markeert, staat ook in Toledo als gelezen. Je kunt dit uitzetten.</p></li>
+      <li class="card reveal"><span class="icon orange" aria-hidden="true"><svg><use href="#i-sliders"/></svg></span><h3>Helemaal van jou</h3><p>Nederlands, English of Français. Licht of donker, je eigen accentkleur en dichtheid, bijnamen en kleuren per vak.</p></li>
+    </ul>
+  </div>
+</section>
+
+<section class="section" aria-label="Zoeken, Agenda, Vakken, KU Loket">
+  <div class="wrap">
+    <div class="showcase">
+      <div class="showcase-text reveal">
+        <span class="eyebrow">Zoeken</span>
+        <h3>Eén toets. Elk document.</h3>
+        <p>Druk op <kbd>⌘</kbd> <kbd>K</kbd> (of <kbd>Ctrl</kbd> <kbd>K</kbd>) en typ. Toledo+ zoekt door de mappen van al je vakken, en met <kbd>⌘</kbd> <kbd>↵</kbd> download je meteen.</p>
+      </div>
+      <div class="reveal"><div class="window">
+  <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span class="url">toledo.kuleuven.be</span></div>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/img/palette-results-dark.webp" type="image/webp">
+    <source srcset="assets/img/palette-results-light.webp" type="image/webp">
+    <img src="assets/img/palette-results-light.png" width="1440" height="900" alt="Het zoekvenster met resultaten voor “regie”: het vak, documenten met hun map en vak, en deadlines." loading="lazy" decoding="async">
+  </picture>
+</div></div>
+    </div>
+    <div class="showcase flip">
+      <div class="showcase-text reveal">
+        <span class="eyebrow">Agenda</span>
+        <h3>Je hele week in één blik.</h3>
+        <p>Je volledige uurrooster uit KU Loket, met lokaal en docent, naast je deadlines en examens. Per dag, week of maand, en in je eigen agenda als je wil.</p>
+      </div>
+      <div class="reveal"><div class="window">
+  <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span class="url">toledo.kuleuven.be</span></div>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/img/agenda-week-dark.webp" type="image/webp">
+    <source srcset="assets/img/agenda-week-light.webp" type="image/webp">
+    <img src="assets/img/agenda-week-light.png" width="1440" height="900" alt="De agenda in weekweergave met lessen in de kleur van hun vak en deadlines bovenaan elke dag." loading="lazy" decoding="async">
+  </picture>
+</div></div>
+    </div>
+    <div class="showcase">
+      <div class="showcase-text reveal">
+        <span class="eyebrow">Vakken</span>
+        <h3>Elk vak, dezelfde rust.</h3>
+        <p>Recent toegevoegd bovenaan, daaronder de volledige inhoud als uitklapbare mappen. Deadlines, mededelingen en docenten staan ernaast.</p>
+      </div>
+      <div class="reveal"><div class="window">
+  <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span class="url">toledo.kuleuven.be</span></div>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/img/course-dark.webp" type="image/webp">
+    <source srcset="assets/img/course-light.webp" type="image/webp">
+    <img src="assets/img/course-light.png" width="1440" height="900" alt="Een vakpagina in donkere modus: recent toegevoegde bestanden, de inhoud als mappen, en ernaast deadlines, mededelingen en docenten." loading="lazy" decoding="async">
+  </picture>
+</div></div>
+    </div>
+    <div class="showcase flip">
+      <div class="showcase-text reveal">
+        <span class="eyebrow">KU Loket</span>
+        <h3>De rest van je studentenleven.</h3>
+        <p>Je examens met datum en lokaal, het rooster van vandaag en de KU Loket-pagina’s die je echt gebruikt, zonder door menu’s te klikken.</p>
+      </div>
+      <div class="reveal"><div class="window">
+  <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span class="url">toledo.kuleuven.be</span></div>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/img/kuloket-dark.webp" type="image/webp">
+    <source srcset="assets/img/kuloket-light.webp" type="image/webp">
+    <img src="assets/img/kuloket-light.png" width="1440" height="900" alt="De KU Loket-pagina in Toledo+: komende examens, de lessen van vandaag en snelkoppelingen naar inschrijvingen, gegevens en attesten." loading="lazy" decoding="async">
+  </picture>
+</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="section alt" id="how" aria-labelledby="how-h">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Hoe het werkt</span>
+      <h2 id="how-h">In een minuut klaar.</h2>
+    </div>
+    <ol class="grid three steps">
+      <li class="card reveal"><span class="step-num" aria-hidden="true">1</span><h3>Installeer de extensie</h3><p>Download Toledo+ en laad het in je browser. Geen app, geen account, niets om te onthouden.</p></li>
+      <li class="card reveal"><span class="step-num" aria-hidden="true">2</span><h3>Log in zoals altijd</h3><p>Open Toledo en meld je aan met je eigen KU Leuven-login. Toledo+ ziet je wachtwoord nooit.</p></li>
+      <li class="card reveal"><span class="step-num" aria-hidden="true">3</span><h3>Je gegevens blijven bij jou</h3><p>Toledo+ toont wat Toledo en KU Loket je al tonen. Je vakken, deadlines en bestanden gaan nergens anders heen.</p></li>
+    </ol>
+  </div>
+</section>
+
+<section class="section privacy-band" id="privacy" aria-labelledby="privacy-h">
+  <div class="wrap">
+    <div class="shield" aria-hidden="true"><svg><use href="#i-shield"/></svg></div>
+    <div class="section-head" style="margin-bottom:0">
+      <h2 id="privacy-h">Je Toledo blijft in je browser.</h2>
+      <p>Toledo+ heeft geen accounts en weet niet wie je bent. Je vakken, deadlines en documenten gaan alleen tussen je browser en Toledo of KU Loket.</p>
+    </div>
+    <ul class="checks"><li><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg><p><strong>Geen tracking van wie je bent.</strong> <span>Geen analytics-diensten, geen advertenties, geen cookies.</span></p></li><li><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg><p><strong>Je Toledo-gegevens blijven lokaal.</strong> <span>Vakken, documenten en de zoekindex staan alleen in je browser.</span></p></li><li><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg><p><strong>Je wachtwoord blijft van jou.</strong> <span>Toledo+ gebruikt de sessie waarmee je al bent aangemeld.</span></p></li><li><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg><p><strong>Enkel een anoniem dagelijks signaal.</strong> <span>Een willekeurige id, versie, browser en taal. Uit te zetten in Instellingen → Privacy.</span></p></li></ul>
+    <p class="more"><a class="link-arrow" href="privacy.html">Lees het privacybeleid</a></p>
+  </div>
+</section>
+
+<section class="section alt" id="install" aria-labelledby="install-h">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Installeren</span>
+      <h2 id="install-h">In vier stappen geïnstalleerd.</h2>
+      <p>Toledo+ installeer je zelf, rechtstreeks van GitHub. Het duurt ongeveer een minuut.</p>
+    </div>
+    <div class="download card reveal">
+      <img src="assets/icon128.png" width="64" height="64" alt="" loading="lazy">
+      <div class="download-text">
+        <h3>Toledo+ 1.1.0</h3>
+        <p>Voor Chrome, Edge, Brave, Arc, Opera en Vivaldi</p>
+      </div>
+      <div class="download-action">
+        <a class="btn btn-primary btn-large" href="https://github.com/joennespreuwers/toledo-plus/releases/latest/download/toledo-plus.zip" download><svg aria-hidden="true" focusable="false"><use href="#i-download"/></svg>Download Toledo+</a>
+        <small>toledo-plus.zip · <a href="https://github.com/joennespreuwers/toledo-plus/releases">alle versies</a></small>
+      </div>
+    </div>
+    <ol class="grid four isteps">
+      <li class="card istep reveal"><div class="art art-zip" aria-hidden="true"><span class="file"><b>ZIP</b>toledo-plus.zip</span><span class="arrow">→</span><span class="folder"><svg aria-hidden="true" focusable="false"><use href="#i-folder"/></svg>toledo-plus</span></div><div class="istep-body"><span class="step-num" aria-hidden="true">1</span><h3>Pak het zip-bestand uit</h3><p>Zet de map op een vaste plek, bijvoorbeeld <code>Documenten/toledo-plus</code>. Laat ze daar staan: je browser laadt Toledo+ uit die map.</p></div></li>
+      <li class="card istep reveal"><div class="art art-addr" aria-hidden="true"><div class="bar"><span class="lockdot"></span>chrome://extensions<span class="caret"></span></div></div><div class="istep-body"><span class="step-num" aria-hidden="true">2</span><h3>Open de extensiepagina</h3><p>Typ <span class="addr"><code>chrome://extensions</code><button type="button" class="copy" data-copy="chrome://extensions" data-copied="Gekopieerd" aria-label="Kopieer: chrome://extensions" hidden>Kopieer</button></span> in de adresbalk. In Edge is dat <span class="addr"><code>edge://extensions</code><button type="button" class="copy" data-copy="edge://extensions" data-copied="Gekopieerd" aria-label="Kopieer: edge://extensions" hidden>Kopieer</button></span>.</p></div></li>
+      <li class="card istep reveal"><div class="art art-toggle" aria-hidden="true"><span>Ontwikkelaarsmodus</span><span class="switch"></span></div><div class="istep-body"><span class="step-num" aria-hidden="true">3</span><h3>Zet Ontwikkelaarsmodus aan</h3><p>In Chrome staat de schakelaar rechtsboven, in Edge links onder het menu.</p></div></li>
+      <li class="card istep reveal"><div class="art art-load" aria-hidden="true"><span class="mockbtn">Uitgepakte extensie laden</span><svg class="cursor" viewBox="0 0 24 24"><path d="M5 3l14 8-6 1.6L10 19z" fill="#1d1d1f" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg></div><div class="istep-body"><span class="step-num" aria-hidden="true">4</span><h3>Kies “Uitgepakte extensie laden”</h3><p>Selecteer de map <code>toledo-plus</code> (die met <code>manifest.json</code>). Open daarna Toledo en log in zoals altijd.</p></div></li>
+    </ol>
+    <div class="grid two info">
+      <div class="card reveal" id="browsers">
+        <h3>Welke browser?</h3>
+        <ul class="browser-list"><li class="ok"><span class="b"><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg>Chrome</span><span class="v">chrome://extensions</span></li><li class="ok"><span class="b"><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg>Microsoft Edge</span><span class="v">edge://extensions</span></li><li class="ok"><span class="b"><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg>Brave, Arc, Opera, Vivaldi</span><span class="v">Werkt hetzelfde, via hun eigen extensiepagina (bv. brave://extensions)</span></li><li class="no"><span class="b"><svg aria-hidden="true" focusable="false"><use href="#i-minus"/></svg>Firefox</span><span class="v">Niet ondersteund (nog): Firefox gebruikt een eigen extensieformaat</span></li><li class="no"><span class="b"><svg aria-hidden="true" focusable="false"><use href="#i-minus"/></svg>Safari</span><span class="v">Niet ondersteund (nog): Safari vraagt een aparte Mac-app</span></li></ul>
+      </div>
+      <div class="card reveal" id="update">
+        <h3>Updaten</h3>
+        <p>Toledo+ toont een melding zodra er een nieuwe versie is. Dan:</p>
+        <ol class="mini-steps"><li>Download de nieuwe zip.</li><li>Vervang de inhoud van je map <code>toledo-plus</code> door de nieuwe bestanden.</li><li>Klik op ↻ (opnieuw laden) bij Toledo+ op de extensiepagina en herlaad Toledo. Je instellingen blijven bewaard.</li></ol>
+      </div>
+      <div class="card reveal">
+        <h3>Een melding over ontwikkelaarsmodus?</h3>
+        <p>Chrome kan bij het opstarten melden dat er extensies in ontwikkelaarsmodus actief zijn. Dat gebeurt bij elke extensie die niet uit de Chrome Web Store komt, niet omdat er iets mis is. Je kunt Toledo+ gerust laten staan: de code is openbaar op GitHub en de extensie heeft alleen toegang tot Toledo, KU Loket en <code>api.toledoplus.be</code>. Sluit de melding gewoon.</p>
+      </div>
+      <div class="card reveal" id="signal">
+        <h3>Anoniem gebruikssignaal</h3>
+        <p>Om te weten hoeveel studenten Toledo+ gebruiken en welke versies nog draaien, stuurt Toledo+ één keer per dag een anoniem signaal naar <code>api.toledoplus.be</code>: een willekeurige installatie-id, de versie, de browser en de taal. Geen naam, geen studentennummer, geen Toledo-gegevens; je IP-adres wordt niet bewaard. Uitzetten kan in <strong>Instellingen → Privacy</strong> of meteen in de welkomstkaart.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="faq" aria-labelledby="faq-h">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Vragen</span>
+      <h2 id="faq-h">Goed om te weten.</h2>
+    </div>
+    <div class="faq">
+      <details><summary>Is dit een officiële app van de KU Leuven?</summary><div class="answer"><p>Nee. Toledo+ is een onafhankelijk studentenproject. Het is niet verbonden aan de KU Leuven, LUCA School of Arts of Blackboard/Anthology. Het gebruikt gewoon jouw Toledo-sessie, net zoals je browser dat doet.</p></div></details>
+      <details><summary>Zijn mijn gegevens veilig?</summary><div class="answer"><p>Toledo+ leest alleen wat Toledo en KU Loket je al tonen, via je eigen sessie in je eigen browser. Je instellingen, een cache en de zoekindex staan in de opslag van je browser. Er zijn geen analytics-diensten of trackers, en je wachtwoord ziet Toledo+ nooit. Enkel een anoniem dagelijks signaal (willekeurige id, versie, browser, taal) gaat naar <code>api.toledoplus.be</code>; dat zet je uit in Instellingen → Privacy. De volledige broncode staat <a href="https://github.com/joennespreuwers/toledo-plus">op GitHub</a>.</p><p><a class="link-arrow" href="privacy.html">Lees het privacybeleid</a></p></div></details>
+      <details><summary>Werkt het voor alle opleidingen van de KU Leuven-associatie?</summary><div class="answer"><p>Toledo+ werkt waar je Toledo gebruikt op <code>toledo.kuleuven.be</code>, inclusief de Blackboard Ultra-vakpagina’s. Het is getest bij KU Leuven en LUCA School of Arts. Het uurrooster, de examens en de KU Loket-pagina komen uit KU Loket; heb je daar geen toegang toe, dan zie je de planning uit Toledo.</p><p>Werkt iets anders bij jouw opleiding? Laat het weten.</p></div></details>
+      <details><summary>Kost het iets?</summary><div class="answer"><p>Nee. Toledo+ is gratis en open source (MIT-licentie). Geen advertenties, geen abonnement, geen account.</p></div></details>
+      <details><summary>Waarom staat het niet in de Chrome Web Store?</summary><div class="answer"><p>Toledo+ wordt rechtstreeks via GitHub verdeeld. Zo is elke nieuwe versie meteen beschikbaar en zie je precies welke code je installeert. Het enige nadeel is de melding over ontwikkelaarsmodus, en die mag je gewoon sluiten.</p></div></details>
+      <details><summary>Hoe meld ik een probleem of idee?</summary><div class="answer"><p>Via <a href="https://github.com/joennespreuwers/toledo-plus/issues/new/choose">GitHub</a>: kies “Bug” of “Idee” en beschrijf wat je zag. Zet geen echte persoonsgegevens (namen, e-mails, r-nummer of vakinhoud) in je melding of screenshots.</p></div></details>
+      <details><summary>Hoe zet ik het uit?</summary><div class="answer"><p>Kies <strong>Klassieke Toledo</strong> in het accountmenu rechtsboven: je ziet meteen de originele pagina. De knop <strong>Toledo+</strong> zet het weer aan. Wil je het helemaal weg? Verwijder de extensie op <code>chrome://extensions</code> of <code>edge://extensions</code>; dan is ook alles gewist wat Toledo+ bewaarde.</p></div></details>
+    </div>
+  </div>
+</section>
+
+<section class="section alt final" aria-labelledby="final-h">
+  <div class="wrap">
+    <img src="assets/icon128.png" width="88" height="88" alt="" loading="lazy">
+    <h2 class="h2" id="final-h">Klaar voor een rustigere Toledo?</h2>
+    <p class="lead">Gratis, open source en in een minuut geïnstalleerd.</p>
+    <div class="cta">
+      <a class="btn btn-primary" href="#install">Installeer Toledo+</a>
+      <a class="btn btn-secondary" href="https://github.com/joennespreuwers/toledo-plus"><svg aria-hidden="true" focusable="false"><use href="#i-github"/></svg>Bekijk op GitHub</a>
+    </div>
+  </div>
+</section>
+</main>
+<footer class="footer">
+  <div class="wrap">
+    <ul class="footer-links"><li><a href="https://github.com/joennespreuwers/toledo-plus">GitHub</a></li><li><a href="privacy.html">Privacy</a></li><li><a href="https://github.com/joennespreuwers/toledo-plus/blob/main/CHANGELOG.md">Wat is nieuw</a></li><li><a href="https://github.com/joennespreuwers/toledo-plus/issues/new/choose">Probleem melden</a></li></ul>
+    <p>Alle beelden tonen fictieve gegevens.</p>
+    <div class="rule"><p>Toledo is een product van de KU Leuven. Toledo+ is een onafhankelijk project en is niet verbonden aan de KU Leuven, LUCA School of Arts of Blackboard/Anthology.</p><p>© 2026 Joenne Spreuwers · MIT-licentie</p></div>
+  </div>
+</footer>
+</body>
+</html>

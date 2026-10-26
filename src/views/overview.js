@@ -407,8 +407,9 @@
   function subtitle() {
     const date = VA.capitalize(TP.fmt.date(Date.now(), { weekday: 'long', day: 'numeric', month: 'long' }));
     const lu = TP.data.lastUpdated && TP.data.lastUpdated();
-    const upd = lu ? t('overview.updated', { time: TP.fmt.time(lu) }) : t('overview.loading');
-    return `<span>${esc(date)}</span><span aria-hidden="true"> · </span><span>${esc(upd)}</span>`;
+    // never "Gegevens laden…" forever: after a failed first load the shell's error line says it
+    const upd = lu ? t('overview.updated', { time: TP.fmt.time(lu) }) : VA.state(['events', 'enrollments']) === 'loading' ? t('overview.loading') : '';
+    return `<span>${esc(date)}</span>${upd ? `<span aria-hidden="true"> · </span><span>${esc(upd)}</span>` : ''}`;
   }
 
   function section(id, opts) {
@@ -454,7 +455,7 @@
     else {
       const rows = list.map((d) => VA.deadlineRow(d, { prefix: 'ov', urgentDays: cfg.urgentDays ?? 3, now })).join('');
       const more = overdue.length > 3 ? t('overview.deadlines.allOverdue', { n: overdue.length }) : t('overview.deadlines.all');
-      body = (state === 'stale-error' ? VA.errorBlock(t('overview.deadlines.error'), 'events') : '')
+      body = (state !== 'ok' && state !== 'loading' ? VA.errorBlock(t('overview.deadlines.error'), 'events') : '')
         + TP.ui.group(rows + linkRow(TP.shell.href('deadlines'), more, { attrs: { 'data-va-nofilter': '' } }), { cls: 'va-dl-group' });
     }
     return section('deadlines', { title: esc(t('overview.deadlines.title')), body });

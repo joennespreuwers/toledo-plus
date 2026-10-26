@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Privacy policy — Toledo+</title>
+<meta name="description" content="How Toledo+ handles your data: your Toledo data stays in your browser. No tracking of who you are; just an anonymous daily ping you can turn off.">
+<link rel="canonical" href="https://toledoplus.be/en/privacy.html">
+<link rel="alternate" hreflang="nl" href="https://toledoplus.be/privacy.html">
+<link rel="alternate" hreflang="en" href="https://toledoplus.be/en/privacy.html">
+<link rel="alternate" hreflang="fr" href="https://toledoplus.be/fr/privacy.html">
+<link rel="alternate" hreflang="x-default" href="https://toledoplus.be/privacy.html">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<link rel="icon" href="../favicon.ico" sizes="32x32">
+<link rel="icon" href="../assets/icon128.png" type="image/png" sizes="128x128">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Toledo+">
+<meta property="og:url" content="https://toledoplus.be/en/privacy.html">
+<meta property="og:title" content="Privacy policy — Toledo+">
+<meta property="og:description" content="How Toledo+ handles your data: your Toledo data stays in your browser. No tracking of who you are; just an anonymous daily ping you can turn off.">
+<meta property="og:image" content="https://toledoplus.be/assets/img/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Toledo+: the overview with deadlines, timetable and new items per course, in a browser window.">
+<meta property="og:locale" content="en_GB">
+<meta property="og:locale:alternate" content="nl_BE">
+<meta property="og:locale:alternate" content="fr_BE">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Privacy policy — Toledo+">
+<meta name="twitter:description" content="How Toledo+ handles your data: your Toledo data stays in your browser. No tracking of who you are; just an anonymous daily ping you can turn off.">
+<meta name="twitter:image" content="https://toledoplus.be/assets/img/og.png">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="../en/"><img src="../assets/icon48.png" width="28" height="28" alt="">Toledo+</a>
+    <nav aria-label="Main navigation"><ul class="nav-links"><li><a href="../en/#features">Features</a></li><li><a href="../en/#how">How it works</a></li><li><a href="../en/#privacy">Privacy</a></li><li><a href="../en/#faq">FAQ</a></li></ul></nav>
+    <div class="nav-end">
+      <nav class="lang" aria-label="Language"><a href="../privacy.html" hreflang="nl" lang="nl"><abbr title="Nederlands" style="text-decoration:none">NL</abbr><span class="visually-hidden"> – Nederlands</span></a><a href="../en/privacy.html" hreflang="en" lang="en" aria-current="true"><abbr title="English" style="text-decoration:none">EN</abbr><span class="visually-hidden"> – English</span></a><a href="../fr/privacy.html" hreflang="fr" lang="fr"><abbr title="Français" style="text-decoration:none">FR</abbr><span class="visually-hidden"> – Français</span></a></nav>
+      <a class="btn btn-primary btn-small" href="../en/#install">Download</a>
+    </div>
+  </div>
+</header>
+<main id="main" class="doc">
+  <article class="wrap">
+    <h1>Privacy policy</h1>
+    <p class="meta">Last updated 26 October 2026 · applies to Toledo+ 1.1 and later</p>
+    <p class="summary"><strong>In short:</strong> Toledo+ shows your own Toledo and KU Loket data differently, and that data stays in your browser. No tracking of who you are; just an anonymous daily ping you can turn off.</p>
+    <h2>Which websites Toledo+ uses</h2>
+    <p>Toledo+ only has access to these addresses (the <code>host_permissions</code> in its manifest):</p><ul><li><code>toledo.kuleuven.be</code> and <code>ultra.edu.kuleuven.cloud</code>: Toledo and the Blackboard Ultra course pages.</li><li><code>webwsp.aps.kuleuven.be</code>: KU Loket, for your timetable, exams and shortcuts.</li><li><code>cloud.timeedit.net</code>: the personal timetable feed (iCal) KU Loket gives you, as a fallback when KU Loket itself can’t be reached.</li><li><code>api.toledoplus.be</code>: Toledo+’s own server (a Cloudflare Worker), only for the anonymous usage ping and feedback you send yourself.</li></ul><p>When you download a file, your browser fetches it through Toledo’s own signed download links.</p>
+    <h2>Your session</h2>
+    <p>Toledo+ uses your existing, signed-in session in your own browser. It never sees or stores your password.</p>
+    <h2>What Toledo+ reads</h2>
+    <p>Exactly what Toledo and KU Loket already show you: your enrolments, notifications, unread mail (the count only), links, course content, announcements, deadlines and teachers’ names and e-mail addresses. From KU Loket: your classes (course, time, room, teacher), your exams and the link to your timetable feed.</p><p><strong>Grades and submissions are never read.</strong></p>
+    <h2>What Toledo+ writes back</h2>
+    <p>Only when you ask for it, and only if <em>Sync with Toledo</em> is on: marking notifications as read, seen or dismissed, and setting a course as a favourite when you pin it. These go to Toledo’s own API. Toledo+ never writes to KU Loket.</p>
+    <h2>Storage on your device</h2>
+    <ul><li><strong>Settings</strong> (language, appearance, nicknames, colours, your own deadlines …) in <code>chrome.storage.sync</code>. If browser sync is on, your browser syncs them between your own browsers.</li><li><strong>A cache</strong> of Toledo and KU Loket data, visit times and what you ticked off, in <code>chrome.storage.local</code> on this device.</li><li><strong>The search index</strong> for ⌘K: titles, kinds and folder paths of the items in your courses, without file contents. Only in <code>chrome.storage.local</code>, never synced or sent anywhere. Turn it off or rebuild it in Settings → Search.</li></ul>
+    <h2>Anonymous usage ping and feedback</h2>
+    <p>By default, Toledo+ sends one anonymous ping a day to <code>https://api.toledoplus.be</code> with exactly four things: a <strong>random install id</strong> (created at install, not linked to you), the Toledo+ <strong>version</strong>, the <strong>browser</strong> and the interface <strong>language</strong>. That tells us how many people use Toledo+ and which versions are still around.</p><ul><li>No name, no e-mail address, no student number and no Toledo or KU Loket data.</li><li>Your IP address is not stored.</li><li>Turn it off in <strong>Settings → Privacy</strong> or right in the welcome card. Nothing is sent after that.</li></ul><p><strong>Feedback</strong> you send from Toledo+ goes to the same address. It only includes contact details if you fill them in yourself.</p><p>The server runs on Cloudflare Workers; Cloudflare processes the requests as the hosting provider.</p>
+    <h2>What Toledo+ does not do</h2>
+    <ul><li>No tracking of who you are: no analytics services, crash reporting, ads or third-party trackers.</li><li>No third-party services, fonts or CDNs. All code ships inside the extension; the only server of its own is <code>api.toledoplus.be</code> for the anonymous ping and feedback.</li><li>Your Toledo and KU Loket data is never shared with the developer, KU Leuven, LUCA or anyone else.</li><li>No remote code: the extension never downloads or executes code.</li></ul>
+    <h2>Deleting your data</h2>
+    <p>Settings → Data → <strong>Reset</strong>, or remove the extension (<code>chrome://extensions</code> → Remove). That deletes everything Toledo+ stored; nothing is stored anywhere else. The anonymous ping stops as soon as you turn it off or remove the extension.</p>
+    <h2>This website</h2>
+    <p>toledoplus.be is a static website on GitHub Pages. It uses no cookies, no analytics and no external fonts or scripts. As the host, GitHub may keep technical server logs (such as IP addresses) under <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement">its own privacy statement</a>.</p>
+    <h2>Unofficial</h2>
+    <p>Toledo+ is an independent student project and is not affiliated with KU Leuven, LUCA School of Arts or Blackboard/Anthology Inc. Your use of Toledo and KU Loket remains subject to KU Leuven’s own terms and privacy policy.</p>
+    <h2>Questions</h2>
+    <p>Ask in <a href="https://github.com/joennespreuwers/toledo-plus/discussions">Discussions on GitHub</a>. Security issue? See <a href="https://github.com/joennespreuwers/toledo-plus/blob/main/SECURITY.md">SECURITY.md</a>. Changes to this policy are published on this page and in the <a href="https://github.com/joennespreuwers/toledo-plus">repository</a>.</p>
+    <p style="margin-top:48px"><a class="link-arrow" href="./">Back to Toledo+</a></p>
+  </article>
+</main>
+<footer class="footer">
+  <div class="wrap">
+    <ul class="footer-links"><li><a href="https://github.com/joennespreuwers/toledo-plus">GitHub</a></li><li><a href="../privacy.html">Privacy</a></li><li><a href="https://github.com/joennespreuwers/toledo-plus/blob/main/CHANGELOG.md">What’s new</a></li><li><a href="https://github.com/joennespreuwers/toledo-plus/issues/new/choose">Report a problem</a></li></ul>
+    <p>All images show fictional data; the interface is shown in Dutch.</p>
+    <div class="rule"><p>Toledo is a product of KU Leuven. Toledo+ is an independent project and is not affiliated with KU Leuven, LUCA School of Arts or Blackboard/Anthology.</p><p>© 2026 Joenne Spreuwers · MIT licence</p></div>
+  </div>
+</footer>
+</body>
+</html>
