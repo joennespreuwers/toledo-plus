@@ -831,7 +831,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
         case 'scrim': setOverlay(false); return;
         case 'sidebar': toggleSidebar(); return;
         case 'search-open': focusSearch(); return;
-        case 'palette': closeSheet(); openPalette(el); return;
+        case 'palette': { const fromSheet = !!el.closest('.tp-sheet'); closeSheet(); openPalette(fromSheet ? $('[data-shell="more"]') : el); return; }
         case 'search-clear': setSearch('', true); $('[data-shell="search"]')?.focus(); return;
         case 'refresh': doRefresh(); return;
         case 'menu': { const m = $('.tp-menu'); if (m?.hidden) openMenu(ev.detail === 0); else closeMenu(false); return; }

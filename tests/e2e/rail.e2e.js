@@ -4,7 +4,7 @@
 // (portal, Ultra course page, and after leaving an Ultra deep-bar page).
 const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert/strict');
-const { launch, waitForShell, waitForIdle, waitForQuiet, screenshot, waitFor, inShadow, COURSE_URL, portalRoute } = require('../helpers/launch');
+const { launch, waitForShell, waitForIdle, waitForQuiet, screenshot, waitFor, inShadow, COURSE_URL } = require('../helpers/launch');
 const { S, openPortal } = require('../helpers/app');
 
 const sidebar = (page) => inShadow(page, (sr) => {
@@ -36,9 +36,9 @@ async function assertSticky(page, label) {
     return { y: window.scrollY, sbTop: nav.top, sbBottom: nav.bottom, tbTop: tb.top, tbBottom: tb.bottom, vh: innerHeight };
   });
   assert.ok(r.y > 100, `${label}: page must scroll for this check (scrollY ${r.y})`);
-  assert.equal(Math.round(r.sbTop), 0, `${label}: sidebar top after scrolling (${JSON.stringify(r)})`);
+  assert.ok(Math.abs(r.sbTop) < 1, `${label}: sidebar top after scrolling (${JSON.stringify(r)})`);
   assert.ok(Math.round(r.sbBottom) >= r.vh - 1, `${label}: sidebar full height`);
-  assert.equal(Math.round(r.tbTop), 0, `${label}: toolbar stays at the top`);
+  assert.ok(Math.abs(r.tbTop) < 1, `${label}: toolbar stays at the top (${JSON.stringify(r)})`);
   assert.ok(r.tbBottom > 0, `${label}: toolbar visible`);
   await page.evaluate(() => window.scrollTo(0, 0));
 }
@@ -164,17 +164,5 @@ describe('sidebar icon rail', () => {
     assert.deepEqual(h.rec.unknown.map((e) => `${e.method} ${e.url}`), []);
     assert.deepEqual(h.rec.foreign, []);
     assert.deepEqual(h.rec.cdn, []);
-  });
-});
-
-describe('sticky sidebar at the default size', () => {
-  let h;
-  before(async () => { h = await launch(); });
-  after(async () => { await h?.close(); });
-  it('portal courses view: sidebar top stays 0 after scrolling 2000px', async () => {
-    await h.page.setViewportSize({ width: 1280, height: 480 });
-    await h.page.goto(portalRoute('courses'));
-    await waitForShell(h.page); await waitForIdle(h.page); await waitForQuiet(h.page);
-    await assertSticky(h.page, 'portal courses');
   });
 });

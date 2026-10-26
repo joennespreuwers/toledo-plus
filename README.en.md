@@ -25,7 +25,8 @@
 - **Planning** and **Announcements** (course announcements and Ad Valvas, with filters).
 - **Read = read in Toledo**: items you mark as read in Toledo+ are marked read in Toledo too (can be turned off).
 - **Nederlands, English, Français**; light/dark; accent colour; density; show/hide and reorder sections.
-- Search with **⌘K** or **/**. Works on laptop and phone widths (tab bar at the bottom).
+- **⌘K** (or **/**) searches everywhere: courses, deadlines, announcements and **documents in all your courses** (a local index, never shared). ⌘↵ downloads right away; folders and assignments open in their course.
+- Collapsible sidebar: **⌘\\** turns it into a slim **icon rail**. Works on laptop and phone widths (tab bar at the bottom).
 - **Classic Toledo** is always one click away (account menu); the *Toledo+* button turns it back on.
 
 ## Install
@@ -83,7 +84,7 @@ manifest.json        MV3 manifest
 background.js        cross-origin fetch relay (portal ↔ Ultra)
 page.css             hides the original page, "Toledo+" pill in classic mode
 ui.css               design tokens + shared components (inside the shadow root)
-src/core/            util, i18n, settings, net, data, ui, shell
+src/core/            util, i18n, settings, net, data, index (⌘K index), ui, shell, palette (⌘K)
 src/i18n/            translations (nl/en/fr) per view
 src/views/           overview, courses, course, deadlines, planning, announcements, settings (+ .css)
 src/boot.js          starts everything on both origins

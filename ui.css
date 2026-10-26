@@ -413,7 +413,7 @@
   /* the rail by default; the toolbar button / ⌘\ expands the full sidebar as an overlay */
   .tp-app, .tp-app.sb-collapsed, .tp-app.sb-open { grid-template-columns: var(--rail-w) minmax(0, 1fr); }
   .tp-app.sb-open .tp-sidebar {
-    position: fixed; left: 0; top: 0; bottom: 0; width: var(--sidebar-w); height: auto;
+    position: fixed; left: 0; top: 0; width: var(--sidebar-w); /* height stays 100dvh: abspos grid items honour align-self:start */
     box-shadow: var(--shadow-pop); background: var(--glass-pop);
   }
 }
@@ -434,12 +434,12 @@
   color: var(--label-2); border-bottom: var(--hairline) solid var(--separator);
 }
 .tp-pal-field:focus-within { box-shadow: inset 0 -2px 0 var(--tint-text); }
-.tp-pal-input {
+.tp-theme .tp-palette input.tp-pal-input {
   flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; background: none; color: var(--label);
   font-size: 1.0625rem; -webkit-appearance: none; appearance: none;
 }
-.tp-pal-input::placeholder { color: var(--label-2); }
-.tp-pal-input:focus-visible { outline: none; }
+.tp-theme .tp-palette input.tp-pal-input::placeholder { color: var(--label-2); }
+.tp-theme .tp-palette input.tp-pal-input:focus, .tp-theme .tp-palette input.tp-pal-input:focus-visible { outline: none; box-shadow: none; border: 0; }
 .tp-pal-close {
   flex: none; display: grid; place-items: center; min-width: 36px; height: 32px; padding: 0 6px;
   border: 0; border-radius: var(--r-control); background: var(--fill); color: var(--label-2); cursor: pointer;

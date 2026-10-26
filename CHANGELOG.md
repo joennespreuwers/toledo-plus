@@ -6,6 +6,21 @@ Het formaat volgt [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) en he
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-26
+
+### Added
+- **⌘K command palette** (also Ctrl+K, `/` when you're not typing, the ⌘K button in the toolbar field, and "Zoek overal" in the phone More sheet): one search across navigation, courses, **documents in all your courses**, deadlines and announcements. Case- and accent-insensitive, every word must match the title, folder path or course; title prefix ranks first. ↑/↓ to move, ↵ to open, ⌘↵/Ctrl+↵ to download a file. Empty query shows Recent + navigation. A centred glass sheet on desktop, full-screen on phones; modal dialog with a combobox/listbox (`aria-activedescendant`), focus trapped and returned on close.
+- **Document index** (`TP.index`): a compact, local index of every current course's content tree in `chrome.storage.local` (capped at ~2 MB). Updated whenever you open a course and by a background crawl (≤ once per 24 h per course, two at a time, started 5 s after load when the browser is idle). On the portal the crawl goes through the relay and fails silently without an Ultra session; the palette footer says so ("Open een vak om het te indexeren").
+- "Show in course": opening a folder, page or assignment from the palette opens the course with the containing folders unfolded and the row scrolled into view and briefly highlighted (course view `params.focus` / `state.focus`).
+- Settings → **Zoeken**: "Documenten in alle vakken indexeren" (on by default), "Index opnieuw opbouwen" and a status line.
+
+### Changed
+- **Collapsed sidebar = icon rail.** ⌘\ / Ctrl+\ and the toolbar button switch between the expanded sidebar (240 px) and a 64 px icon rail: centred icons with tooltips, counts as a dot (red badge only for overdue), pinned courses as coloured circles with their initials, Toledo+ mark on top, Settings at the bottom. Remembered in `state.ui.sidebarCollapsed`. Between 700 and 899 px the rail is the default and expanding shows the full sidebar as an overlay.
+- The toolbar search field keeps filtering the current view; ⌘K and `/` now open the palette.
+
+### Fixed
+- The sidebar and toolbar scrolled away with the page: `<body>` became a scroll container (both `html` and `body` had `overflow: auto`), which defeats `position: sticky`. Only `<html>` scrolls now, so the sidebar stays put at full height and only the content column scrolls (portal and Ultra).
+
 ## [1.0.0] - 2026-10-26
 
 Volledige wrapper rond Toledo (portaal + Blackboard Ultra). / Full wrapper around Toledo (portal + Blackboard Ultra).

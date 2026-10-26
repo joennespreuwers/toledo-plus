@@ -1,4 +1,4 @@
-# Toledo+ — architecture contract (v1.0)
+# Toledo+ — architecture contract (v1.1)
 
 Toledo+ is a Manifest V3 Chrome/Edge extension that **wraps** KU Leuven Toledo for students:
 the portal (`https://toledo.kuleuven.be/portal/`) and Blackboard Learn Ultra (`https://ultra.edu.kuleuven.cloud/ultra/`)
@@ -52,11 +52,14 @@ src/core/util.js         core   – TP.util, TP.fmt
 src/core/i18n.js         core   – TP.i18n, TP.t
 src/core/settings.js     core   – TP.settings, TP.state
 src/core/ui.js           core   – TP.ui component helpers (HTML strings)
-src/core/shell.js        core   – TP.shell: mount, layout, router, search, theme, deep bar, live region
+src/core/shell.js        core   – TP.shell: mount, layout (sidebar/rail), router, search, theme, deep bar, live region
+src/core/palette.js      core   – TP.palette: the ⌘K command palette (dialog inside the shell's shadow root)
 src/core/net.js          data   – TP.net (same-origin fetch or relay)
 src/core/data.js         data   – TP.data (loading, cache, models, mutations)
+src/core/index.js        data   – TP.index (local document index for ⌘K: storage, crawl, matching)
 src/i18n/core.js         core   – strings for shell/common/settings labels used by shell
 src/i18n/<view>.js       view owners – strings for their views
+src/i18n/palette.js      core   – strings for the palette + index status line
 src/views/overview.js(+.css)       views-A
 src/views/deadlines.js(+.css)      views-A
 src/views/planning.js(+.css)       views-A
@@ -68,7 +71,7 @@ src/boot.js              core   – starts everything on both origins
 tests/**, package.json, .github/**, README*, CONTRIBUTING.md, AGENTS.md, scripts/**   tests+repo
 legacy/                  read-only reference of the v0.2 prototype (has working tree-walk, sanitize, download code)
 ```
-Content-script load order (both origins): `src/core/util.js, src/core/i18n.js, src/i18n/*.js, src/core/settings.js, src/core/net.js, src/core/data.js, src/core/ui.js, src/core/shell.js, src/views/*.js, src/boot.js`.
+Content-script load order (both origins): `src/core/util.js, src/core/i18n.js, src/i18n/*.js, src/core/settings.js, src/core/net.js, src/core/data.js, src/core/index.js, src/core/ui.js, src/core/shell.js, src/core/palette.js, src/views/*.js, src/boot.js` (guarded by `tests/unit/manifest.test.js`).
 Each file is an IIFE that attaches to `globalThis.TP` (`const TP = (globalThis.TP ||= {});`). No ES modules, no imports, no network except Toledo/Ultra.
 CSS loaded into the shadow root by the shell, in this order: `ui.css`, then every `src/views/*.css` (list is `TP.shell.CSS` in shell.js; all must exist even if empty; all are web_accessible_resources).
 
@@ -134,10 +137,12 @@ DEFAULTS (exact):
   deadlines: { horizonDays: 42, urgentDays: 3, reminder: '1d' },   // reminder: 'none'|'1h'|'1d'|'2d' (ICS VALARM)
   courses: { sort: 'activity', showCommunities: false, items: {} },  // sort: 'activity'|'name'|'manual'; items[luId] = {nickname,color,hidden,pinned}; manual order in courses.order: [luId]
   sync: { markReadInToledo: true, favoritesToToledo: true },  // favoritesToToledo: pinned == Toledo favourite
+  search: { indexAll: true },         // background-crawl all current courses for the ⌘K document index
   custom: [],                         // custom deadlines [{id, title, courseLuId|'', due:ms}] — persisted under sync key 'custom'
 }
 ```
-State (local, not synced): `{ visits:{[courseId]:ms}, feedSeenAt:0, done:{[deadlineKey]:true}, recent:[{title,url,courseName,courseLuId,kind,ts}] (max 12), cache:{} }`.
+State (local, not synced): `{ visits:{[courseId]:ms}, feedSeenAt:0, done:{[deadlineKey]:true}, recent:[{title,url,courseName,courseLuId,kind,ts}] (max 12), cache:{}, cidMap:{[luId]:cid}, openFolders:{[cid]:[id]}, ui:{sidebarCollapsed}, focus:{cid,luId,id,at}|absent }`.
+`focus` is the palette's "show in course" hand-off (works across both origins); the course view consumes it (≤ 2 min old) and deletes it. The shell does not rerender on `ui`, `cache`, `visits`, `openFolders`, `recent`, `focus`.
 
 ## TP.net (data)
 ```
@@ -151,6 +156,7 @@ Stale-while-revalidate: `TP.data.peek(key)` returns the last cached value (from 
 ```
 keys: 'enrollments','events','upcoming','mail','links','ultraDeadlines'
 TP.data.on('change', fn(key)) / off
+TP.data.on('course', fn({cid, result}))   // a full (non-partial) ultraCourse load finished – TP.index listens
 await TP.data.refresh()              // loads all portal keys (+ ultraDeadlines best-effort); used by shell pull-to-refresh / ⌘R-like button
 TP.data.lastUpdated() → ms|null
 
@@ -188,11 +194,48 @@ TP.data.ics(deadlines) → string (VCALENDAR; VALARM per settings.deadlines.remi
 await TP.data.ultraCourse(cid, onProgress?) → { course:{id, courseId, name}, roots: Node[], announcements, deadlines:[{title,due,url}], staff:[{name,email}] }
    Node = raw content item + kids:Node[]|undefined ; tree walked with bounded concurrency (6), depth ≤ 6, unavailable items dropped;
    onProgress(partialResult) called after metadata and after the walk.
-await TP.data.ultraDownload(cid, contentId, fileName)  // attachments → blob → save
+await TP.data.ultraTree(cid, {concurrency=2}) → Node[]  // content tree only (same walk as ultraCourse), for the index crawl; rejects if the top level fails
+await TP.data.ultraDownload(cid, contentId, fileName?)  // attachments → blob → save (no fileName → the attachment's own name)
 await TP.data.ultraOpen(cid, contentId)               // window.open(download url or item link)
 await TP.data.ultraAnnouncement(cid, aid) → {title, body}
 TP.data.resolveCourseId(luId) → Promise<cid> (ultra courses/courseId:<luId>, cached in state)
 ```
+
+## TP.index (data) — local document index for the ⌘K palette
+```
+chrome.storage.local 'index'     = { [cid]: { luId, name, t:ms, items: [[id, title, kind, path, parentId], …] } }
+                                    kind = TP.data.kindOf | 'folder'; path = "Week 3 › Opdrachten"; capped at ~2 MB (oldest courses dropped)
+chrome.storage.local 'indexMeta' = { lastCrawl, attempt, failed }
+await TP.index.load()                 // lazy; boot calls it, then TP.index.schedule()
+TP.index.schedule()                   // crawl 5 s after boot, in requestIdleCallback
+await TP.index.crawl({force})         // never rejects; current courses (TP.data.courses) → resolveCourseId → ultraTree, pool of 2;
+                                      // skips courses indexed < 24 h ago; on the portal (relay) backs off 1 h after failures;
+                                      // skipped when settings.search.indexAll is false
+await TP.index.crawlIfStale()         // = crawl() without force (palette open)
+await TP.index.rebuild()              // clear + forced crawl (Settings → Zoeken)
+TP.index.put(cid, {luId, name, roots})  // also called for every TP.data 'course' event (course view), even with indexAll off
+TP.index.status() → { courses, items, lastCrawl, updated, crawling, progress:{done,total}, failed, enabled }
+TP.index.statusText() → "Doorzoekt 214 documenten in 15 vakken · bijgewerkt 17:40" | "Index wordt opgebouwd…" | "Open een vak om het te indexeren"
+TP.index.search(q, {limit}) → [{cid, luId, course, color, id, title, kind, path, parentId, score}]   (hidden courses skipped)
+TP.index.score(q|words, title, extraStrings[]) → -1 no match | 0 via path/course | 1 substring | 2 word starts | 3 title prefix
+     (lowercase, diacritics stripped, every query word must occur in title or extras) – also used by the palette for every group
+TP.index.norm(s), TP.index.ancestors(cid, id) → [folderId…], TP.index.on('change', fn(status)) → unsubscribe
+```
+Privacy: the index holds titles/kinds/paths only, stays in `chrome.storage.local`, never leaves the browser.
+
+## TP.palette (core) — ⌘K command palette
+```
+TP.palette.open({opener?, q?}) / close(returnFocus=true) / isOpen()
+```
+Opened by the shell: ⌘K / Ctrl+K (always, also while typing), `/` when not in an editable field, the ⌘K button inside the toolbar
+search field (`data-shell="palette"`), and "Zoek overal" in the phone More sheet. The toolbar field itself keeps filtering the current view.
+`<dialog class="tp-palette tp-glass">` appended to the shell app (showModal → top layer, inert background): combobox input
+(`aria-controls`/`aria-activedescendant`) + `role=listbox` with `role=group` per result group; ↑/↓/PageUp/PageDown move, ↵ opens,
+⌘↵/Ctrl+↵ downloads a file result, Esc/backdrop/close button close and return focus to the opener; Tab is trapped.
+Groups (≤ 8 each): Navigatie (views incl. settings) · Vakken · Documenten (TP.index) · Deadlines · Mededelingen; empty query: Recent + Navigatie.
+Open: files → `TP.data.ultraOpen(cid,id)` (⌘↵ → `ultraDownload`); folders/pages/assignments/links → `state.focus` + navigate to
+`TP.shell.href('course', {cid})` (or rerender when that course is already shown); every document open → `TP.data.addRecent`.
+Footer: `TP.index.statusText()`; opening the palette triggers `TP.index.crawlIfStale()`. Full-screen sheet below 700 px.
 
 ## TP.ui (core) — HTML-string helpers; views compose these, use `data-action` + event delegation
 ```
@@ -226,6 +269,8 @@ TP.shell.href(route, params?) → absolute URL appropriate from the current orig
      (plain '#/home' = settings.startPage; legacy '#/tplus/<route>[/<p>]' is still parsed and replaced in place via history.replaceState)
      course {luId} → enrollment.link (journey ultraLink) ; course {cid} on ultra → https://ultra.edu.kuleuven.cloud/ultra/courses/<cid>/outline
 TP.shell.toast(text) ; TP.shell.announce(text) (aria-live polite)
+TP.shell.app → the shell root element while the shell is shown (palette mounts into it), else null
+TP.shell.mod → '⌘' on Apple platforms, 'Ctrl ' elsewhere (shortcut hints) ; TP.shell.isRail() → sidebar is the icon rail
 TP.shell.rerender()               // re-run current view render (called on settings/data change for current view)
 ```
 View contract:
@@ -240,14 +285,16 @@ TP.shell.register('overview', {
   destroy(ctx) { … }                      // optional
 });
 ctx = { root: HTMLElement (view container in shadow root), params, route, origin:'portal'|'ultra', setActions([{id,label,icon,onClick}]), setTitle(text), setSubtitle(html) }
+Course view params: `{cid}` | `{luId}`, optional `focus: contentId` (also read from `state.focus`): once the tree is loaded it opens the containing folders, scrolls to the row, focuses it and highlights it for 2.4 s.
 ```
 Views attach ONE delegated listener per event type on `ctx.root` in render's first call (guard with a flag on root), never on document.
-Shell layout: skip link; sidebar ≥700px (glass, sections: Overview, Courses, Deadlines, Planning, Announcements, then "Pinned" courses, Settings at bottom; counts trailing; ⌘\ toggles), bottom tab bar <700px (Overview, Courses, Deadlines, Planning, More→Announcements/Settings); toolbar with large title, subtitle, search (⌘K or '/'), refresh, account menu (mail badge→Outlook, Toledo classic toggle, logout). Theme: `data-appearance`, `data-density`, `--tint`, `--tint-text` on the shell root.
+Shell layout: skip link; sidebar ≥700px (glass, sticky full height – only the content column scrolls; sections: Overview, Courses, Deadlines, Planning, Announcements, then "Pinned" courses, Settings at bottom; counts trailing), bottom tab bar <700px (Overview, Courses, Deadlines, Planning, More→Search everywhere/Announcements/Settings); toolbar with large title, subtitle, search field filtering the view (with a ⌘K button opening the palette), refresh, account menu (mail badge→Outlook, Toledo classic toggle, logout).
+Sidebar modes: **expanded** (240px) or **icon rail** (`.sb-rail`, 64px: centred icons with `title` tooltips, labels visually hidden but kept as accessible names, counts → dot, overdue → small red badge, pinned courses → coloured circles with two initials, Toledo+ mark on top). ≥900px: ⌘\ / Ctrl+\ and the toolbar button toggle, persisted in `state.ui.sidebarCollapsed`. 700–899px: the rail by default; toggling expands the full sidebar as an overlay (`.sb-open`, scrim, Esc). The toggle has `aria-expanded`. Grid columns animate (none under reduced motion). `page.css` keeps `<body>` at `overflow: visible` (only `<html>` scrolls) – otherwise body becomes a scroll container and sticky breaks. Theme: `data-appearance`, `data-density`, `--tint`, `--tint-text` on the shell root.
 On Ultra pages that are not a course outline, and on portal routes other than '#/home' (incl. '#/home?…'), '#/', '': if `wrap.deepBar`, show a slim glass top bar (Toledo+ mark → overview, "‹ <course>" back link when the path has a course id, page stays the original) and pad the page top.
 "Classic" mode: settings.wrap.portal/courses false → original page shows; a floating "Toledo+" pill (page.css) re-enables.
 
 ## Boot (core)
-`src/boot.js`: `await TP.settings.load(); await TP.data.init();` decide origin + route; mount shell or deep bar; on portal listen to `hashchange`, on Ultra poll `location.pathname` every 400ms (client-side routing). Hide the original page as early as possible (`document_start`, class `tplus-on` on `<html>`) to avoid a flash.
+`src/boot.js`: `await TP.settings.load(); await TP.data.init();` decide origin + route; mount shell or deep bar; then `TP.index.load()` + `TP.index.schedule()`; on portal listen to `hashchange`, on Ultra poll `location.pathname` every 400ms (client-side routing). Hide the original page as early as possible (`document_start`, class `tplus-on` on `<html>`) to avoid a flash.
 
 ## Quality bar
 WCAG 2.2 AA; keyboard reachable; works at 390px and 1440px; light + dark; NL/EN/FR complete; no console errors; no unhandled promise rejections; never `innerHTML` unsanitized remote HTML (use `TP.util.sanitize`), always `TP.util.esc` for text.

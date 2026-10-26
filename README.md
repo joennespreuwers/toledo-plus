@@ -25,7 +25,8 @@
 - **Planning** en **Mededelingen** (aankondigingen en Ad Valvas, met filters).
 - **Gelezen = gelezen in Toledo**: wat je in Toledo+ als gelezen markeert, staat ook in Toledo als gelezen (uit te zetten).
 - **Nederlands, English, Français**; licht/donker; accentkleur; dichtheid; secties aan/uit en herschikken.
-- Zoeken met **⌘K** of **/**. Werkt op laptop én smartphonebreedte (tabbalk onderaan).
+- **⌘K** (of **/**) zoekt overal: vakken, deadlines, mededelingen én **documenten in al je vakken** (een lokale index, nooit gedeeld). ⌘↵ downloadt meteen; mappen en opdrachten openen in hun vak.
+- Inklapbare zijbalk: met **⌘\\** wordt hij een smalle **iconenbalk**. Werkt op laptop én smartphonebreedte (tabbalk onderaan).
 - **Klassieke Toledo** is altijd één klik weg (accountmenu); de knop *Toledo+* zet het weer aan.
 
 ## Installeren
@@ -83,7 +84,7 @@ manifest.json        MV3-manifest
 background.js        cross-origin fetch-relay (portaal ↔ Ultra)
 page.css             verbergt de originele pagina, "Toledo+"-knop in klassieke modus
 ui.css               design tokens + gedeelde componenten (in de shadow root)
-src/core/            util, i18n, settings, net, data, ui, shell
+src/core/            util, i18n, settings, net, data, index (⌘K-index), ui, shell, palette (⌘K)
 src/i18n/            vertalingen (nl/en/fr) per view
 src/views/           overview, courses, course, deadlines, planning, announcements, settings (+ .css)
 src/boot.js          start alles op beide origins

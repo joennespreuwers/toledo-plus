@@ -204,11 +204,12 @@ describe('portal shell', () => {
     assert.equal(await page.locator('#tplus-root .tp-noresults-state:visible').count(), 1, 'one empty state on courses');
     await page.locator(S.search).fill('');
     await openPortal(h);
-    // keyboard: "/" focuses search
+    // keyboard: "/" opens the ⌘K palette (the toolbar field keeps filtering the current view)
     await page.locator(S.title).click();
     await page.keyboard.press('/');
-    assert.equal(await page.evaluate(() => document.querySelector('#tplus-root').shadowRoot.activeElement?.dataset?.shell), 'search');
+    assert.ok(await page.evaluate(() => document.querySelector('#tplus-root').shadowRoot.activeElement?.classList.contains('tp-pal-input')), '"/" focuses the palette input');
     await page.keyboard.press('Escape');
+    assert.equal(await page.evaluate(() => document.querySelector('#tplus-root').shadowRoot.querySelector('dialog.tp-palette').open), false);
   });
 
   it('"mark all read" sends PATCH /portal/api/batch/events with the right body', async () => {

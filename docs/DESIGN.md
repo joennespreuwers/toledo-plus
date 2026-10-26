@@ -54,7 +54,7 @@ Over-engineering to avoid: drag-and-drop widget builders, themes beyond light/da
 - `prefers-reduced-transparency: reduce` → opaque `--bg-3`. `prefers-reduced-motion: reduce` → no transforms/animations (fades only).
 
 ## Components
-- **Sidebar (≥700px)**: 240px, glass, sticky full height. Items 32px tall, 20px outlined icons in `--tint`, selected = `--tint` 15% fill + label weight 600, radius 8. Trailing counts in label-2 (red badge only for overdue). Group "Vastgezet/Pinned" lists pinned courses (color dot + name). Settings pinned to bottom. Collapsible with ⌘\ (or button in toolbar). `<nav aria-label>` + `aria-current="page"`.
+- **Sidebar (≥700px)**: 240px, glass, sticky full height. Items 32px tall, 20px outlined icons in `--tint`, selected = `--tint` 15% fill + label weight 600, radius 8. Trailing counts in label-2 (red badge only for overdue). Group "Vastgezet/Pinned" lists pinned courses (color dot + name). Settings pinned to bottom. Sticky full height (own scroll for long pinned lists). Collapses with ⌘\ (or the toolbar button) to a **64px icon rail** (macOS style): centred icons with tooltips, counts as a dot (red badge only for overdue), pinned courses as coloured circles with two initials, Toledo+ mark on top, Settings at the bottom; same glass, focus order and `aria-current`. `<nav aria-label>` + `aria-current="page"`.
 - **Tab bar (<700px)**: floating glass pill bottom center, 5 items (Overview, Courses, Deadlines, Planning, More), icon + short label, whole item ≥44×44. More opens a sheet with Announcements + Settings. `<nav>` + aria-current (not tablist). Page gets bottom padding so content/focus is never hidden.
 - **Toolbar**: sticky glass, 52px desktop / 44px mobile: (sidebar toggle) · title (inline once the large title scrolls away) · search (36px, radius 10, magnifier, clear, ⌘K and "/") · refresh · account menu (avatar initials). Max 3 trailing actions.
 - **Large title** at top of content (largeTitle), optional subtitle line (label-2), e.g. date + "Last updated 14:02".
@@ -66,7 +66,8 @@ Over-engineering to avoid: drag-and-drop widget builders, themes beyond light/da
 - **Switch**: 38×22 desktop (51×31 comfortable), on = --tint; native checkbox with role=switch.
 - **Settings**: inset grouped; label leading, control trailing; changes apply instantly; no "Bijgewerkt" line; group headers: Taal, Weergave, Overzicht (start page, sections with switch + ↑/↓, announcements in Nieuw, courses in Nieuw), Deadlines, Vakken (drill-in per course: nickname, color swatches, pin, hide), Synchronisatie met Toledo (incl. "Vastgezette vakken als favoriet in Toledo"), Toledo-pagina's (portal/vakken/diepere pagina's), Gegevens (export/import/reset), Over (version, GitHub, report issue).
 - **Pin = favourite**: one pin control ("Vastzetten", icon pin/pinFill), no separate star. Pinned courses sit in the sidebar "Vastgezet" group and first in lists; with favourite sync on they are the Toledo favourites.
-- **Search**: filters the current view live; on Overview it also searches courses, feed, deadlines. Empty state, once per view, centred: magnifier icon (32px, label-3), "Geen resultaten" (headline), "voor “x”" (subhead, label-2).
+- **Search**: the toolbar field filters the current view live; on Overview it also searches courses, feed, deadlines.
+- **Command palette (⌘K, `/`)**: centred glass popover (max-width 640, top 15vh; full-screen sheet on phones) with a search field and grouped results: Navigatie, Vakken, Documenten (all course trees, with course + folder path), Deadlines, Mededelingen; empty query shows Recent. ↑/↓, ↵ open, ⌘↵ download, Esc close. Footer line tells how much is indexed ("Doorzoekt 214 documenten in 15 vakken · bijgewerkt 17:40"). Empty state, once per view, centred: magnifier icon (32px, label-3), "Geen resultaten" (headline), "voor “x”" (subhead, label-2).
 
 ## Compact "New" feed (Overview)
 - One row per course: color dot · course name · summary line in label-2 ("2 bestanden · 1 video · 1 opdracht") · trailing badge count + latest relative time. Collapsed by default.
@@ -76,7 +77,7 @@ Over-engineering to avoid: drag-and-drop widget builders, themes beyond light/da
 - Empty: "Je bent helemaal bij." + "Bijgewerkt 14:02". Loading: skeleton rows of the same geometry after 300ms. Error: inline row "Kon Toledo niet laden · Opnieuw" while still showing cached data.
 
 ## Layout
-- <700px: single column, tab bar, comfortable-ish touch sizes. 700–1099: sidebar (auto-collapses to overlay < 900) + one column. ≥1100: sidebar + main (max 760) + side column 300–320 (schedule/announcements on overview; deadlines/announcements/teachers on course).
+- <700px: single column, tab bar, comfortable-ish touch sizes. 700–1099: sidebar (icon rail by default < 900, expands as an overlay) + one column. ≥1100: sidebar + main (max 760) + side column 300–320 (schedule/announcements on overview; deadlines/announcements/teachers on course).
 - Zoom to 200% without horizontal scroll; reflow at 320px.
 
 ## Accessibility checklist
