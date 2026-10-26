@@ -103,3 +103,36 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   tpRelay(msg).then(sendResponse, (e) => sendResponse({ ok: false, status: 0, data: null, error: String(e) }));
   return true; // async response
 });
+
+// ---------------------------------------------------------------- skip Toledo's landing page
+// https://toledo.kuleuven.be/ only shows an "Inloggen met Toledo" button → /portal/. A static declarativeNetRequest rule
+// (rules/landing.json, exact URL "/" or "/index.html" without query, top-level navigations only) redirects at the network
+// level, before the page loads. Turned off with settings.wrap.skipLanding === false, and for 5 minutes after a logout via
+// Toledo+ (storage.local 'tp:loggedOutAt'), so SSO doesn't sign the student straight back in. src/landing.js stays as a fallback.
+const TP_LOGOUT_MS = 5 * 60e3;
+let tpLandingTimer = null;
+function tpSyncLandingRule() {
+  if (!chrome.declarativeNetRequest || !chrome.storage) return;
+  try {
+    chrome.storage.sync.get('settings', (syn) => {
+      void chrome.runtime.lastError;
+      chrome.storage.local.get(['settingsLocal', 'tp:loggedOutAt'], (loc) => {
+        void chrome.runtime.lastError;
+        const off = (s) => !!(s && s.wrap && s.wrap.skipLanding === false);
+        const since = Date.now() - (Number(loc && loc['tp:loggedOutAt']) || 0);
+        const justLoggedOut = since >= 0 && since < TP_LOGOUT_MS;
+        const on = !(off(syn && syn.settings) || off(loc && loc.settingsLocal) || justLoggedOut);
+        // Re-enable when the logout window ends (best effort: the service worker may sleep; any wake-up re-syncs too).
+        if (tpLandingTimer) clearTimeout(tpLandingTimer);
+        if (justLoggedOut) tpLandingTimer = setTimeout(tpSyncLandingRule, TP_LOGOUT_MS - since + 50);
+        chrome.declarativeNetRequest.updateEnabledRulesets(on ? { enableRulesetIds: ['landing'] } : { disableRulesetIds: ['landing'] }, () => { void chrome.runtime.lastError; });
+      });
+    });
+  } catch (_) { /* optional */ }
+}
+if (chrome.storage && chrome.storage.onChanged) {
+  chrome.storage.onChanged.addListener((changes) => { if (changes.settings || changes.settingsLocal || changes['tp:loggedOutAt']) tpSyncLandingRule(); });
+}
+if (chrome.runtime.onStartup) chrome.runtime.onStartup.addListener(tpSyncLandingRule);
+if (chrome.runtime.onInstalled) chrome.runtime.onInstalled.addListener(tpSyncLandingRule);
+tpSyncLandingRule();

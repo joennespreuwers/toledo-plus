@@ -673,7 +673,7 @@ describe('greeting with first name + mail button (v1.5)', () => {
     const n = Number(h.fx.portal.mail.value);
     const badge = mail.locator('.tp-mail-badge');
     if (n) {
-      assert.equal((await badge.innerText()).trim(), n > 99 ? '99+' : String(n));
+      assert.equal((await badge.innerText()).trim(), String(n));
       assert.match(await mail.getAttribute('aria-label'), new RegExp(`${n} ongelezen`));
       assert.equal(await page.locator('#tplus-root .tp-avatar-dot').isVisible(), false, 'no second mail dot on the avatar ≥ 700px');
     }

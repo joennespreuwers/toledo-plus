@@ -1,0 +1,11 @@
+[
+  {
+    "id": 1,
+    "priority": 1,
+    "action": { "type": "redirect", "redirect": { "url": "https://toledo.kuleuven.be/portal/" } },
+    "condition": {
+      "regexFilter": "^https://toledo\\.kuleuven\\.be/(index\\.html?)?$",
+      "resourceTypes": ["main_frame"]
+    }
+  }
+]

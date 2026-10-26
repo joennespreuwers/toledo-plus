@@ -1,0 +1,37 @@
+name: Worker
+
+# Deploys the Toledo+ API (worker/) to Cloudflare when worker/** changes on main.
+# Needs repo secrets CLOUDFLARE_API_TOKEN (template "Edit Cloudflare Workers", plus D1 Edit) and CLOUDFLARE_ACCOUNT_ID.
+on:
+  push:
+    branches: [main]
+    paths: ["worker/**", ".github/workflows/worker.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: worker
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Worker unit tests
+        run: node --test tests/unit/worker.test.js
+      - name: Apply schema (idempotent) + deploy
+        working-directory: worker
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then echo "::warning::No CLOUDFLARE_API_TOKEN secret – skipping deploy"; exit 0; fi
+          V=$(node -p "require('../manifest.json').version")
+          npx --yes wrangler@4 d1 execute toledo-plus --remote --file=schema.sql
+          npx --yes wrangler@4 deploy --var "LATEST_VERSION:$V"

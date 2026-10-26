@@ -183,7 +183,7 @@ test('packaging: host page, worker, engine and pdf.js (+ its licence) ship; no n
   const fs = require('fs');
   const { read, exists } = require('../helpers/sandbox');
   const m = JSON.parse(read('manifest.json'));
-  assert.deepEqual(m.permissions, ['storage'], 'no offscreen/unlimitedStorage permission needed');
+  assert.ok(!m.permissions.some((p) => /offscreen|unlimitedStorage/.test(p)), 'no offscreen/unlimitedStorage permission needed');
   const { packFiles } = await import(path.join(ROOT, 'scripts/pack.mjs'));
   const files = packFiles(ROOT);
   for (const f of ['src/core/fulltext-host.html', 'src/core/fulltext-host.mjs', 'src/core/fulltext-worker.mjs', 'src/core/fulltext-engine.js', 'src/core/fulltext.js',
