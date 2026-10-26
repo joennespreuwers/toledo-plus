@@ -15,13 +15,6 @@
 }
 .cv-teachers a { color: var(--tint-text, var(--tint)); }
 .cv-teachers a:hover { background: var(--fill-2, var(--fill)); }
-.cv-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.cv-view .cv-btn {
-  display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 4px 12px; border: 0; border-radius: 8px;
-  background: var(--bg-2); color: var(--tint-text, var(--tint)); font: inherit; font-size: var(--fs-subhead, .875rem); font-weight: 600; cursor: pointer;
-  box-shadow: var(--shadow-card);
-}
-.cv-view .cv-btn:hover { filter: brightness(.97); }
 
 /* ---------- rows ---------- */
 .cv-group { overflow: hidden; }

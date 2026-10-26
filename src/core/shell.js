@@ -825,8 +825,13 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     }
     const acts = $('.tp-head-actions');
     if (acts) {
-      acts.innerHTML = (current.actions || []).map((a, i) =>
+      const html = (current.actions || []).map((a, i) =>
         TP.ui.button(a.label, { icon: a.icon, kind: 'tinted', attrs: { 'data-shell': 'view-action', 'data-index': i, 'data-id': a.id } })).join('');
+      if (acts.innerHTML !== html) {
+        const had = shadow.activeElement && acts.contains(shadow.activeElement) ? shadow.activeElement.dataset.id : null;
+        acts.innerHTML = html;
+        if (had) acts.querySelector(`[data-id="${CSS.escape(had)}"]`)?.focus(); // e.g. "Zet in zijbalk" → "Uit zijbalk"
+      }
     }
     if (mode === 'shell') document.title = `${title} · Toledo+`;
   }
