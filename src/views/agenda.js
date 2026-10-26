@@ -22,7 +22,7 @@
   const S = {
     ctx: null, mode: null, anchor: null, q: '', items: new Map(), seq: 0,
     pop: null, popKind: '', popOpener: null, timer: null, ro: null, lastNarrow: null,
-    prefs: null, known: new Map(), scroll: { key: '', top: 0 }, mini: null, swipe: null, paintT: 0,
+    prefs: null, known: new Map(), scroll: { key: '', top: 0, pending: false }, mini: null, swipe: null, paintT: 0,
   };
   const bound = new WeakSet();
 
@@ -505,17 +505,27 @@
     // keep the grid where the student scrolled it; jump to the first lesson only for a new range
     const key = `${m}|${r.from}|${r.days}`;
     const nsc = view.querySelector('.ag-scroll');
+    S.scroll.key = key;
     if (nsc) {
-      const hh = (nsc.querySelector('.ag-hour') || {}).offsetHeight || 48;
-      if (key !== prevKey) nsc.scrollTop = Number(nsc.closest('.ag-timegrid').dataset.scroll || 8) * hh;
+      if (key !== prevKey || S.scroll.pending) autoScroll(nsc);
       else nsc.scrollTop = S.scroll.top;
     }
-    S.scroll.key = key;
     if (lsc && typeof window !== 'undefined' && window.scrollY !== pageY) window.scrollTo(0, pageY);
     restoreFocus(ctx.root, focus);
     updateNow();
     if (S.q) applySearch();
     if (S.pop && S.popKind === 'filter') refreshFilterPop(g.all);
+  }
+
+  /** Scroll the time grid to its start hour; retried on the next paint/frame while the view isn't laid out yet. */
+  function autoScroll(sc, tries = 0) {
+    const hour = Number(sc.closest('.ag-timegrid').dataset.scroll || 8);
+    const hh = (sc.querySelector('.ag-hour') || {}).offsetHeight || 0;
+    sc.scrollTop = hour * hh;
+    S.scroll.pending = !hh || (hour > 0 && sc.scrollTop === 0);
+    if (S.scroll.pending && tries < 40 && typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => { if (sc.isConnected && S.scroll.pending) autoScroll(sc, tries + 1); });
+    }
   }
 
   function captureFocus(root) {

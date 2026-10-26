@@ -164,8 +164,9 @@ describe('portal shell', () => {
     assert.ok(!/\[[A-Z]\d{4,}\]/.test(txt), 'course names are shown without the [code] suffix');
   });
 
-  it('sidebar "Vakken": current, non-hidden courses in the student\'s order; collapsible; no pin UI anywhere', async () => {
+  it('sidebar "Vakken" (v1.5): only courses added with "Zet in zijbalk"; empty → no group; course order; collapsible; no pin UI', async () => {
     const GELUID = lu('Geluid 1');
+    const FILM = lu('Filmtaal 1');
     await h.setSettings({ courses: { sort: 'name' } });
     await openPortal(h, 'courses');
     const group = () => sr(page, (r) => {
@@ -173,20 +174,29 @@ describe('portal shell', () => {
       return ul ? { hidden: ul.hidden, names: [...ul.querySelectorAll('.tp-sb-label')].map((x) => x.textContent), dots: ul.querySelectorAll('.tp-dot').length,
         counts: [...ul.querySelectorAll('.tp-sb-count .tp-sr')].map((x) => x.textContent), btn: r.querySelector('[data-shell="sb-courses"]')?.getAttribute('aria-expanded') } : null;
     });
+    // existing users (v3 settings) start clean: no group at all
+    assert.equal(await group(), null, 'no "Vakken" group while nothing is added');
+    assert.equal(await page.locator('#tplus-root [data-shell="sb-courses"]').count(), 0, 'no heading either');
+    // the trailing toggle on the course cards adds courses
+    const toggle = (luId) => page.locator(`#tplus-root .cs-card [data-action="sidebar"][data-lu="${luId}"]`);
+    assert.equal(await toggle(GELUID).getAttribute('aria-pressed'), 'false');
+    await toggle(GELUID).click();
+    await toggle(FILM).click();
+    assert.ok(await waitSettings(h, (st) => st.courses?.items?.[GELUID]?.inSidebar === true && st.courses?.items?.[FILM]?.inSidebar === true), 'inSidebar stored per course');
+    await page.waitForFunction(() => document.querySelector('#tplus-root').shadowRoot.querySelectorAll('#tp-sb-courses .tp-sb-label').length === 2, null, { timeout: 4000 });
+    assert.equal(await toggle(GELUID).getAttribute('aria-pressed'), 'true');
     let g = await group();
-    assert.ok(g && g.names.length >= 10, `sidebar group lists the current courses: ${g && g.names}`);
-    const sorted = [...g.names].sort((a, b) => a.localeCompare(b, 'nl', { sensitivity: 'base', numeric: true }));
-    assert.deepEqual(g.names, sorted, 'in the student\'s order (sort: name)');
-    assert.ok(!g.names.includes('Wiskunde 1'), 'older academic year not listed');
-    assert.equal(g.dots, g.names.length, 'colour dot per course');
+    assert.deepEqual(g.names, ['Filmtaal 1', 'Geluid 1'], 'only the added courses, in the courses sort (name)');
+    assert.equal(g.dots, 2, 'colour dot per course');
     assert.ok(g.counts.length >= 1, 'unread count on courses with news');
     assert.equal(g.btn, 'true');
     // hide a course → it leaves the group
     await h.setSettings({ courses: { items: { [GELUID]: { hidden: true } } } });
     await openPortal(h, 'courses');
     g = await group();
-    assert.ok(!g.names.includes('Geluid 1'), 'hidden course not in the sidebar');
+    assert.deepEqual(g.names, ['Filmtaal 1'], 'hidden course not in the sidebar');
     await h.setSettings({ courses: { items: { [GELUID]: { hidden: false } }, sort: 'activity' } });
+    await openPortal(h, 'courses');
     // collapse
     await page.locator('#tplus-root [data-shell="sb-courses"]').click();
     g = await group();
@@ -194,8 +204,14 @@ describe('portal shell', () => {
     assert.equal(g.btn, 'false');
     assert.ok(await waitFor(async () => (await h.getState())?.ui?.sbCoursesClosed === true), 'collapse state persisted');
     await page.locator('#tplus-root [data-shell="sb-courses"]').click();
-    // no pin controls / labels anywhere (views + edit mode + settings)
+    // Vakken › Bewerk: a labelled "In zijbalk" switch per row removes it again
     await page.locator('#tplus-root [data-shell="view-action"][data-id="edit"]').click();
+    const sw = page.locator(`#tplus-root input[name="sidebar__${FILM}"]`);
+    assert.equal(await sw.isChecked(), true);
+    await sw.click({ force: true });
+    assert.ok(await waitSettings(h, (st) => !st.courses?.items?.[FILM]?.inSidebar), 'switch removes it');
+    await page.waitForFunction(() => [...document.querySelector('#tplus-root').shadowRoot.querySelectorAll('#tp-sb-courses .tp-sb-label')].map((x) => x.textContent).join() === 'Geluid 1', null, { timeout: 4000 });
+    // no pin controls / labels anywhere (views + edit mode + settings)
     for (const route of [null, 'settings']) {
       if (route) await openPortal(h, route);
       const pins = await sr(page, (r) => r.querySelectorAll('[name^="pin__"], [data-action="pin"], [aria-labelledby="tp-sb-pinned"]').length);
@@ -203,6 +219,9 @@ describe('portal shell', () => {
       const txt = await mainText(page);
       assert.ok(!/Vastzet|Vastgezet/.test(txt), 'no pin wording');
     }
+    // the palette is unaffected: it still searches every course
+    await h.setSettings({ courses: { items: { [GELUID]: { inSidebar: false } } } });
+    assert.deepEqual(h.errors, []);
   });
 
   it('sidebar badges: none on Overzicht, Deadlines = open count (red only when overdue), KU Loket without badge', async () => {

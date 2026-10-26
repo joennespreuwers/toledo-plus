@@ -90,17 +90,109 @@ describe('device compatibility', () => {
   before(async () => { h = await launch({ viewport: { width: 2560, height: 1300 } }); });
   after(async () => { await h?.close(); });
 
-  it('1920–2560: content sits next to the sidebar and the toolbar lines up with it', async () => {
-    for (const width of [1920, 2560]) {
-      await h.page.setViewportSize({ width, height: 1200 });
+  it('1280–2560: one centred content column (≤ 1240px) right of the sidebar; the toolbar lines up with it', async () => {
+    for (const width of [1280, 1440, 1920, 2560]) {
+      await h.page.setViewportSize({ width, height: 1000 });
       await go(h, portalRoute('overview'));
       const sb = await box(h.page, 'nav.tp-sidebar');
       const main = await box(h.page, 'main#tp-main');
-      assert.ok(main.left - sb.right <= 1, `${width}: main starts at the sidebar (gap ${main.left - sb.right}px)`);
+      const area = width - sb.right;
+      assert.ok(main.width <= 1241, `${width}: content column ≤ 1240 (${main.width})`);
+      const gapL = main.left - sb.right, gapR = width - main.right;
+      assert.ok(Math.abs(gapL - gapR) <= 2, `${width}: centred in the area right of the sidebar (${gapL} vs ${gapR})`);
+      if (area <= 1240) assert.ok(gapL <= 1, `${width}: fills the area when it is narrower`);
+      // overview uses the side column (schedule / announcements)
+      const side = await box(h.page, '.tp-col-side');
+      assert.ok(side && side.width >= 280 && side.width <= 341, `${width}: side column ${side && side.width}`);
       const content = await box(h.page, '.tp-view-wrap');
-      const refresh = await box(h.page, '.tp-toolbar .tp-avatar');
-      assert.ok(Math.abs(refresh.right - content.right) <= 12, `${width}: toolbar controls end at the content edge (${refresh.right} vs ${content.right})`);
+      const avatar = await box(h.page, '.tp-toolbar .tp-avatar');
+      assert.ok(Math.abs(avatar.right - content.right) <= 12, `${width}: toolbar controls end at the content edge (${avatar.right} vs ${content.right})`);
+      const title = await box(h.page, '.tp-large-title');
+      assert.ok(Math.abs(title.left - content.left) <= 1, `${width}: large title aligned with the content`);
       await screenshot(h.page, `wide-${width}`);
+    }
+    // list views: a centred ~760px column, toolbar aligned with it
+    await h.page.setViewportSize({ width: 1920, height: 1000 });
+    for (const route of ['deadlines', 'settings', 'kuloket']) {
+      await go(h, portalRoute(route));
+      const sb = await box(h.page, 'nav.tp-sidebar');
+      const main = await box(h.page, 'main#tp-main');
+      assert.ok(Math.abs((main.left - sb.right) - (1920 - main.right)) <= 2, `${route}: centred`);
+      const content = await box(h.page, '.tp-view-wrap');
+      assert.ok(content.width <= 770, `${route}: narrow (${content.width})`);
+      const avatar = await box(h.page, '.tp-toolbar .tp-avatar');
+      assert.ok(Math.abs(avatar.right - content.right) <= 12, `${route}: toolbar lines up (${avatar.right} vs ${content.right})`);
+    }
+  });
+
+  it('sidebar, icon rail and tab bar never scroll horizontally (long course names, badges)', async () => {
+    const fx = h.fx.portal;
+    const LONG = 'Interdisciplinair Onderzoeksseminarie Audiovisuele Kunsten en Mediatheorie in de Hedendaagse Praktijk';
+    const NOSPACE = 'Supercalifragilisticexpialidocious_Kalibratieonderzoeksmethodologie_X';
+    const e1 = fx.enrollments.find((e) => e.type === 'course');
+    const e2 = fx.enrollments.filter((e) => e.type === 'course')[1];
+    const old = [e1.title, e2.title];
+    e1.title = `${LONG} [X99901]`; e2.title = `${NOSPACE} [X99902]`;
+    const items = Object.fromEntries(fx.enrollments.filter((e) => e.type === 'course').map((e) => [e.learningUnitId, { inSidebar: true }]));
+    await h.setSettings({ courses: { items } });
+    const reload = async () => { // the enrollments are cached: fetch the renamed fixtures now
+      await go(h, portalRoute('courses'));
+      await h.page.locator('#tplus-root [data-shell="refresh"]').click();
+      await waitForQuiet(h.page);
+    };
+    await reload();
+    try {
+      const measure = () => h.page.evaluate(() => {
+        const sr = document.querySelector('#tplus-root').shadowRoot;
+        const out = {};
+        for (const sel of ['nav.tp-sidebar', '.tp-sb-scroll', '.tp-sb-foot', '.tp-sb-brand', 'nav.tp-tabbar', '.tp-tabs']) {
+          const el = sr.querySelector(sel);
+          if (!el || !el.getClientRects().length) continue;
+          out[sel] = { sw: el.scrollWidth, cw: el.clientWidth, ox: getComputedStyle(el).overflowX };
+        }
+        const nav = sr.querySelector('nav.tp-sidebar');
+        const nr = nav.getBoundingClientRect();
+        out.wider = nr.width ? [...nav.querySelectorAll('*')].filter((x) => { const r = x.getBoundingClientRect(); return r.width && !x.closest('.tp-sr') && (r.right > nr.right + 0.5 || r.left < nr.left - 0.5); }).map((x) => x.className.baseVal ?? x.className) : [];
+        return out;
+      });
+      for (const width of [320, 390, 700, 820, 1100, 1440, 2560]) {
+        await h.page.setViewportSize({ width, height: 700 });
+        await go(h, portalRoute('courses'));
+        for (const collapsed of width >= 900 ? [false, true] : [false]) {
+          await h.setState({ ui: { sidebarCollapsed: collapsed } });
+          await go(h, portalRoute('courses'));
+          const m = await measure();
+          for (const [sel, v] of Object.entries(m)) {
+            if (sel === 'wider') continue;
+            assert.ok(v.sw <= v.cw, `${width}${collapsed ? ' rail' : ''}: ${sel} scrolls horizontally (${v.sw} > ${v.cw})`);
+          }
+          assert.deepEqual(m.wider, [], `${width}${collapsed ? ' rail' : ''}: nothing wider than the sidebar`);
+          assert.ok(await noHScroll(h.page), `${width}: page horizontal scroll`);
+        }
+        if (width === 1440) {
+          const lbl = await h.page.evaluate(() => { const l = [...document.querySelector('#tplus-root').shadowRoot.querySelectorAll('.tp-sb-course .tp-sb-label')].find((x) => x.textContent.startsWith('Interdisciplinair')); return l && { ov: getComputedStyle(l).textOverflow, clipped: l.scrollWidth > l.clientWidth }; });
+          assert.ok(lbl && lbl.ov === 'ellipsis' && lbl.clipped, 'long names ellipsize');
+          await screenshot(h.page, 'sidebar-long-names');
+        }
+      }
+    } finally {
+      [e1.title, e2.title] = old;
+      await h.page.setViewportSize({ width: 1440, height: 800 });
+      await reload();
+      await h.setState({ ui: { sidebarCollapsed: false } });
+      await h.setSettings({ courses: { items: Object.fromEntries(Object.keys(items).map((k) => [k, { inSidebar: false }])) } });
+    }
+  });
+
+  it('200% zoom (640px CSS width) and 320px: no horizontal scroll in any view', async () => {
+    for (const width of [320, 640]) {
+      await h.page.setViewportSize({ width, height: 700 });
+      for (const r of ['overview', 'courses', 'deadlines', 'announcements', 'kuloket', 'settings']) {
+        await go(h, portalRoute(r));
+        assert.ok(await noHScroll(h.page), `${r} @${width}: horizontal scroll`);
+      }
+      await go(h, COURSE_URL);
+      assert.ok(await noHScroll(h.page), `course @${width}: horizontal scroll`);
     }
   });
 

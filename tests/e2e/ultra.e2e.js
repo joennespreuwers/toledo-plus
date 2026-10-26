@@ -48,6 +48,19 @@ describe('ultra course page', () => {
     await screenshot(page, 'ultra-course-light-desktop');
   });
 
+  it('course header "Zet in zijbalk" adds the course to the sidebar (and "Uit zijbalk" removes it)', async () => {
+    const btn = page.locator('#tplus-root .cv-actions [data-action="sidebar"]');
+    assert.equal((await btn.innerText()).trim(), 'Zet in zijbalk');
+    assert.equal(await page.locator('#tplus-root nav.tp-sidebar .tp-sb-course').count(), 0, 'nothing in the sidebar yet');
+    await btn.click();
+    await page.waitForFunction(() => !!document.querySelector('#tplus-root').shadowRoot.querySelector('nav.tp-sidebar .tp-sb-course.active[aria-current="page"]'), null, { timeout: 4000 });
+    assert.equal((await btn.innerText()).trim(), 'Uit zijbalk');
+    const lu = await btn.getAttribute('data-lu');
+    assert.ok(await waitSettings(h, (st) => st.courses?.items?.[lu]?.inSidebar === true), 'stored');
+    await page.waitForFunction(() => document.querySelector('#tplus-root').shadowRoot.activeElement?.dataset?.fk === 'sidebar', null, { timeout: 2000 }).catch(() => {});
+    assert.equal(await btn.evaluate((b) => b.getRootNode().activeElement === b), true, 'focus stays on the button after the re-render');
+  });
+
   it('header "n nieuw" uses the feed\'s source; blue dots; "Alleen nieuw" filter; teachers card instead of chips ≥1100', async () => {
     const info = await page.evaluate(() => {
       const sr = document.querySelector('#tplus-root').shadowRoot;

@@ -40,7 +40,7 @@
 <header class="nav">
   <div class="wrap">
     <a class="brand" href="./"><img src="assets/icon48.png" width="28" height="28" alt="">Toledo+</a>
-    <nav aria-label="Hoofdnavigatie"><ul class="nav-links"><li><a href="./#features">Functies</a></li><li><a href="./#how">Hoe het werkt</a></li><li><a href="./#privacy">Privacy</a></li><li><a href="./#faq">Vragen</a></li></ul></nav>
+    <nav aria-label="Hoofdnavigatie"><ul class="nav-links"><li><a href="./#features">Functies</a></li><li><a href="./#install">Installeren</a></li><li><a href="./#privacy">Privacy</a></li><li><a href="./#faq">Vragen</a></li></ul></nav>
     <div class="nav-end">
       <nav class="lang" aria-label="Taal"><a href="privacy.html" hreflang="nl" lang="nl" aria-current="true"><abbr title="Nederlands" style="text-decoration:none">NL</abbr><span class="visually-hidden"> – Nederlands</span></a><a href="en/privacy.html" hreflang="en" lang="en"><abbr title="English" style="text-decoration:none">EN</abbr><span class="visually-hidden"> – English</span></a><a href="fr/privacy.html" hreflang="fr" lang="fr"><abbr title="Français" style="text-decoration:none">FR</abbr><span class="visually-hidden"> – Français</span></a></nav>
       <a class="btn btn-primary btn-small" href="./#install">Download</a>
@@ -65,13 +65,13 @@
     <h2 id="signal">Anoniem gebruikssignaal en feedback</h2>
     <p>Standaard stuurt Toledo+ één keer per dag een anoniem signaal naar <code>https://api.toledoplus.be</code> met precies vier dingen: een <strong>willekeurige installatie-id</strong> (bij de installatie aangemaakt, niet gekoppeld aan jou), de <strong>versie</strong> van Toledo+, de <strong>browser</strong> en de <strong>taal</strong> van de interface. Zo weten we hoeveel mensen Toledo+ gebruiken en welke versies nog draaien.</p><ul><li>Geen naam, geen e-mailadres, geen studentennummer en geen Toledo- of KU Loket-gegevens.</li><li>Je IP-adres wordt niet bewaard.</li><li>Uitzetten kan in <strong>Instellingen → Over</strong> of meteen in de welkomstkaart. Dan wordt er niets meer verstuurd.</li></ul><p><strong>Feedback</strong> die je vanuit Toledo+ verstuurt, gaat naar hetzelfde adres. Ze bevat alleen contactgegevens als je die zelf invult.</p><p>De server draait op Cloudflare Workers; Cloudflare verwerkt de verzoeken als hostingpartij.</p>
     <h2>Wat Toledo+ níet doet</h2>
-    <ul><li>Geen tracking van wie je bent: geen analytics-diensten, crashrapporten, advertenties of trackers van derden.</li><li>Geen diensten, lettertypes of CDN’s van derden. Alle code zit in de extensie; de enige eigen server is <code>api.toledoplus.be</code> voor het anonieme signaal en feedback.</li><li>Je Toledo- en KU Loket-gegevens worden nooit gedeeld met de ontwikkelaar, de KU Leuven, LUCA of wie dan ook.</li><li>Geen code van op afstand: de extensie downloadt of voert nooit code uit.</li></ul>
+    <ul><li>Geen tracking van wie je bent: geen analytics-diensten, crashrapporten, advertenties of trackers van derden.</li><li>Geen diensten, lettertypes of CDN’s van derden. Alle code zit in de extensie; de enige eigen server is <code>api.toledoplus.be</code> voor het anonieme signaal en feedback.</li><li>Je Toledo- en KU Loket-gegevens worden nooit gedeeld met de ontwikkelaar, de KU Leuven, andere onderwijsinstellingen of wie dan ook.</li><li>Geen code van op afstand: de extensie downloadt of voert nooit code uit.</li></ul>
     <h2>Je gegevens wissen</h2>
     <p>Instellingen → Gegevens → <strong>Reset</strong>, of verwijder de extensie (<code>chrome://extensions</code> → Verwijderen). Daarmee is alles weg wat Toledo+ bewaarde; nergens anders staat iets. Het anonieme signaal stopt zodra je het uitzet of de extensie verwijdert.</p>
     <h2>Deze website</h2>
-    <p>toledoplus.be is een statische website op GitHub Pages. Ze gebruikt geen cookies, geen analytics en geen externe lettertypes of scripts. GitHub kan als host technische serverlogs bijhouden (zoals IP-adressen) volgens <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement">zijn eigen privacyverklaring</a>.</p>
+    <p>toledoplus.be is een statische website op GitHub Pages. Ze gebruikt geen cookies, geen analytics en geen externe lettertypes of scripts. GitHub kan als host technische serverlogs bijhouden (zoals IP-adressen) volgens <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement">zijn eigen privacyverklaring</a>. De <a href="demo/">demo</a> draait volledig in je browser met nepdata en stuurt niets door.</p>
     <h2>Onofficieel</h2>
-    <p>Toledo+ is een onafhankelijk studentenproject en is niet verbonden aan de KU Leuven, LUCA School of Arts of Blackboard/Anthology Inc. Je gebruik van Toledo en KU Loket blijft onderworpen aan de voorwaarden en het privacybeleid van de KU Leuven.</p>
+    <p>Toledo+ is een onafhankelijk studentenproject en is niet verbonden aan de KU Leuven, de instellingen van de KU Leuven-associatie of Blackboard/Anthology Inc. Je gebruik van Toledo en KU Loket blijft onderworpen aan de voorwaarden en het privacybeleid van de KU Leuven.</p>
     <h2>Vragen</h2>
     <p>Stel je vraag in de <a href="https://github.com/joennespreuwers/toledo-plus/discussions">Discussions op GitHub</a>. Een beveiligingsprobleem? Zie <a href="https://github.com/joennespreuwers/toledo-plus/blob/main/SECURITY.md">SECURITY.md</a>. Wijzigingen aan dit beleid staan op deze pagina en in de <a href="https://github.com/joennespreuwers/toledo-plus">repository</a>.</p>
     <p style="margin-top:48px"><a class="link-arrow" href="./">Terug naar Toledo+</a></p>
@@ -79,9 +79,9 @@
 </main>
 <footer class="footer">
   <div class="wrap">
-    <ul class="footer-links"><li><a href="https://github.com/joennespreuwers/toledo-plus">GitHub</a></li><li><a href="privacy.html">Privacy</a></li><li><a href="https://github.com/joennespreuwers/toledo-plus/blob/main/CHANGELOG.md">Wat is nieuw</a></li><li><a href="https://github.com/joennespreuwers/toledo-plus/issues/new/choose">Probleem melden</a></li></ul>
-    <p>Alle beelden tonen fictieve gegevens.</p>
-    <div class="rule"><p>Toledo is een product van de KU Leuven. Toledo+ is een onafhankelijk project en is niet verbonden aan de KU Leuven, LUCA School of Arts of Blackboard/Anthology.</p><p>© 2026 Joenne Spreuwers · MIT-licentie</p></div>
+    <ul class="footer-links"><li><a href="https://github.com/joennespreuwers/toledo-plus">GitHub</a></li><li><a href="privacy.html">Privacy</a></li><li><a href="demo/">Demo</a></li><li><a href="https://github.com/joennespreuwers/toledo-plus/blob/main/CHANGELOG.md">Wat is nieuw</a></li><li><a href="https://github.com/joennespreuwers/toledo-plus/issues/new/choose">Probleem melden</a></li></ul>
+    <p>Alle beelden en de demo tonen fictieve gegevens.</p>
+    <div class="rule"><p>Toledo is een product van de KU Leuven. Toledo+ is een onafhankelijk studentenproject en is niet verbonden aan de KU Leuven, de instellingen van de associatie of Blackboard/Anthology.</p><p>© 2026 Joenne Spreuwers · MIT-licentie</p></div>
   </div>
 </footer>
 </body>

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Toledo+ — Toledo, but calm</title>
-<meta name="description" content="A free browser extension for Chrome and Edge that turns Toledo and KU Loket into one calm app: deadlines first, what’s new per course, your full timetable and ⌘K search across all your courses. Your data stays in your browser.">
+<meta name="description" content="A free browser extension for Chrome and Edge that makes Toledo easy to read: your deadlines, new files, courses and timetable in one place. For students of KU Leuven and its association.">
 <link rel="canonical" href="https://toledoplus.be/en/">
 <link rel="alternate" hreflang="nl" href="https://toledoplus.be/">
 <link rel="alternate" hreflang="en" href="https://toledoplus.be/en/">
@@ -21,24 +21,18 @@
 <meta property="og:site_name" content="Toledo+">
 <meta property="og:url" content="https://toledoplus.be/en/">
 <meta property="og:title" content="Toledo+ — Toledo, but calm">
-<meta property="og:description" content="A free browser extension for Chrome and Edge that turns Toledo and KU Loket into one calm app: deadlines first, what’s new per course, your full timetable and ⌘K search across all your courses. Your data stays in your browser.">
+<meta property="og:description" content="A free browser extension for Chrome and Edge that makes Toledo easy to read: your deadlines, new files, courses and timetable in one place. For students of KU Leuven and its association.">
 <meta property="og:image" content="https://toledoplus.be/assets/img/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="Toledo+: the overview with deadlines, timetable and new items per course, in a browser window.">
 <meta property="og:locale" content="en_GB">
-<meta property="og:locale:alternate" content="nl_BE">
-<meta property="og:locale:alternate" content="fr_BE">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Toledo+ — Toledo, but calm">
-<meta name="twitter:description" content="A free browser extension for Chrome and Edge that turns Toledo and KU Loket into one calm app: deadlines first, what’s new per course, your full timetable and ⌘K search across all your courses. Your data stays in your browser.">
-<meta name="twitter:image" content="https://toledoplus.be/assets/img/og.png">
 <link rel="stylesheet" href="../assets/site.css">
 <link rel="preload" as="image" type="image/webp" href="../assets/img/overview-light.webp" media="(prefers-color-scheme: light)" fetchpriority="high">
 <link rel="preload" as="image" type="image/webp" href="../assets/img/overview-dark.webp" media="(prefers-color-scheme: dark)" fetchpriority="high">
-<script>document.documentElement.classList.add('js');</script>
 <script src="../assets/site.js" defer></script>
-<script type="application/ld+json">{"@context": "https://schema.org", "@type": "SoftwareApplication", "name": "Toledo+", "url": "https://toledoplus.be/en/", "description": "A free browser extension for Chrome and Edge that turns Toledo and KU Loket into one calm app: deadlines first, what’s new per course, your full timetable and ⌘K search across all your courses. Your data stays in your browser.", "applicationCategory": "BrowserApplication", "operatingSystem": "Chrome, Microsoft Edge", "inLanguage": ["nl", "en", "fr"], "isAccessibleForFree": true, "license": "https://opensource.org/licenses/MIT", "softwareVersion": "1.4.0", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "EUR"}, "author": {"@type": "Person", "name": "Joenne Spreuwers"}, "codeRepository": "https://github.com/joennespreuwers/toledo-plus", "image": "https://toledoplus.be/assets/img/og.png"}</script>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "SoftwareApplication", "name": "Toledo+", "url": "https://toledoplus.be/en/", "description": "A free browser extension for Chrome and Edge that makes Toledo easy to read: your deadlines, new files, courses and timetable in one place. For students of KU Leuven and its association.", "applicationCategory": "BrowserApplication", "operatingSystem": "Chrome, Microsoft Edge", "inLanguage": ["nl", "en", "fr"], "isAccessibleForFree": true, "license": "https://opensource.org/licenses/MIT", "softwareVersion": "1.4.0", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "EUR"}, "author": {"@type": "Person", "name": "Joenne Spreuwers"}, "codeRepository": "https://github.com/joennespreuwers/toledo-plus", "image": "https://toledoplus.be/assets/img/og.png"}</script>
 </head>
 <body id="top">
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
@@ -47,25 +41,19 @@
 <symbol id="i-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2.2h7.5A2.5 2.5 0 0 1 21 9.7v7.8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/><path d="M3 10.5h18"/></symbol>
 <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></symbol>
 <symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="M7.5 13.5h2M11 13.5h2M14.5 13.5h2M7.5 16.8h2M11 16.8h2"/></symbol>
-<symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19z"/><path d="M10 20.5v-5h4v5"/></symbol>
-<symbol id="i-checkcircle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="m8.2 12.4 2.6 2.6 5-5.4"/></symbol>
 <symbol id="i-sliders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h9M18 7h2M4 17h3M12 17h8"/><circle cx="15.5" cy="7" r="2.3"/><circle cx="9.5" cy="17" r="2.3"/></symbol>
 <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 19 6v5.5c0 4.4-2.9 7.9-7 9.5-4.1-1.6-7-5.1-7-9.5V6z"/><path d="m9 12 2.2 2.2L15.2 10"/></symbol>
 <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
-<symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14"/></symbol>
-<symbol id="i-puzzle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M10 5.5a2 2 0 1 1 4 0V7h3a1 1 0 0 1 1 1v3h-1.5a2 2 0 1 0 0 4H18v3a1 1 0 0 1-1 1h-3v-1.5a2 2 0 1 0-4 0V19H7a1 1 0 0 1-1-1v-3h1.5a2 2 0 1 0 0-4H6V8a1 1 0 0 1 1-1h3z"/></symbol>
-<symbol id="i-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4.5"/><path d="m11.3 11.7 8.2-8.2M16.5 6.5l2.5 2.5M14 9l2 2"/></symbol>
-<symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></symbol>
-<symbol id="i-github" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></symbol>
 <symbol id="i-minus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 12h12"/></symbol>
+<symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14"/></symbol>
 </svg>
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="nav">
   <div class="wrap">
-    <a class="brand" href="../en/#top"><img src="../assets/icon48.png" width="28" height="28" alt="">Toledo+</a>
-    <nav aria-label="Main navigation"><ul class="nav-links"><li><a href="#features">Features</a></li><li><a href="#how">How it works</a></li><li><a href="#privacy">Privacy</a></li><li><a href="#faq">FAQ</a></li></ul></nav>
+    <a class="brand" href="./#top"><img src="../assets/icon48.png" width="28" height="28" alt="">Toledo+</a>
+    <nav aria-label="Main navigation"><ul class="nav-links"><li><a href="#features">Features</a></li><li><a href="#install">Install</a></li><li><a href="#privacy">Privacy</a></li><li><a href="#faq">FAQ</a></li></ul></nav>
     <div class="nav-end">
-      <nav class="lang" aria-label="Language"><a href="../" hreflang="nl" lang="nl"><abbr title="Nederlands" style="text-decoration:none">NL</abbr><span class="visually-hidden"> – Nederlands</span></a><a href="../en/" hreflang="en" lang="en" aria-current="true"><abbr title="English" style="text-decoration:none">EN</abbr><span class="visually-hidden"> – English</span></a><a href="../fr/" hreflang="fr" lang="fr"><abbr title="Français" style="text-decoration:none">FR</abbr><span class="visually-hidden"> – Français</span></a></nav>
+      <nav class="lang" aria-label="Language"><a href="../" hreflang="nl" lang="nl"><abbr title="Nederlands">NL</abbr><span class="visually-hidden"> – Nederlands</span></a><a href="./" hreflang="en" lang="en" aria-current="true"><abbr title="English">EN</abbr><span class="visually-hidden"> – English</span></a><a href="../fr/" hreflang="fr" lang="fr"><abbr title="Français">FR</abbr><span class="visually-hidden"> – Français</span></a></nav>
       <a class="btn btn-primary btn-small" href="#install">Download</a>
     </div>
   </div>
@@ -73,229 +61,80 @@
 <main id="main">
 <section class="hero" aria-labelledby="hero-h">
   <div class="wrap">
-    <span class="eyebrow">Free extension for Chrome and Edge</span>
+    <p class="eyebrow">Free extension for Chrome and Edge</p>
     <h1 id="hero-h">Toledo, <span class="nowrap">but calm.</span></h1>
-    <p class="lead">Toledo+ turns Toledo and KU Loket into one calm app. Your deadlines first, what’s new per course, your full timetable, and everything searchable with a single key.</p>
+    <p class="lead">Your deadlines, new files, courses and timetable, clearly in one place. For students of KU Leuven and its association.</p>
     <div class="cta">
       <a class="btn btn-primary btn-large" href="https://github.com/joennespreuwers/toledo-plus/releases/latest/download/toledo-plus.zip" download><svg aria-hidden="true" focusable="false"><use href="#i-download"/></svg>Download Toledo+</a>
       <a class="btn btn-secondary btn-large" href="#install">How to install</a>
     </div>
+    <p class="demo-link"><a class="link-arrow" href="../demo/?lang=en">Or try the demo first</a></p>
     <p class="fine"><span>Version 1.4.0</span><span>Free and open source</span><span>Unofficial student project</span></p>
   </div>
   <div class="stage">
     <div class="window">
-  <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span class="url">toledo.kuleuven.be</span></div>
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="../assets/img/overview-dark.webp" type="image/webp">
-    <source srcset="../assets/img/overview-light.webp" type="image/webp">
-    <img src="../assets/img/overview-light.png" width="1440" height="900" alt="The Toledo+ overview: a list of deadlines with the time left, today’s and tomorrow’s timetable, what’s new per course and the latest announcements." fetchpriority="high" loading="eager" decoding="async">
-  </picture>
-</div>
-    <div class="phone"><picture>
-    <source media="(prefers-color-scheme: dark)" srcset="../assets/img/phone-dark.webp" type="image/webp">
-    <source srcset="../assets/img/phone-light.webp" type="image/webp">
-    <img src="../assets/img/phone-light.png" width="390" height="844" alt="The same overview on a smartphone, with a tab bar at the bottom." loading="lazy" decoding="async">
-  </picture></div>
+      <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span class="url">toledo.kuleuven.be</span></div>
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="../assets/img/overview-dark.webp" type="image/webp">
+        <source srcset="../assets/img/overview-light.webp" type="image/webp">
+        <img src="../assets/img/overview-light.png" width="1440" height="900" alt="The Toledo+ overview: deadlines with the time left, what’s new per course, today’s and tomorrow’s timetable and the latest announcements." fetchpriority="high" decoding="async">
+      </picture>
+    </div>
   </div>
 </section>
 
 <section class="section alt" id="features" aria-labelledby="features-h">
   <div class="wrap">
-    <div class="section-head">
-      <span class="eyebrow">What’s different</span>
-      <h2 id="features-h">Everything you need.<br>Nothing that distracts.</h2>
-      <p>Toledo+ reads what Toledo already shows you and puts it in a shape that makes sense to students.</p>
-    </div>
-    <ul class="grid four">
-      <li class="card reveal"><span class="icon red" aria-hidden="true"><svg><use href="#i-clock"/></svg></span><h3>Deadlines first</h3><p>Toledo, Ultra and your own tasks in one list, with the time left. Tick them off, and add them to your calendar (.ics) in one click.</p></li>
-      <li class="card reveal"><span class="icon " aria-hidden="true"><svg><use href="#i-tray"/></svg></span><h3>New, per course</h3><p>No endless notifications: one line per course, like “2 files · 1 video”. Expand what you care about.</p></li>
-      <li class="card reveal"><span class="icon orange" aria-hidden="true"><svg><use href="#i-folder"/></svg></span><h3>Every course, one shape</h3><p>All files and folders in a clear tree, search across the whole course and download with one click.</p></li>
-      <li class="card reveal"><span class="icon purple" aria-hidden="true"><svg><use href="#i-search"/></svg></span><h3>⌘K searches everything</h3><p>Find that one document across all your courses, plus deadlines and announcements. The index stays on your device.</p></li>
-      <li class="card reveal"><span class="icon teal" aria-hidden="true"><svg><use href="#i-calendar"/></svg></span><h3>Your full timetable</h3><p>An Agenda with your KU Loket timetable by day, week or month, together with your exams and deadlines.</p></li>
-      <li class="card reveal"><span class="icon green" aria-hidden="true"><svg><use href="#i-home"/></svg></span><h3>KU Loket, no hunting</h3><p>Exams, today’s timetable and shortcuts to enrolments, certificates and more.</p></li>
-      <li class="card reveal"><span class="icon " aria-hidden="true"><svg><use href="#i-checkcircle"/></svg></span><h3>Read means read</h3><p>What you mark as read in Toledo+ is marked as read in Toledo too. You can turn this off.</p></li>
-      <li class="card reveal"><span class="icon orange" aria-hidden="true"><svg><use href="#i-sliders"/></svg></span><h3>Make it yours</h3><p>Nederlands, English or Français. Light or dark, your own accent colour and density, nicknames and colours per course.</p></li>
-    </ul>
+    <h2 class="section-title" id="features-h">Everything in one place.</h2>
+    <ul class="features"><li class="feature"><span class="icon red" aria-hidden="true"><svg><use href="#i-clock"/></svg></span><div><h3>Deadlines first</h3><p>All deadlines in one list, with how much time you have left.</p></div></li><li class="feature"><span class="icon " aria-hidden="true"><svg><use href="#i-tray"/></svg></span><div><h3>New, per course</h3><p>What was added, summed up in one line per course.</p></div></li><li class="feature"><span class="icon orange" aria-hidden="true"><svg><use href="#i-folder"/></svg></span><div><h3>Every course, tidy</h3><p>All files and folders in one tree, with search and downloads.</p></div></li><li class="feature"><span class="icon purple" aria-hidden="true"><svg><use href="#i-search"/></svg></span><div><h3>Search everything</h3><p>Find any document in all your courses with <kbd>Ctrl</kbd> <kbd>K</kbd> or <kbd>⌘</kbd> <kbd>K</kbd>.</p></div></li><li class="feature"><span class="icon teal" aria-hidden="true"><svg><use href="#i-calendar"/></svg></span><div><h3>Your timetable</h3><p>Your classes from KU Loket by day, week or month, next to your exams.</p></div></li><li class="feature"><span class="icon green" aria-hidden="true"><svg><use href="#i-sliders"/></svg></span><div><h3>Your way</h3><p>Nederlands, English or Français, light or dark, your own colours.</p></div></li></ul>
   </div>
 </section>
 
-<section class="section" aria-label="Search, Agenda, Courses, KU Loket">
-  <div class="wrap">
-    <div class="showcase">
-      <div class="showcase-text reveal">
-        <span class="eyebrow">Search</span>
-        <h3>One key. Every document.</h3>
-        <p>Press <kbd>⌘</kbd> <kbd>K</kbd> (or <kbd>Ctrl</kbd> <kbd>K</kbd>) and type. Toledo+ searches the folders of all your courses, and <kbd>⌘</kbd> <kbd>↵</kbd> downloads right away.</p>
-      </div>
-      <div class="reveal"><div class="window">
-  <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span class="url">toledo.kuleuven.be</span></div>
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="../assets/img/palette-results-dark.webp" type="image/webp">
-    <source srcset="../assets/img/palette-results-light.webp" type="image/webp">
-    <img src="../assets/img/palette-results-light.png" width="1440" height="900" alt="The search window with results for “regie”: the course, documents with their folder and course, and deadlines." loading="lazy" decoding="async">
-  </picture>
-</div></div>
-    </div>
-    <div class="showcase flip">
-      <div class="showcase-text reveal">
-        <span class="eyebrow">Agenda</span>
-        <h3>Your whole week at a glance.</h3>
-        <p>Your full KU Loket timetable, with room and teacher, next to your deadlines and exams. By day, week or month, and in your own calendar if you like.</p>
-      </div>
-      <div class="reveal"><div class="window">
-  <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span class="url">toledo.kuleuven.be</span></div>
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="../assets/img/agenda-week-dark.webp" type="image/webp">
-    <source srcset="../assets/img/agenda-week-light.webp" type="image/webp">
-    <img src="../assets/img/agenda-week-light.png" width="1440" height="900" alt="The agenda in week view with classes in their course colour and deadlines at the top of each day." loading="lazy" decoding="async">
-  </picture>
-</div></div>
-    </div>
-    <div class="showcase">
-      <div class="showcase-text reveal">
-        <span class="eyebrow">Courses</span>
-        <h3>Every course, the same calm.</h3>
-        <p>Recently added at the top, the full content as expandable folders below. Deadlines, announcements and teachers sit alongside.</p>
-      </div>
-      <div class="reveal"><div class="window">
-  <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span class="url">toledo.kuleuven.be</span></div>
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="../assets/img/course-dark.webp" type="image/webp">
-    <source srcset="../assets/img/course-light.webp" type="image/webp">
-    <img src="../assets/img/course-light.png" width="1440" height="900" alt="A course page in dark mode: recently added files, the content as folders, and deadlines, announcements and teachers alongside." loading="lazy" decoding="async">
-  </picture>
-</div></div>
-    </div>
-    <div class="showcase flip">
-      <div class="showcase-text reveal">
-        <span class="eyebrow">KU Loket</span>
-        <h3>The rest of student life.</h3>
-        <p>Your exams with date and room, today’s classes and the KU Loket pages you actually use, without clicking through menus.</p>
-      </div>
-      <div class="reveal"><div class="window">
-  <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span class="url">toledo.kuleuven.be</span></div>
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="../assets/img/kuloket-dark.webp" type="image/webp">
-    <source srcset="../assets/img/kuloket-light.webp" type="image/webp">
-    <img src="../assets/img/kuloket-light.png" width="1440" height="900" alt="The KU Loket page in Toledo+: upcoming exams, today’s classes and shortcuts to enrolments, personal details and certificates." loading="lazy" decoding="async">
-  </picture>
-</div></div>
-    </div>
-  </div>
-</section>
-
-<section class="section alt" id="how" aria-labelledby="how-h">
-  <div class="wrap">
-    <div class="section-head">
-      <span class="eyebrow">How it works</span>
-      <h2 id="how-h">Ready in a minute.</h2>
-    </div>
-    <ol class="grid three steps">
-      <li class="card reveal"><span class="step-num" aria-hidden="true">1</span><h3>Install the extension</h3><p>Download Toledo+ and load it into your browser. No app, no account, nothing to remember.</p></li>
-      <li class="card reveal"><span class="step-num" aria-hidden="true">2</span><h3>Sign in as usual</h3><p>Open Toledo and sign in with your own KU Leuven login. Toledo+ never sees your password.</p></li>
-      <li class="card reveal"><span class="step-num" aria-hidden="true">3</span><h3>Your data stays with you</h3><p>Toledo+ shows what Toledo and KU Loket already show you. Your courses, deadlines and files go nowhere else.</p></li>
-    </ol>
-  </div>
-</section>
-
-<section class="section privacy-band" id="privacy" aria-labelledby="privacy-h">
-  <div class="wrap">
-    <div class="shield" aria-hidden="true"><svg><use href="#i-shield"/></svg></div>
-    <div class="section-head" style="margin-bottom:0">
-      <h2 id="privacy-h">Your Toledo stays in your browser.</h2>
-      <p>Toledo+ has no accounts and doesn’t know who you are. Your courses, deadlines and documents only travel between your browser and Toledo or KU Loket.</p>
-    </div>
-    <ul class="checks"><li><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg><p><strong>No tracking of who you are.</strong> <span>No analytics services, no ads, no cookies.</span></p></li><li><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg><p><strong>Your Toledo data stays local.</strong> <span>Courses, documents and the search index live only in your browser.</span></p></li><li><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg><p><strong>Your password stays yours.</strong> <span>Toledo+ uses the session you’re already signed in with.</span></p></li><li><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg><p><strong>Just an anonymous daily ping.</strong> <span>A random id, version, browser and language. Turn it off in Settings → About.</span></p></li></ul>
-    <p class="more"><a class="link-arrow" href="privacy.html">Read the privacy policy</a></p>
-  </div>
-</section>
-
-<section class="section alt" id="install" aria-labelledby="install-h">
-  <div class="wrap">
-    <div class="section-head">
-      <span class="eyebrow">Install</span>
-      <h2 id="install-h">Installed in four steps.</h2>
-      <p>You install Toledo+ yourself, straight from GitHub. It takes about a minute.</p>
-    </div>
-    <div class="download card reveal">
-      <img src="../assets/icon128.png" width="64" height="64" alt="" loading="lazy">
-      <div class="download-text">
-        <h3>Toledo+ 1.4.0</h3>
-        <p>For Chrome, Edge, Brave, Arc, Opera and Vivaldi</p>
-      </div>
+<section class="section" id="install" aria-labelledby="install-h">
+  <div class="wrap narrow">
+    <p class="eyebrow">Install</p>
+    <h2 class="section-title" id="install-h">Installed in a minute.</h2>
+    <p class="section-lead">You install Toledo+ yourself, straight from GitHub.</p>
+    <div class="download card">
+      <img src="../assets/icon128.png" width="56" height="56" alt="" loading="lazy">
+      <div class="download-text"><h3>Toledo+ 1.4.0</h3><p>For Chrome, Edge, Brave, Arc, Opera and Vivaldi</p></div>
       <div class="download-action">
-        <a class="btn btn-primary btn-large" href="https://github.com/joennespreuwers/toledo-plus/releases/latest/download/toledo-plus.zip" download><svg aria-hidden="true" focusable="false"><use href="#i-download"/></svg>Download Toledo+</a>
+        <a class="btn btn-primary" href="https://github.com/joennespreuwers/toledo-plus/releases/latest/download/toledo-plus.zip" download><svg aria-hidden="true" focusable="false"><use href="#i-download"/></svg>Download Toledo+</a>
         <small>toledo-plus.zip · <a href="https://github.com/joennespreuwers/toledo-plus/releases">all versions</a></small>
       </div>
     </div>
-    <ol class="grid four isteps">
-      <li class="card istep reveal"><div class="art art-zip" aria-hidden="true"><span class="file"><b>ZIP</b>toledo-plus.zip</span><span class="arrow">→</span><span class="folder"><svg aria-hidden="true" focusable="false"><use href="#i-folder"/></svg>toledo-plus</span></div><div class="istep-body"><span class="step-num" aria-hidden="true">1</span><h3>Unzip the file</h3><p>Put the folder somewhere permanent, for example <code>Documents/toledo-plus</code>. Leave it there: your browser loads Toledo+ from that folder.</p></div></li>
-      <li class="card istep reveal"><div class="art art-addr" aria-hidden="true"><div class="bar"><span class="lockdot"></span>chrome://extensions<span class="caret"></span></div></div><div class="istep-body"><span class="step-num" aria-hidden="true">2</span><h3>Open the extensions page</h3><p>Type <code>chrome://extensions</code> into the address bar. In Edge it’s <code>edge://extensions</code>.</p></div></li>
-      <li class="card istep reveal"><div class="art art-toggle" aria-hidden="true"><span>Developer mode</span><span class="switch"></span></div><div class="istep-body"><span class="step-num" aria-hidden="true">3</span><h3>Turn on Developer mode</h3><p>In Chrome the switch is at the top right; in Edge it’s on the left, below the menu.</p></div></li>
-      <li class="card istep reveal"><div class="art art-load" aria-hidden="true"><span class="mockbtn">Load unpacked</span><svg class="cursor" viewBox="0 0 24 24"><path d="M5 3l14 8-6 1.6L10 19z" fill="#1d1d1f" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg></div><div class="istep-body"><span class="step-num" aria-hidden="true">4</span><h3>Choose “Load unpacked”</h3><p>Select the <code>toledo-plus</code> folder (the one with <code>manifest.json</code>). Then open Toledo and sign in as usual.</p></div></li>
-    </ol>
-    <div class="grid two info">
-      <div class="card reveal" id="browsers">
-        <h3>Which browser?</h3>
-        <ul class="browser-list"><li class="ok"><span class="b"><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg>Chrome</span><span class="v"><span class="addr"><code>chrome://extensions</code><button type="button" class="copy" data-copy="chrome://extensions" data-copied="Copied" aria-label="Copy: chrome://extensions" hidden>Copy</button></span></span></li><li class="ok"><span class="b"><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg>Microsoft Edge</span><span class="v"><span class="addr"><code>edge://extensions</code><button type="button" class="copy" data-copy="edge://extensions" data-copied="Copied" aria-label="Copy: edge://extensions" hidden>Copy</button></span></span></li><li class="ok"><span class="b"><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg>Brave, Arc, Opera, Vivaldi</span><span class="v">Works the same, through their own extensions page (e.g. brave://extensions)</span></li><li class="no"><span class="b"><svg aria-hidden="true" focusable="false"><use href="#i-minus"/></svg>Firefox</span><span class="v">Not supported (yet): Firefox uses its own extension format</span></li><li class="no"><span class="b"><svg aria-hidden="true" focusable="false"><use href="#i-minus"/></svg>Safari</span><span class="v">Not supported (yet): Safari needs a separate Mac app</span></li></ul>
-      </div>
-      <div class="stack">
-        <div class="card reveal" id="update">
-          <h3>Updating</h3>
-          <p>Toledo+ shows a notice when a new version is out. Then:</p>
-          <ol class="mini-steps"><li>Download the new zip.</li><li>Replace the contents of your <code>toledo-plus</code> folder with the new files.</li><li>Click ↻ (reload) on Toledo+ on the extensions page and reload Toledo. Your settings are kept.</li></ol>
-        </div>
-        <div class="card reveal">
-          <h3>A warning about developer mode?</h3>
-          <p>Chrome may mention at startup that developer-mode extensions are active. It does that for every extension that doesn’t come from the Chrome Web Store, not because something is wrong. It’s safe to keep Toledo+: the code is public on GitHub and the extension only has access to Toledo, KU Loket and <code>api.toledoplus.be</code>. Just close the notice.</p>
-        </div>
-      </div>
+    <ol class="steps card"><li><h3>Download the zip file</h3><p>Click <strong>Download Toledo+</strong> above.</p></li><li><h3>Unzip it</h3><p>Put the <code>toledo-plus</code> folder somewhere permanent, for example in Documents. Leave it there: your browser loads Toledo+ from that folder.</p></li><li><h3>Open the extensions page</h3><p>Type <span class="addr"><code>chrome://extensions</code><button type="button" class="copy" data-copy="chrome://extensions" data-copied="Copied" aria-label="Copy: chrome://extensions" hidden>Copy</button></span> in the address bar (in Edge: <span class="addr"><code>edge://extensions</code><button type="button" class="copy" data-copy="edge://extensions" data-copied="Copied" aria-label="Copy: edge://extensions" hidden>Copy</button></span>).</p></li><li><h3>Turn on Developer mode</h3><p>In Chrome the switch is at the top right, in Edge in the left column.</p></li><li><h3>Choose “Load unpacked”</h3><p>Select the <code>toledo-plus</code> folder (the one with <code>manifest.json</code>). Then open Toledo and sign in as usual.</p></li></ol>
+    <div class="info">
+      <div class="card" id="browsers"><h3>Which browser?</h3><ul class="browser-list"><li class="ok"><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg><p><strong>Chrome, Edge, Brave, Arc, Opera, Vivaldi</strong> <span>Works, via the browser’s own extensions page.</span></p></li><li class="no"><svg aria-hidden="true" focusable="false"><use href="#i-minus"/></svg><p><strong>Firefox and Safari</strong> <span>Not supported yet: they use a different extension format.</span></p></li></ul></div>
+      <div class="card" id="update"><h3>Updating</h3><p>Toledo+ tells you when a new version is out.</p><p>Download the new zip, replace the contents of your <code>toledo-plus</code> folder and click ↻ next to Toledo+ on the extensions page. Your settings are kept.</p></div>
     </div>
-    <div class="card signal reveal" id="signal">
-      <span class="icon green" aria-hidden="true"><svg><use href="#i-shield"/></svg></span>
-      <div>
-        <h3>Anonymous usage ping</h3>
-        <p>To know how many students use Toledo+ and which versions are still around, Toledo+ sends one anonymous ping a day to <code>api.toledoplus.be</code>: a random install id, the version, the browser and the language. No name, no student number, no Toledo data; your IP address is not stored. Turn it off in <strong>Settings → About</strong> or right in the welcome card. <a class="link-arrow" href="../privacy.html#signal">Read the privacy policy</a></p>
-      </div>
+    <p class="note">Does Chrome warn about extensions in developer mode at startup? That happens for every extension from outside the Chrome Web Store. You can simply close it.</p>
+  </div>
+</section>
+
+<section class="section alt" id="privacy" aria-labelledby="privacy-h">
+  <div class="wrap narrow privacy">
+    <span class="icon green" aria-hidden="true"><svg><use href="#i-shield"/></svg></span>
+    <div>
+      <h2 id="privacy-h">Your data stays in your browser.</h2>
+      <p>Toledo+ has no accounts and no trackers. Your courses, deadlines and files only travel between your browser and Toledo or KU Loket. Just one anonymous daily signal (random id, version, browser and language) tells us how many people use Toledo+; turn it off in <strong>Settings → About</strong>.</p>
+      <p><a class="link-arrow" href="privacy.html">Read the privacy policy</a></p>
     </div>
   </div>
 </section>
 
 <section class="section" id="faq" aria-labelledby="faq-h">
-  <div class="wrap">
-    <div class="section-head">
-      <span class="eyebrow">Questions</span>
-      <h2 id="faq-h">Good to know.</h2>
-    </div>
-    <div class="faq">
-      <details><summary>Is this an official KU Leuven app?</summary><div class="answer"><p>No. Toledo+ is an independent student project. It is not affiliated with KU Leuven, LUCA School of Arts or Blackboard/Anthology. It simply uses your Toledo session, just like your browser does.</p></div></details>
-      <details><summary>Is my data safe?</summary><div class="answer"><p>Toledo+ only reads what Toledo and KU Loket already show you, through your own session in your own browser. Your settings, a cache and the search index live in your browser’s storage. There are no analytics services or trackers, and Toledo+ never sees your password. Only an anonymous daily ping (random id, version, browser, language) goes to <code>api.toledoplus.be</code>; turn it off in Settings → About. The full source code is <a href="https://github.com/joennespreuwers/toledo-plus">on GitHub</a>.</p><p><a class="link-arrow" href="../privacy.html">Read the privacy policy</a></p></div></details>
-      <details><summary>Does it work for every programme in the KU Leuven Association?</summary><div class="answer"><p>Toledo+ works wherever you use Toledo at <code>toledo.kuleuven.be</code>, including the Blackboard Ultra course pages. It’s tested at KU Leuven and LUCA School of Arts. The timetable, exams and KU Loket page come from KU Loket; if you don’t have access to it, you’ll see the planning from Toledo instead.</p><p>Something works differently in your programme? Let us know.</p></div></details>
-      <details><summary>Does it cost anything?</summary><div class="answer"><p>No. Toledo+ is free and open source (MIT licence). No ads, no subscription, no account.</p></div></details>
-      <details><summary>Why isn’t it in the Chrome Web Store?</summary><div class="answer"><p>Toledo+ is distributed directly through GitHub. That way every new version is available right away and you can see exactly which code you install. The only downside is the developer-mode notice, which you can simply close.</p></div></details>
-      <details><summary>How do I report a problem or idea?</summary><div class="answer"><p>On <a href="https://github.com/joennespreuwers/toledo-plus/issues/new/choose">GitHub</a>: choose “Bug” or “Idea” and describe what you saw. Please don’t include real personal data (names, e-mails, student number or course content) in your report or screenshots.</p></div></details>
-      <details><summary>How do I turn it off?</summary><div class="answer"><p>Choose <strong>Classic Toledo</strong> in the account menu at the top right and you’ll see the original page right away. The <strong>Toledo+</strong> button turns it back on. Want it gone completely? Remove the extension at <code>chrome://extensions</code> or <code>edge://extensions</code>; that also erases everything Toledo+ stored.</p></div></details>
-    </div>
-  </div>
-</section>
-
-<section class="section alt final" aria-labelledby="final-h">
-  <div class="wrap">
-    <img src="../assets/icon128.png" width="88" height="88" alt="" loading="lazy">
-    <h2 class="h2" id="final-h">Ready for a calmer Toledo?</h2>
-    <p class="lead">Free, open source and installed in a minute.</p>
-    <div class="cta">
-      <a class="btn btn-primary btn-large" href="https://github.com/joennespreuwers/toledo-plus/releases/latest/download/toledo-plus.zip" download><svg aria-hidden="true" focusable="false"><use href="#i-download"/></svg>Download Toledo+</a>
-      <a class="btn btn-secondary btn-large" href="https://github.com/joennespreuwers/toledo-plus"><svg aria-hidden="true" focusable="false"><use href="#i-github"/></svg>View on GitHub</a>
-    </div>
+  <div class="wrap narrow">
+    <h2 class="section-title" id="faq-h">FAQ</h2>
+    <div class="faq"><details><summary>Is this an official app?</summary><div class="answer"><p>No. Toledo+ is an independent student project, not affiliated with KU Leuven or the other institutions of its association. It simply uses your own Toledo session, just like your browser does.</p></div></details><details><summary>Does it work for my school?</summary><div class="answer"><p>Toledo+ works wherever you use Toledo on <code>toledo.kuleuven.be</code>: KU Leuven and its association (including LUCA, UCLL, Thomas More, Odisee and VIVES). The timetable and exams come from KU Loket; without it, you see the schedule from Toledo. Something different for you? Let us know on GitHub.</p></div></details><details><summary>Does it cost anything?</summary><div class="answer"><p>No. Toledo+ is free and open source (MIT licence). No ads, no subscription, no account.</p></div></details><details><summary>Why isn’t it in the Chrome Web Store?</summary><div class="answer"><p>Toledo+ is distributed straight from GitHub. That way every new version is available right away and you can see exactly which code you install.</p></div></details><details><summary>How do I turn it off or report a problem?</summary><div class="answer"><p>Choose <strong>Classic Toledo</strong> in the account menu at the top right to see the original page, or remove the extension on the extensions page. Report a problem or idea <a href="https://github.com/joennespreuwers/toledo-plus/issues/new/choose">on GitHub</a>; don’t include personal data.</p></div></details></div>
   </div>
 </section>
 </main>
 <footer class="footer">
   <div class="wrap">
-    <ul class="footer-links"><li><a href="https://github.com/joennespreuwers/toledo-plus">GitHub</a></li><li><a href="../privacy.html">Privacy</a></li><li><a href="https://github.com/joennespreuwers/toledo-plus/blob/main/CHANGELOG.md">What’s new</a></li><li><a href="https://github.com/joennespreuwers/toledo-plus/issues/new/choose">Report a problem</a></li></ul>
-    <p>All images show fictional data; the interface is shown in Dutch.</p>
-    <div class="rule"><p>Toledo is a product of KU Leuven. Toledo+ is an independent project and is not affiliated with KU Leuven, LUCA School of Arts or Blackboard/Anthology.</p><p>© 2026 Joenne Spreuwers · MIT licence</p></div>
+    <ul class="footer-links"><li><a href="https://github.com/joennespreuwers/toledo-plus">GitHub</a></li><li><a href="privacy.html">Privacy</a></li><li><a href="../demo/?lang=en">Demo</a></li><li><a href="https://github.com/joennespreuwers/toledo-plus/blob/main/CHANGELOG.md">What’s new</a></li><li><a href="https://github.com/joennespreuwers/toledo-plus/issues/new/choose">Report a problem</a></li></ul>
+    <p>All images and the demo show fictitious data.</p>
+    <div class="rule"><p>Toledo is a KU Leuven product. Toledo+ is an independent student project, not affiliated with KU Leuven, the institutions of its association or Blackboard/Anthology.</p><p>© 2026 Joenne Spreuwers · MIT licence</p></div>
   </div>
 </footer>
 </body>

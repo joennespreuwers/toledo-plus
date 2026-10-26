@@ -7,6 +7,12 @@ const assert = require('node:assert/strict');
 const { launch, waitForShell, waitForIdle, waitForQuiet, screenshot, waitFor, inShadow, COURSE_URL } = require('../helpers/launch');
 const { S, openPortal } = require('../helpers/app');
 
+// v1.5: the sidebar lists only courses added with "Zet in zijbalk"
+const ENR = require('../helpers/fixtures').load().portal.enrollments;
+const luOf = (name) => ENR.find((e) => e.title.startsWith(name + ' [')).learningUnitId;
+const IN_SB = ['Filmtaal 1', 'Montage Technieken 1', 'Regie 1'];
+const SB_SETTINGS = { courses: { items: Object.fromEntries(IN_SB.map((n) => [luOf(n), { inSidebar: true }])) } };
+
 const sidebar = (page) => inShadow(page, (sr) => {
   const nav = sr.querySelector('nav.tp-sidebar');
   const r = nav.getBoundingClientRect();
@@ -45,7 +51,7 @@ async function assertSticky(page, label) {
 
 describe('sidebar icon rail', () => {
   let h; let page;
-  before(async () => { h = await launch({ viewport: { width: 1440, height: 560 } }); page = h.page; });
+  before(async () => { h = await launch({ viewport: { width: 1440, height: 560 }, settings: SB_SETTINGS }); page = h.page; });
   after(async () => { await h?.close(); });
 
   it('expanded by default; ⌘\\ collapses to a 64px icon rail with tooltips, dots and course initials', async () => {
@@ -65,7 +71,7 @@ describe('sidebar icon rail', () => {
     assert.equal(s.current, 'deadlines', 'aria-current kept');
     assert.equal(s.expanded, 'false');
     assert.ok(s.iconsCentered, 'icons centred');
-    assert.ok(s.initials.length >= 10, `current courses as initials: ${s.initials}`);
+    assert.equal(s.initials.length, IN_SB.length, `the sidebar courses as initials: ${s.initials}`);
     assert.ok(s.initials.every((x) => x.length === 2), 'two-letter initials');
     // counts become a dot (number hidden, text for screen readers kept)
     const dot = await inShadow(page, (sr) => {
