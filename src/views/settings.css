@@ -8,7 +8,7 @@
   min-height: var(--row-min, 44px); padding: 6px 16px; box-sizing: border-box; color: var(--label); text-decoration: none;
 }
 .st-group > * + *::before, .st-group > details + *::before {
-  content: ''; position: absolute; top: 0; left: 16px; right: 0; border-top: var(--hairline, .5px) solid var(--separator); pointer-events: none;
+  content: ''; position: absolute; top: 0; left: 0; right: 0; border-top: var(--hairline, .5px) solid var(--separator); pointer-events: none;
 }
 .st-group > * { position: relative; }
 .st-label { flex: 1 1 auto; min-width: 0; font-size: var(--fs-body, .9375rem); }

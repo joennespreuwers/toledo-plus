@@ -127,7 +127,7 @@
 .va-dayhead span { font-weight: 400; color: var(--label-2); margin-left: 4px; }
 .va-day > * { position: relative; }
 .va-day > :where(:not([hidden])) ~ :not(.va-dayhead + *)::before {
-  content: ''; position: absolute; top: 0; right: 0; left: var(--inset); height: var(--hairline);
+  content: ''; position: absolute; top: 0; right: 0; left: 0; height: var(--hairline);
   background: var(--separator); pointer-events: none; z-index: 1;
 }
 .va-dayempty { margin: 0; padding: 4px var(--row-px) 12px; font-size: var(--fs-subhead); color: var(--label-2); }

@@ -29,7 +29,7 @@ Over-engineering to avoid: drag-and-drop widget builders, themes beyond light/da
   | footnote | 10/13 | 12/16 | 13/18 | 400 |
 - Spacing scale 2 4 8 12 16 20 24 32 48. Content margin 16 (mobile) / 24 (desktop) / 32 (≥1100). Section gap 28.
 - Radii: controls 8, inset groups 12, popovers/sheets 16, pills 999. Concentric: inner = outer − padding.
-- Row: min-height 44 (compact 36), padding 11 16; hairline separators 0.5px inset to text start.
+- Row: min-height 44 (compact 36), padding 11 16; hairline separators 0.5px, full width (edge to edge, the same in every list).
 - Colors (semantic vars only; v1.6 brand pass — contrast measured on the actual backgrounds, see **Brand › Contrast**):
   | var | light | dark (on brand ink) |
   |---|---|---|

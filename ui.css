@@ -692,11 +692,9 @@ a.tp-mail { color: var(--tint-text); text-decoration: none; }
 .tp-group > * { position: relative; }
 /* separator above every row that has a visible row before it (search hides rows with [hidden]) */
 .tp-group > :where(:not([hidden])) ~ *::before, .tp-disclosure-body > :where(:not([hidden])) ~ *::before { /* :where keeps the old specificity so view rows (.cv-row) can override */
-  content: ''; position: absolute; top: 0; right: 0; left: var(--row-px); height: var(--hairline);
+  content: ''; position: absolute; top: 0; right: 0; left: 0; height: var(--hairline); /* full width: every list draws its dividers edge to edge */
   background: var(--separator); pointer-events: none; z-index: 1;
 }
-.tp-group > .has-lead + *::before, .tp-group > :where(:not([hidden])) ~ .has-lead::before,
-.tp-disclosure-body > :where(:not([hidden])) ~ .has-lead::before { left: var(--inset); }
 .tp-disclosure-body > * { position: relative; }
 .tp-group + .tp-group { margin-top: 12px; }
 

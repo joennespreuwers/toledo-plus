@@ -24,7 +24,7 @@
   padding: 8px 12px 8px var(--pad); color: var(--label); text-decoration: none; min-width: 0;
 }
 .cv-row::before, .cv-view .cv-folder > summary::before {
-  content: ''; position: absolute; top: 0; right: 0; left: calc(var(--pad, 12px) + 46px);
+  content: ''; position: absolute; top: 0; right: 0; left: 0;
   border-top: var(--hairline, .5px) solid var(--separator); pointer-events: none;
 }
 .cv-group > :first-child > .cv-row::before, .cv-group > .cv-row:first-child::before,
