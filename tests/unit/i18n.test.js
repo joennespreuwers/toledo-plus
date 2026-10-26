@@ -47,7 +47,9 @@ test('no empty strings and matching placeholders', () => {
     for (const l of ['nl', 'en', 'fr']) {
       const v = t[l][k];
       if (v == null) continue;
-      if (typeof v !== 'string' || !v.trim()) problems.push(`${l}: ${k} is empty`);
+      // intentionally empty strings are fine only if empty in every language
+      if (typeof v !== 'string') problems.push(`${l}: ${k} is not a string`);
+      else if (!v.trim() && ['nl', 'en', 'fr'].some((x) => String(t[x][k] ?? '').trim())) problems.push(`${l}: ${k} is empty`);
     }
     if (t.en[k] != null && placeholders(t.nl[k]) !== placeholders(t.en[k])) problems.push(`en: ${k} placeholders {${placeholders(t.en[k])}} ≠ nl {${placeholders(t.nl[k])}}`);
     if (t.fr[k] != null && placeholders(t.nl[k]) !== placeholders(t.fr[k])) problems.push(`fr: ${k} placeholders {${placeholders(t.fr[k])}} ≠ nl {${placeholders(t.nl[k])}}`);
@@ -64,6 +66,7 @@ test('every literal TP.t("key") used in src/ is registered', () => {
   for (const f of files) {
     const src = read(f);
     for (const m of src.matchAll(/\b(?:TP\.)?t\(\s*'([a-zA-Z][\w.-]*\.[\w.-]+)'/g)) {
+      if (m[1].endsWith('.')) continue; // prefix of a dynamic key: 'courses.sem.' + x
       if (!TP.i18n.has(m[1]) && !Object.keys(TP.i18n._table.nl).some((k) => pluralBase(k) === m[1])) missing.push(`${f}: ${m[1]}`);
     }
   }
