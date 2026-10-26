@@ -525,7 +525,7 @@
         href: MAIL_URL, attrs: { target: '_blank', rel: 'noopener', 'data-sheet-mail': '' },
         leading: `<span class="tp-tile">${icon('mail', { size: 17 })}</span>`,
         title: `${esc(t('shell.mail'))}<span class="tp-sr"> (${esc(t('common.newTab'))})</span>`,
-        trailing: mailCount() ? TP.ui.badge(mailCount(), { tone: 'gray', label: t('shell.mailUnread', { n: mailCount() }) }) : '',
+        trailing: mailCount() ? TP.ui.badge(mailCount(), { tone: 'gray', cap: 9999, label: t('shell.mailUnread', { n: mailCount() }) }) : '',
         chevron: false,
       })) + TP.ui.group(MORE.map((r) => TP.ui.row({
         href: href(r), attrs: { 'data-route': r, 'aria-current': activeNav() === r ? 'page' : null },
@@ -560,7 +560,7 @@
     const item = (inner, attrs) => `<a class="tp-menu-item" role="menuitem" tabindex="-1"${attrs}>${inner}</a>`;
     // N9: no second "Instellingen" (it is in the sidebar/More), mail count is neutral gray (not an alarm).
     menu.innerHTML = `
-${item(`${icon('mail')}<span class="tp-menu-label">${esc(t('shell.mail'))}</span>${mail ? TP.ui.badge(mail, { tone: 'gray', label: t('shell.mailUnread', { n: mail }) }) : ''}${icon('external', { size: 13, cls: 'tp-menu-ext' })}`,
+${item(`${icon('mail')}<span class="tp-menu-label">${esc(t('shell.mail'))}</span>${mail ? TP.ui.badge(mail, { tone: 'gray', cap: 9999, label: t('shell.mailUnread', { n: mail }) }) : ''}${icon('external', { size: 13, cls: 'tp-menu-ext' })}`,
     ` href="${MAIL_URL}" target="_blank" rel="noopener" aria-description="${esc(t('common.newTab'))}"`)}
 ${notif ? item(`${icon('bell')}<span class="tp-menu-label">${esc(t('shell.notifSettings'))}<small>${esc(t('shell.notifHint'))}</small></span>`, ` href="${esc(notif)}"`) : ''}
 <button type="button" class="tp-menu-item" role="menuitem" tabindex="-1" data-shell="classic">${icon('classic')}<span class="tp-menu-label">${esc(t('shell.classic'))}<small>${esc(t('shell.classicHint'))}</small></span></button>
@@ -575,7 +575,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
       mb.setAttribute('aria-label', `${label} (${t('common.newTab')})`);
       mb.title = label;
       const b = mb.querySelector('.tp-mail-badge');
-      if (b) { b.hidden = !mail; b.textContent = mail > 99 ? '99+' : String(mail || ''); }
+      if (b) { b.hidden = !mail; b.textContent = mail > 9999 ? '9999+' : String(mail || ''); } // the real unread count (the badge grows to fit)
     }
     const btn = $('.tp-avatar');
     if (btn) btn.setAttribute('aria-label', mail ? `${t('shell.account')}, ${t('shell.mailUnread', { n: mail })}` : t('shell.account'));

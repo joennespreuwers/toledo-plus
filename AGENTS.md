@@ -53,6 +53,8 @@ For every open issue labelled `needs-triage` (oldest first, max ~15 per run):
 
 ### PR rules for agents
 
+- **Never push to `main`.** Work on a branch `agent/<slug>` (or `agent/<issue-number>-<slug>`), push it and open a PR; a human merges.
+
 - **Small and focused**: one issue per PR, minimal diff, no drive-by refactors or formatting churn.
 - Include a test that fails before and passes after (unit or e2e with mocks).
 - `npm test` green locally; light + dark screenshots from `tests/artifacts/` for UI changes.

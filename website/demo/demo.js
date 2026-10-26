@@ -21,6 +21,9 @@
   var JOURNEY = 'https://icts-p-toledo-journey.cloud.icts.kuleuven.be';
   var M = window.TPDemoMock;
   var base = new URL('ext/', document.baseURI);
+  // Cache-busting: the Pages workflow replaces __BUILD__ with the commit sha.
+  var BUILD = '__BUILD__';
+  var qs = function (u) { return BUILD.indexOf('__') === 0 ? u : u + (u.indexOf('?') < 0 ? '?' : '&') + 'v=' + BUILD; };
   var router = null;
   var manifest = null;
 
@@ -98,7 +101,7 @@
       getURL: function (p) {
         var rel = String(p).replace(/^\//, '');
         if (/^fonts\//.test(rel)) return new URL('../assets/' + rel, document.baseURI).href;
-        return new URL(rel, base).href;
+        return qs(new URL(rel, base).href);
       },
       getManifest: function () { return manifest || { version: '0.0.0' }; },
       sendMessage: function (msg, cb) {
@@ -243,7 +246,7 @@
   function loadScript(src) {
     return new Promise(function (res, rej) {
       var s = document.createElement('script');
-      s.src = src; s.async = false;
+      s.src = qs(src); s.async = false;
       s.onload = function () { res(); };
       s.onerror = function () { rej(new Error('failed to load ' + src)); };
       document.head.appendChild(s);
@@ -259,7 +262,7 @@
   document.documentElement.lang = lang;
   if (!/^#\/home/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search + '#/home');
 
-  Promise.all([getJson(new URL('manifest.json', base).href), getJson('data/portal.json'), getJson('data/ultra.json'), getJson('data/kuloket.json')])
+  Promise.all([getJson(qs(new URL('manifest.json', base).href)), getJson(qs('data/portal.json')), getJson(qs('data/ultra.json')), getJson(qs('data/kuloket.json'))])
     .then(function (r) {
       manifest = r[0];
       router = M.create({ portal: r[1], ultra: r[2], kuloket: r[3] }, { version: manifest.version });

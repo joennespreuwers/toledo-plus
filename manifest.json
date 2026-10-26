@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Toledo+",
   "short_name": "Toledo+",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Een rustige, overzichtelijke Toledo: deadlines, nieuwe items, vakken, agenda en KU Loket in één app, volgens Apple's ontwerprichtlijnen.",
   "minimum_chrome_version": "114",
   "icons": {
@@ -12,7 +12,8 @@
     "128": "icons/icon128.png"
   },
   "permissions": [
-    "storage"
+    "storage",
+    "declarativeNetRequestWithHostAccess"
   ],
   "host_permissions": [
     "https://toledo.kuleuven.be/*",
@@ -21,6 +22,15 @@
     "https://cloud.timeedit.net/*",
     "https://api.toledoplus.be/*"
   ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "landing",
+        "enabled": true,
+        "path": "rules/landing.json"
+      }
+    ]
+  },
   "background": {
     "service_worker": "background.js"
   },
@@ -65,6 +75,7 @@
         "src/views/settings.js",
         "src/views/agenda.js",
         "src/views/kuloket.js",
+        "src/core/favicon.js",
         "src/boot.js"
       ],
       "css": [
@@ -112,6 +123,7 @@
         "src/views/settings.js",
         "src/views/agenda.js",
         "src/views/kuloket.js",
+        "src/core/favicon.js",
         "src/boot.js"
       ],
       "css": [

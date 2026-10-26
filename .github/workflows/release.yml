@@ -1,8 +1,17 @@
 name: Release
 
+# Releases are automatic: a version bump in manifest.json merged to main creates tag vX.Y.Z + the GitHub release
+# (tests first), then updates the Toledo+ API's "latest version". Pushing a tag by hand still works too.
 on:
   push:
+    branches: [main]
+    paths: ["manifest.json"]
     tags: ["v*"]
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -10,36 +19,52 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    outputs:
+      go: ${{ steps.v.outputs.go }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
 
-      - name: Check tag matches manifest version
+      - name: Version + should we release?
+        id: v
         run: |
           V=$(node -p "require('./manifest.json').version")
-          if [ "v$V" != "${GITHUB_REF_NAME}" ]; then
-            echo "::error::Tag ${GITHUB_REF_NAME} does not match manifest.json version $V"; exit 1
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            if [ "v$V" != "${GITHUB_REF_NAME}" ]; then
+              echo "::error::Tag ${GITHUB_REF_NAME} does not match manifest.json version $V"; exit 1
+            fi
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          elif git ls-remote --exit-code --tags origin "refs/tags/v$V" >/dev/null; then
+            echo "v$V is already released – nothing to do."; echo "go=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "go=true" >> "$GITHUB_OUTPUT"
           fi
 
       # Never release untested code: the same suites as CI.
       - name: Install dev dependencies
+        if: steps.v.outputs.go == 'true'
         run: npm install --no-audit --no-fund
 
       - name: Install Chromium
+        if: steps.v.outputs.go == 'true'
         run: npx playwright install --with-deps chromium
 
       - name: Unit tests
+        if: steps.v.outputs.go == 'true'
         run: npm run test:unit
 
       - name: E2E tests (headless Chromium with the extension loaded)
+        if: steps.v.outputs.go == 'true'
         run: xvfb-run --auto-servernum npm run test:e2e
         env:
           CI: "true"
 
       - name: Release notes from CHANGELOG
+        if: steps.v.outputs.go == 'true'
         run: |
           V=$(node -p "require('./manifest.json').version")
           awk -v v="$V" '
@@ -57,16 +82,42 @@ jobs:
           NOTES
 
       - name: Pack extension (manifest-referenced files only)
+        if: steps.v.outputs.go == 'true'
         run: |
           npm run pack
           # Stable name for https://github.com/joennespreuwers/toledo-plus/releases/latest/download/toledo-plus.zip (installer guide on toledoplus.be)
           cp dist/toledo-plus-*.zip dist/toledo-plus.zip
 
       - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
+        if: steps.v.outputs.go == 'true'
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             dist/toledo-plus-*.zip
             dist/toledo-plus.zip
+          tag_name: v${{ steps.v.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          name: Toledo+ ${{ steps.v.outputs.version }}
           body_path: RELEASE_NOTES.md
           fail_on_unmatched_files: true
+
+  # Tell the Toledo+ API (api.toledoplus.be/v1/latest) about the new version, so installed copies show "Nieuwe versie".
+  # Needs repo secrets CLOUDFLARE_API_TOKEN (template "Edit Cloudflare Workers" + D1 edit) and CLOUDFLARE_ACCOUNT_ID; skipped without them.
+  worker:
+    needs: release
+    if: needs.release.outputs.go == 'true'
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Deploy worker with LATEST_VERSION
+        working-directory: worker
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then echo "::warning::No CLOUDFLARE_API_TOKEN secret – skipping worker deploy"; exit 0; fi
+          V=$(node -p "require('../manifest.json').version")
+          npx --yes wrangler@4 deploy --var "LATEST_VERSION:$V"

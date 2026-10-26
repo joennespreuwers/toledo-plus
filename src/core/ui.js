@@ -97,7 +97,8 @@
   /** "Toledo+" wordmark (Inter ExtraBold, tight tracking); the plus in brand orange. Text stays real text. */
   const wordmark = (o = {}) => `<span class="tp-wordmark${o.cls ? ' ' + esc(o.cls) : ''}">Toledo<span class="tp-wordmark-plus">+</span></span>`;
   /** Empty-state illustration: three soft pills (the logo's shapes, loosely stacked — not the logo). Decorative. */
-  const emptyArt = (size = 44) => `<svg class="tp-empty-art" width="${size}" height="${Math.round(size * 0.64)}" viewBox="0 0 44 28" aria-hidden="true" focusable="false"><rect class="b" x="2" y="10" width="17" height="8" rx="4"/><rect class="b" x="25" y="10" width="17" height="8" rx="4"/><rect class="a" x="17.5" y="1" width="9" height="26" rx="4.5"/></svg>`;
+  // Empty-state art: the logo glyph itself (true proportions: two magenta half-pills, orange pill on top), in soft tints.
+  const emptyArt = (size = 40) => `<svg class="tp-empty-art" width="${size}" height="${size}" viewBox="0 0 128 128" aria-hidden="true" focusable="false"><path class="b" d="M39 46H28A18 18 0 0 0 28 82H39Z"/><path class="b" d="M89 46H100A18 18 0 0 1 100 82H89Z"/><rect class="a" x="46" y="10" width="36" height="108" rx="18"/></svg>`;
 
   // Attributes object → string. true → bare attribute; false/null/undefined → skipped.
   function attrs(obj) {
@@ -152,7 +153,8 @@
   function badge(n, opts = {}) {
     if (n == null || n === '' || n === 0) return '';
     const tone = ['tint', 'red', 'gray'].includes(opts.tone) ? opts.tone : 'tint';
-    const shown = typeof n === 'number' && n > 99 ? '99+' : String(n);
+    const cap = opts.cap === false ? Infinity : (opts.cap || 99);
+    const shown = typeof n === 'number' && n > cap ? `${cap}+` : String(n);
     const label = opts.label ?? (typeof n === 'number' ? t('common.new', { n }) : String(n));
     return `<span class="tp-badge tp-badge-${tone}" role="img" aria-label="${esc(label)}">${esc(shown)}</span>`;
   }
