@@ -502,9 +502,11 @@ describe('deadlines: overdue, detail sheet, onboarding (v1.4)', () => {
     // Esc closes and returns focus to the row
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => !document.querySelector('#tplus-root').shadowRoot.querySelector('dialog.tp-detail').open, null, { timeout: 3000 });
-    await page.waitForTimeout(200);
-    const focused = await sr(page, (r) => r.activeElement ? r.activeElement.className + '|' + r.activeElement.tagName : 'none');
-    assert.ok(/va-dl-open/.test(focused), `focus back on the row (${focused})`);
+    const focused = await page.waitForFunction(() => {
+      const a = document.querySelector('#tplus-root').shadowRoot.activeElement;
+      return a && a.classList.contains('va-dl-open') && a.isConnected ? a.dataset.key : false;
+    }, null, { timeout: 3000 }).then((x) => x.jsonValue()).catch(() => null);
+    assert.ok(focused, 'focus back on the row');
   });
 
   it('"Open in vak" lands on the course with the assignment focused (state.focus)', async () => {

@@ -171,7 +171,7 @@
   // v1.4 — UX cleanup
   TP.i18n.add({
     nl: {
-      'course.onlyNew': 'Alleen nieuw',
+      'course.onlyNew': 'Alleen nieuw', 'course.contentsError': 'Kon de inhoud van dit vak niet laden.', 'course.folderError': 'Kon deze map niet laden.',
       'course.onlyNewOn': 'Alleen nieuwe items zichtbaar',
       'course.onlyNewOff': 'Alle items zichtbaar',
       'course.noNew': 'Niets nieuw sinds je laatste bezoek.',
@@ -182,7 +182,7 @@
       'course.exam': 'Examen',
     },
     en: {
-      'course.onlyNew': 'Only new',
+      'course.onlyNew': 'Only new', 'course.contentsError': 'Couldn’t load this course’s content.', 'course.folderError': 'Couldn’t load this folder.',
       'course.onlyNewOn': 'Showing new items only',
       'course.onlyNewOff': 'Showing all items',
       'course.noNew': 'Nothing new since your last visit.',
@@ -193,7 +193,7 @@
       'course.exam': 'Exam',
     },
     fr: {
-      'course.onlyNew': 'Nouveautés seulement',
+      'course.onlyNew': 'Nouveautés seulement', 'course.contentsError': 'Impossible de charger le contenu de ce cours.', 'course.folderError': 'Impossible de charger ce dossier.',
       'course.onlyNewOn': 'Seuls les nouveaux éléments sont affichés',
       'course.onlyNewOff': 'Tous les éléments sont affichés',
       'course.noNew': 'Rien de nouveau depuis ta dernière visite.',

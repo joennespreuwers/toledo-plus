@@ -137,3 +137,4 @@ details[open] > summary .cv-chev svg { transform: rotate(90deg); }
   .cv-meta { white-space: normal; overflow-wrap: anywhere; }
   .cv-name { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 }
+.cv-folder-err { padding-left: calc(12px + (var(--depth, 0) + 1) * 20px + 34px); }

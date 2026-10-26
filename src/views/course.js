@@ -278,7 +278,8 @@
       cls: 'cv-folder',
       attrs: { 'data-fq': p2.join(' ').toLowerCase(), style: `--depth:${d}` },
       summary: { leading, title: esc(n.title), strong: true, subtitle: `${loading ? spinner() : ''}${esc(meta)}` },
-      body: kids || (loading ? '' : `<p class="cv-empty-folder">${esc(t('course.folderEmpty'))}</p>`),
+      body: n.failed ? `<div class="cv-folder-err" style="--depth:${d}">${TP.ui.errorRow(t('course.folderError'), 'retry')}</div>`
+        : kids || (loading ? '' : `<p class="cv-empty-folder">${esc(t('course.folderEmpty'))}</p>`),
     });
   }
 
@@ -317,6 +318,11 @@
     const newToggle = !st.partial && all.length
       ? [{ action: 'only-new', label: t('course.onlyNew'), icon: st.onlyNew ? 'checkCircle' : 'circle', attrs: { 'data-fk': 'only-new', 'aria-pressed': st.onlyNew ? 'true' : 'false' } }]
       : [];
+    // B1: a failed top level is an error, not "Nog geen inhoud".
+    if (!st.partial && st.data.contentsError && !all.length) {
+      const auth = st.data.contentsError.auth;
+      return sec('content', t('course.content'), TP.ui.group(TP.ui.errorRow(t(auth ? 'course.error' : 'course.contentsError'), 'retry'), { cls: 'cv-group' }));
+    }
     if (!roots.length) {
       const empty = st.onlyNew && all.length ? t('course.noNew') : t('course.noContent');
       return sec('content', t('course.content'), st.partial ? TP.ui.skeleton(5) : TP.ui.group(TP.ui.empty(empty), { cls: 'cv-group' }), { actions: newToggle });
@@ -656,6 +662,17 @@
     persistOpen();
   }
 
+  // ↻ cleared the course cache (TP.data 'courseCache'): reload the course that is shown.
+  try {
+    TP.data.on('courseCache', () => {
+      if (!cur || !cur.root.querySelector(':scope > .cv-view') || !st.cid) return;
+      // keep what is on screen; the fresh tree replaces it when it arrives
+      const token = ++st.token;
+      st.error = null;
+      load(token);
+    });
+  } catch { /* older data layer */ }
+
   function bind(root) {
     if (root.__tpCourseBound) return;
     root.__tpCourseBound = true;
@@ -669,7 +686,11 @@
         if (act === 'download') { ev.preventDefault(); onDownload(a); return; }
         if (act === 'toggle-all') { ev.preventDefault(); toggleAll(a); return; }
         if (act === 'classic') { ev.preventDefault(); onClassic(); return; }
-        if (act === 'retry') { ev.preventDefault(); st.key = null; if (cur) render(cur); return; }
+        if (act === 'retry') {
+          ev.preventDefault();
+          try { if (st.cid && TP.data.clearCourseCache) TP.data.clearCourseCache(st.cid); } catch { /* ignore */ }
+          st.key = null; if (cur) render(cur); return;
+        }
         if (act === 'only-new') {
           ev.preventDefault();
           st.onlyNew = !st.onlyNew;

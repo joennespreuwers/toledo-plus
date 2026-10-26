@@ -255,7 +255,8 @@
       if (!url || modified || newTab || el.tagName !== 'A') return;
       ev.preventDefault();
       // Give the PATCH a moment so it isn't cancelled by navigation.
-      await Promise.race([done, new Promise((r) => setTimeout(r, 700))]);
+      const flushed = done.then(() => (TP.data.flush ? TP.data.flush() : null)).catch(() => {});
+      await Promise.race([flushed, new Promise((r) => setTimeout(r, 1200))]);
       location.assign(url);
     },
 
@@ -295,6 +296,7 @@
       if (id) {
         try { await TP.state.set({ focus: { cid: cid || null, luId: d.courseLuId || null, id, at: Date.now() } }); } catch { /* best effort */ }
       }
+      try { if (TP.data.flush) await Promise.race([TP.data.flush(), new Promise((r) => setTimeout(r, 1200))]); } catch { /* best effort */ }
       if (cid && TP.shell.origin === 'ultra') location.assign(TP.shell.href('course', { cid }));
       else if (d.courseLuId) location.assign(TP.shell.href('course', { luId: d.courseLuId }));
       else if (cid) location.assign(TP.shell.href('course', { cid }));

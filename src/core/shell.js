@@ -1120,7 +1120,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     }));
     safe(() => TP.state?.subscribe?.((st, keys = []) => {
       // These keys are written during renders/interaction inside a view; reacting to them would loop or reset UI.
-      if (mode === 'shell' && keys.some((k) => !['ui', 'cache', 'visits', 'openFolders', 'recent', 'focus'].includes(k))) rerender();
+      if (mode === 'shell' && keys.some((k) => !['ui', 'cache', 'visits', 'openFolders', 'recent', 'focus', 'read', 'pendingRead', 'cidMap'].includes(k))) rerender();
     }));
     safe(() => TP.data?.on?.('change', () => { if (mode === 'shell') rerender(); }));
     // F4: session expired → non-blocking "Log opnieuw in"; extension updated → "Herlaad".
