@@ -5,7 +5,9 @@
    both because of host_permissions. Nothing else is reachable through this relay. */
 'use strict';
 
-const TP_ALLOWED_ORIGINS = ['https://toledo.kuleuven.be', 'https://ultra.edu.kuleuven.cloud'];
+const TP_ALLOWED_ORIGINS = ['https://toledo.kuleuven.be', 'https://ultra.edu.kuleuven.cloud',
+  'https://webwsp.aps.kuleuven.be', // KU Loket (SAP OData: uurrooster, examenrooster, iCal-link)
+  'https://cloud.timeedit.net'];    // public TimeEdit iCal feed of the student's timetable
 const TP_ALLOWED_METHODS = ['GET', 'PATCH']; // all TP.net ever needs (reads + mark-read/favorite)
 const TP_TIMEOUT = 15000;
 

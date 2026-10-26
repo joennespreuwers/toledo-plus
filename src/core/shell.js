@@ -11,14 +11,15 @@
   const PORTAL = 'https://toledo.kuleuven.be';
   const ULTRA = 'https://ultra.edu.kuleuven.cloud';
   const PORTAL_HOME = PORTAL + '/portal/';
-  const ROUTES = ['overview', 'courses', 'course', 'deadlines', 'planning', 'announcements', 'settings'];
-  const START_PAGES = ['overview', 'courses', 'deadlines', 'planning'];
-  const NAV = ['overview', 'courses', 'deadlines', 'planning', 'announcements'];
-  const TABS = ['overview', 'courses', 'deadlines', 'planning'];
+  const ROUTES = ['overview', 'courses', 'course', 'deadlines', 'agenda', 'announcements', 'kuloket', 'settings'];
+  const ROUTE_ALIASES = { planning: 'agenda' }; // old links keep working
+  const START_PAGES = ['overview', 'courses', 'deadlines', 'agenda'];
+  const NAV = ['overview', 'courses', 'deadlines', 'agenda', 'announcements', 'kuloket'];
+  const TABS = ['overview', 'courses', 'deadlines', 'agenda'];
   const OUTLINE = /^\/ultra\/courses\/(_\d+_\d+)\/outline\/?$/;
   const ULTRA_CID = /^\/ultra\/courses\/(_\d+_\d+)(\/|$)/;
-  const CSS_FILES = ['ui.css', 'src/views/overview.css', 'src/views/deadlines.css', 'src/views/planning.css',
-    'src/views/announcements.css', 'src/views/courses.css', 'src/views/course.css', 'src/views/settings.css'];
+  const CSS_FILES = ['ui.css', 'src/views/overview.css', 'src/views/deadlines.css', 'src/views/agenda.css',
+    'src/views/announcements.css', 'src/views/courses.css', 'src/views/course.css', 'src/views/settings.css', 'src/views/kuloket.css'];
 
   const IS_MAC = (() => { try { return /Mac|iPhone|iPad|iPod/.test(navigator.userAgentData?.platform || navigator.platform || ''); } catch (_) { return false; } })();
   const MOD = IS_MAC ? '⌘' : 'Ctrl ';
