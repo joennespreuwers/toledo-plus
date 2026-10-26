@@ -85,6 +85,31 @@ describe('portal shell', () => {
     assert.deepEqual(h.errors, []);
   });
 
+  it('routes survive the portal\'s AngularJS router (no bounce to #/home, no fight)', async () => {
+    const view = () => page.evaluate(() => document.querySelector('#tplus-root').shadowRoot.querySelector('.tp-view')?.dataset.route);
+    await openPortal(h);
+    await page.evaluate(() => { window.__tpRouterBounces = 0; });
+    for (const r of ['deadlines', 'courses', 'settings']) {
+      await page.locator(S.navLink(r)).first().click();
+      await waitForRoute(page, r);
+      await page.waitForTimeout(300); // longer than the mock router's 50 ms bounce
+      assert.equal(await page.evaluate(() => location.hash), `#/home?tplus=${r}`, `${r}: hash kept`);
+      assert.equal(await view(), r, `${r}: view kept`);
+    }
+    assert.equal(await page.evaluate(() => window.__tpRouterBounces), 0, 'our hashes never trigger the portal router redirect');
+    // Back/forward still route.
+    await page.goBack();
+    await waitForRoute(page, 'courses');
+    assert.equal(await view(), 'courses');
+    // Old '#/tplus/<route>' bookmarks are upgraded in place and land on the right view.
+    await page.goto('https://toledo.kuleuven.be/portal/#/tplus/deadlines');
+    await waitForRoute(page, 'deadlines');
+    await page.waitForTimeout(300);
+    assert.equal(await page.evaluate(() => location.hash), '#/home?tplus=deadlines');
+    assert.equal(await view(), 'deadlines');
+    assert.deepEqual(h.errors, []);
+  });
+
   it('deadlines view merges Toledo + Ultra calendar deadlines within the horizon', async () => {
     await openPortal(h, 'deadlines');
     await page.waitForFunction(() => document.querySelector('#tplus-root').shadowRoot.querySelector('main').innerText.includes('Shotlist korte film'), null, { timeout: 8000 })
@@ -177,11 +202,11 @@ describe('portal shell', () => {
   });
 
   it('shows the deep bar on portal pages it does not replace', async () => {
-    await page.goto('https://toledo.kuleuven.be/portal/#/some/deep/page');
+    await page.goto('https://toledo.kuleuven.be/portal/#/deep/some/page');
     await page.waitForFunction(() => !!document.querySelector('#tplus-deep')?.shadowRoot?.querySelector('nav'), null, { timeout: 8000 });
     assert.ok(await page.locator('#classic-portal').isVisible(), 'original page stays visible under the deep bar');
     const link = page.locator('#tplus-deep a.tp-deep-mark');
-    assert.match(await link.getAttribute('href'), /^https:\/\/toledo\.kuleuven\.be\/portal\/#\/tplus\/overview/);
+    assert.match(await link.getAttribute('href'), /^https:\/\/toledo\.kuleuven\.be\/portal\/#\/home\?tplus=overview$/);
   });
 
   it('classic toggle shows the original portal and the pill re-enables Toledo+', async () => {

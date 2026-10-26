@@ -70,6 +70,21 @@
     return s;
   }
 
+  // storage.sync allows 8 KB per item: drop per-course fields that equal the defaults (course()
+  // merges them back) and course entries left empty, so many courses still fit. If it still fails,
+  // persist() falls back to storage.local.
+  function compact(s) {
+    const items = s && s.courses && s.courses.items;
+    if (isObj(items)) {
+      for (const [lu, it] of Object.entries(items)) {
+        if (!isObj(it)) { delete items[lu]; continue; }
+        for (const [k, v] of Object.entries(it)) if (k in COURSE_DEFAULTS && v === COURSE_DEFAULTS[k]) delete it[k];
+        if (!Object.keys(it).length) delete items[lu];
+      }
+    }
+    return s;
+  }
+
   // ---------------- settings ----------------
   let settings = freeze(normalize(clone(DEFAULTS)));
   const subs = new Set();
@@ -97,7 +112,7 @@
       timer = null;
       lastWriteAt = Date.now();
       const p = pending; pending = null;
-      const data = clone(settings);
+      const data = compact(clone(settings));
       const savedAt = Date.now();
       lastWritten = JSON.stringify(data);
       try {

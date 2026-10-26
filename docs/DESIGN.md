@@ -37,7 +37,7 @@ Over-engineering to avoid: drag-and-drop widget builders, themes beyond light/da
   | --bg-2 (cards) | #FFFFFF | #1C1C1E |
   | --bg-3 (elevated/popover) | #FFFFFF | #2C2C2E |
   | --label | #000 | #FFF |
-  | --label-2 | rgba(60,60,67,.72) | rgba(235,235,245,.70) |
+  | --label-2 | rgba(60,60,67,.76) (.72 is 4.47:1 on --bg) | rgba(235,235,245,.70) |
   | --label-3 (decoration only) | rgba(60,60,67,.30) | rgba(235,235,245,.30) |
   | --separator | rgba(60,60,67,.22) | rgba(84,84,88,.6) |
   | --fill | rgba(120,120,128,.14) | rgba(120,120,128,.28) |
@@ -64,7 +64,7 @@ Over-engineering to avoid: drag-and-drop widget builders, themes beyond light/da
 - **Badge**: min 18px tall, padding 0 6, 12px 600, pill; tint for new, red for overdue, gray neutral; "99+"; `aria-label="3 nieuw"`.
 - **Segmented control**: track --fill, selected segment --bg-3 with shadow, 28/32px tall, ≤5 segments; radio inputs.
 - **Switch**: 38×22 desktop (51×31 comfortable), on = --tint; native checkbox with role=switch.
-- **Settings**: inset grouped; label leading, control trailing; changes apply instantly; group headers: Taal, Weergave, Startpagina, Overzicht-secties (reorder with ↑/↓ buttons + switch), Nieuw-feed, Deadlines, Vakken (drill-in per course: nickname, color swatches, pin, hide), Synchronisatie met Toledo, Wrapper (portal/vakken/diepere pagina's), Gegevens (export/import/reset), Over (version, GitHub, report issue).
+- **Settings**: inset grouped; label leading, control trailing; changes apply instantly; group headers: Taal, Weergave, Startpagina, Overzicht-secties (reorder with ↑/↓ buttons + switch), Nieuw, Deadlines, Vakken (drill-in per course: nickname, color swatches, pin, hide), Synchronisatie met Toledo, Toledo-pagina's (portal/vakken/diepere pagina's), Gegevens (export/import/reset), Over (version, GitHub, report issue).
 - **Search**: filters the current view live; on Overview it also searches courses, feed, deadlines. Show "No results for “x”" empty state.
 
 ## Compact "New" feed (Overview)

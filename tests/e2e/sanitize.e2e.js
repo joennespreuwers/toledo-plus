@@ -21,6 +21,11 @@ const VECTORS = [
   '<p onclick="window.__x=1" onmouseover="window.__x=1">p</p>',
   '<a href="https://example.org/ok">safe</a>',
   '<math><mtext><table><mglyph><style><img src=x onerror=window.__x=1>',
+  // URL-parser normalisation tricks: tab/newline inside the scheme, leading C0 control characters.
+  '<a href="java&#9;script:window.__x=1">tab</a>',
+  '<a href="java\nscript:window.__x=1">nl</a>',
+  '<a href="&#1;javascript:window.__x=1">c0</a>',
+  '<img srcset="x.png 1x, javascript:window.__x=1 2x">',
 ];
 
 describe('TP.util.sanitize', () => {

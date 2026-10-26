@@ -6,7 +6,7 @@
 'use strict';
 
 const TP_ALLOWED_ORIGINS = ['https://toledo.kuleuven.be', 'https://ultra.edu.kuleuven.cloud'];
-const TP_ALLOWED_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
+const TP_ALLOWED_METHODS = ['GET', 'PATCH']; // all TP.net ever needs (reads + mark-read/favorite)
 const TP_TIMEOUT = 15000;
 
 function tpAllowed(url) {

@@ -173,6 +173,6 @@ async function waitFor(pred, { timeout = 5000, interval = 50 } = {}) {
 
 module.exports = { EXT, launch, waitForShell, waitForIdle, waitForQuiet, inShadow, shell, screenshot, waitFor, ROOT, ARTIFACTS, DESKTOP, PHONE,
   PORTAL_HOME: 'https://toledo.kuleuven.be/portal/#/home',
-  portalRoute: (r, p) => `https://toledo.kuleuven.be/portal/#/tplus/${r}${p ? '/' + encodeURIComponent(p) : ''}`,
+  portalRoute: (r, p) => `https://toledo.kuleuven.be/portal/#/home?tplus=${r}${p ? '&id=' + encodeURIComponent(p) : ''}`,
   COURSE_URL: 'https://ultra.edu.kuleuven.cloud/ultra/courses/_200661_1/outline',
 };

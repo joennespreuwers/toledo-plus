@@ -62,7 +62,17 @@
 }
 .va-check:hover { background: var(--fill); color: var(--tint-text, var(--tint)); }
 .va-check.is-done { color: var(--green); }
-.va-dl .tp-row-sub { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+/* one line, ellipsis (flex-wrap orphaned the colour dot on phones) */
+.va-dl .tp-row-sub { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.va-dl .tp-row-sub .tp-dot { width: 8px; height: 8px; margin-right: 5px; vertical-align: 0; }
+/* whole row is the hit target: the trailing "open" link stretches over the row; the check/remove buttons sit above it */
+.va-dl a.va-iconbtn::after { content: ''; position: absolute; inset: 0; }
+.va-dl .va-check, .va-dl button.va-iconbtn { position: relative; z-index: 2; }
+.va-dl:has(a.va-iconbtn:hover) { background: var(--fill-2); }
+.va-dl a.va-iconbtn:focus-visible { outline: none; }
+.va-dl:has(a.va-iconbtn:focus-visible) { outline: 2px solid var(--tint-text); outline-offset: -2px; border-radius: var(--r-control); }
+/* phones: the subtitle already carries the date and the trailing word the urgency → drop the tile, give the title room */
+@media (max-width: 480px) { .va-dl .tp-datetile { display: none; } }
 .va-dl.is-done .tp-row-title { color: var(--label-2); text-decoration: line-through; text-decoration-color: var(--label-3); }
 .va-dl .tp-row-trail { display: inline-flex; align-items: center; gap: 4px; }
 .va-urg {

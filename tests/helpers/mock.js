@@ -22,9 +22,26 @@ const ULTRA = 'https://ultra.edu.kuleuven.cloud';
 const FILES = 'https://files.mock-storage.test';
 const CDN = 'https://cdn.example.invalid';
 
+// Emulates the live portal's AngularJS router (verified live): any hash whose path is not a known
+// route ('#/tplus/x', '#/home/tplus/x', '#!/x', …) is rewritten to '#/home' shortly after load/hashchange;
+// the '?query' survives only on '#/home'. '/deep/*' stands in for the portal's real non-home pages.
+const ANGULAR_ROUTER = `(function () {
+  var KNOWN = /^(|\\/|\\/home\\/?|\\/deep\\/.+)$/;
+  function check() {
+    var h = location.hash;
+    var path = (/^#([^?]*)/.exec(h) || ['', ''])[1];
+    if (KNOWN.test(path)) return;
+    window.__tpRouterBounces = (window.__tpRouterBounces || 0) + 1;
+    setTimeout(function () { if (location.hash === h) location.hash = '#/home'; }, 50);
+  }
+  window.addEventListener('hashchange', check);
+  check();
+})();`;
+
 const PORTAL_HTML = `<!doctype html><html lang="nl"><head><meta charset="utf-8"><title>Toledo</title>
 <style>body{font-family:Arial;padding-top:60px;margin:0}.navbar{background:#0a3e72;color:#fff;padding:10px;position:fixed;top:0;left:0;right:0}</style></head>
-<body><div id="app"><nav class="navbar">Toledo (klassiek)</nav><div class="main-content" id="classic-portal"><h3>Klassiek portaal</h3><p>Tegels…</p></div><footer>footer</footer></div></body></html>`;
+<body><div id="app"><nav class="navbar">Toledo (klassiek)</nav><div class="main-content" id="classic-portal"><h3>Klassiek portaal</h3><p>Tegels…</p></div><footer>footer</footer></div>
+<script>${ANGULAR_ROUTER}</script></body></html>`;
 
 const ultraHtml = (title) => `<!doctype html><html lang="nl"><head><meta charset="utf-8">
 <base href="${CDN}/">

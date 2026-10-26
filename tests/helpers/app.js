@@ -45,7 +45,7 @@ async function openPortal(h, route, param) {
 
 /** Wait until the large title / view reflects a route change. */
 async function waitForRoute(page, route) {
-  await page.waitForFunction((r) => location.hash.startsWith(`#/tplus/${r}`), route, { timeout: 8000 });
+  await page.waitForFunction((r) => location.hash === `#/home?tplus=${r}` || location.hash.startsWith(`#/home?tplus=${r}&`), route, { timeout: 8000 });
   await waitForShell(page);
   await waitForIdle(page);
   await waitForQuiet(page);

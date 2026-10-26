@@ -5,7 +5,7 @@
   const TP = (globalThis.TP ||= {});
   const add = () => TP.i18n.add({
     nl: {
-      'overview.search': 'Zoek in vakken, deadlines en nieuws',
+      'overview.search': 'Zoeken',
       'overview.greet.night': 'Goeienacht',
       'overview.greet.morning': 'Goeiemorgen',
       'overview.greet.afternoon': 'Goeiemiddag',
@@ -87,7 +87,7 @@
       'va.newTab': '(opent in nieuw tabblad)',
     },
     en: {
-      'overview.search': 'Search courses, deadlines and news',
+      'overview.search': 'Search',
       'overview.greet.night': 'Good night',
       'overview.greet.morning': 'Good morning',
       'overview.greet.afternoon': 'Good afternoon',
@@ -169,7 +169,7 @@
       'va.newTab': '(opens in a new tab)',
     },
     fr: {
-      'overview.search': 'Rechercher cours, échéances et nouveautés',
+      'overview.search': 'Rechercher',
       'overview.greet.night': 'Bonne nuit',
       'overview.greet.morning': 'Bonjour',
       'overview.greet.afternoon': 'Bon après-midi',
@@ -181,7 +181,7 @@
       'overview.deadlines.all': 'Toutes les échéances',
       'overview.deadlines.empty': 'Aucune échéance dans les {n} prochains jours.',
 
-      'overview.new.title': 'Nouveau',
+      'overview.new.title': 'Nouveautés',
       'overview.new.readAll': 'Tout marquer comme lu',
       'overview.new.empty': 'Tu es à jour.',
       'overview.new.error': 'Impossible de charger Toledo',
@@ -204,7 +204,7 @@
       'overview.kind.announcement.other': '{n} annonces',
       'overview.kind.read': 'Lu',
 
-      'overview.recent.title': 'Reprendre là où tu t’es arrêté',
+      'overview.recent.title': 'Reprendre où tu en étais',
 
       'overview.courses.title': 'Cours',
       'overview.courses.all': 'Tous les cours',

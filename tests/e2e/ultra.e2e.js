@@ -178,3 +178,26 @@ describe('portal → course navigation', () => {
     assert.deepEqual(h.errors, []);
   });
 });
+
+describe('ultra course page without portal data', () => {
+  let h;
+  before(async () => { h = await launch({ mock: { portalDown: true } }); });
+  after(async () => { await h?.close(); });
+
+  it('a failing portal relay stays silent when the course itself loads', async () => {
+    const page = h.page;
+    await page.goto(COURSE_URL);
+    await waitForShell(page);
+    await page.waitForFunction(() => !!document.querySelector('#tplus-root').shadowRoot.querySelector('details.cv-folder'), null, { timeout: 15000 });
+    await waitFor(() => h.rec.find((r) => r.url.includes('/portal/api/events')).length > 0);
+    await page.waitForTimeout(600); // let the failed refresh land + rerender
+    const err = await page.evaluate(() => {
+      const sr = document.querySelector('#tplus-root').shadowRoot;
+      const up = sr.querySelector('.tp-updated');
+      return { headErr: !!sr.querySelector('.tp-updated-err') && !up.hidden, toast: sr.querySelector('.tp-toast.show')?.textContent || '' };
+    });
+    assert.equal(err.headErr, false, 'no "could not load Toledo" row in the course header');
+    assert.equal(err.toast, '', 'no error toast');
+    assert.deepEqual(h.errors.filter((e) => /pageerror|Uncaught/.test(e)), []);
+  });
+});

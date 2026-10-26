@@ -19,6 +19,9 @@
   // everything active or layout-breaking before the result is inserted anywhere.
   const DROP = 'script,style,iframe,frame,frameset,object,embed,applet,form,input,button,textarea,select,option,link,meta,base,svg,math,template,noscript,portal';
   const BAD_URL = /^\s*(javascript|vbscript|data):/i;
+  // The URL parser drops ASCII tab/newline anywhere and leading C0 controls/space, so
+  // "java\tscript:" or "\x01javascript:" still run: test the value the browser will actually see.
+  const urlView = (v) => String(v).replace(/[\t\n\r]/g, '').replace(/^[\u0000-\u0020]+/, '');
   const REL_OK = /^\s*([a-z][a-z0-9+.-]*:|#)/i; // already absolute (any scheme) or in-page anchor
   const IMG_DATA = /^\s*data:image\/(png|jpe?g|gif|webp);/i;
   function sanitize(html) {
@@ -32,12 +35,16 @@
         if (n.startsWith('on') || n === 'style' || n === 'class' || n === 'id' || n === 'formaction' || n === 'srcdoc') {
           el.removeAttribute(a.name);
         } else if (n === 'href' || n === 'src' || n === 'xlink:href' || n === 'action' || n === 'poster' || n === 'background') {
-          if (BAD_URL.test(v) && !(n === 'src' && el.tagName === 'IMG' && IMG_DATA.test(v))) el.removeAttribute(a.name);
-          else if ((n === 'href' || n === 'src') && v && !REL_OK.test(v)) {
+          const pv = urlView(v);
+          if (BAD_URL.test(pv) && !(n === 'src' && el.tagName === 'IMG' && IMG_DATA.test(pv))) el.removeAttribute(a.name);
+          else if ((n === 'href' || n === 'src') && v && !REL_OK.test(pv)) {
             // Absolutize relative URLs: on Ultra a relative src would resolve against the CDN <base href>.
-            try { el.setAttribute(a.name, new URL(v, location.href).href); } catch (_) { el.removeAttribute(a.name); }
+            try {
+              const abs = new URL(v, location.href).href;
+              if (BAD_URL.test(abs)) el.removeAttribute(a.name); else el.setAttribute(a.name, abs);
+            } catch (_) { el.removeAttribute(a.name); }
           }
-        } else if (n === 'srcset' && BAD_URL.test(v)) {
+        } else if (n === 'srcset' && /(^|,)\s*(javascript|vbscript|data):/i.test(urlView(v).replace(/\s+/g, ' '))) {
           el.removeAttribute(a.name);
         }
       }

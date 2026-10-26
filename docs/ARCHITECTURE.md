@@ -37,6 +37,9 @@ Read `docs/DESIGN.md` (design spec from research) before writing UI.
    - `GET /learn/api/public/v1/calendars/items?since=ISO&until=ISO&limit=100` → cross-course deadlines (`type:'GradebookColumn'`, `title`, `end`, `calendarName:"ULTRA-B-…: Filmtaal 1 [N50265]"`). Keep windows ≤ 60 days.
    - Item deep link: `abs('/ultra/redirect?redirectType=nautilus&courseId={cid}&contentId={id}')`.
 6. The school does **not** use the gradebook (grades/submission status) nor discussions. Never show grades/submission state.
+7. **The portal's AngularJS router rewrites every unknown hash path to `#/home`** (`#/tplus/x`, `#/home/tplus/x`, `#!/x` – verified live),
+   but keeps a query string on `#/home`. Toledo+ portal routes therefore live in that query: `#/home?tplus=<route>[&id=<param>]`.
+   Never invent another hash path; the e2e portal mock emulates this router so regressions are caught.
 
 ## Files and ownership
 
@@ -207,9 +210,10 @@ TP.ui.cols(mainHtml, sideHtml) → two-column layout (side column becomes stacke
 ```
 TP.shell.CSS = ['ui.css', 'src/views/overview.css', …all view css…]
 TP.shell.register(route, view)  // route: 'overview'|'courses'|'course'|'deadlines'|'planning'|'announcements'|'settings'
-TP.shell.navigate(route, params?) // same origin → in-place (hash on portal: '#/tplus/<route>[/<param>]'), else full navigation via TP.shell.href
+TP.shell.navigate(route, params?) // same origin → in-place (hash on portal: '#/home?tplus=<route>[&id=<param>]'), else full navigation via TP.shell.href
 TP.shell.href(route, params?) → absolute URL appropriate from the current origin
-     overview/courses/deadlines/planning/announcements/settings → https://toledo.kuleuven.be/portal/#/tplus/<route>
+     overview/courses/deadlines/planning/announcements/settings → https://toledo.kuleuven.be/portal/#/home?tplus=<route>
+     (plain '#/home' = settings.startPage; legacy '#/tplus/<route>[/<p>]' is still parsed and replaced in place via history.replaceState)
      course {luId} → enrollment.link (journey ultraLink) ; course {cid} on ultra → https://ultra.edu.kuleuven.cloud/ultra/courses/<cid>/outline
 TP.shell.toast(text) ; TP.shell.announce(text) (aria-live polite)
 TP.shell.rerender()               // re-run current view render (called on settings/data change for current view)
@@ -227,7 +231,7 @@ ctx = { root: HTMLElement (view container in shadow root), params, route, origin
 ```
 Views attach ONE delegated listener per event type on `ctx.root` in render's first call (guard with a flag on root), never on document.
 Shell layout: skip link; sidebar ≥700px (glass, sections: Overview, Courses, Deadlines, Planning, Announcements, then "Pinned" courses, Settings at bottom; counts trailing; ⌘\ toggles), bottom tab bar <700px (Overview, Courses, Deadlines, Planning, More→Announcements/Settings); toolbar with large title, subtitle, search (⌘K or '/'), refresh, account menu (mail badge→Outlook, Toledo classic toggle, logout). Theme: `data-appearance`, `data-density`, `--tint`, `--tint-text` on the shell root.
-On Ultra pages that are not a course outline, and on portal routes other than '#/home', '#/', '' and '#/tplus/*': if `wrap.deepBar`, show a slim glass top bar (Toledo+ mark → overview, "‹ <course>" back link when the path has a course id, page stays the original) and pad the page top.
+On Ultra pages that are not a course outline, and on portal routes other than '#/home' (incl. '#/home?…'), '#/', '': if `wrap.deepBar`, show a slim glass top bar (Toledo+ mark → overview, "‹ <course>" back link when the path has a course id, page stays the original) and pad the page top.
 "Classic" mode: settings.wrap.portal/courses false → original page shows; a floating "Toledo+" pill (page.css) re-enables.
 
 ## Boot (core)

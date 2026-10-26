@@ -523,8 +523,10 @@
   }
   function absPortal(url) {
     if (!url) return null;
-    if (/^https?:\/\//i.test(url)) return url;
-    try { return new URL(url.replace(/^\/?/, ''), PORTAL + '/').href; } catch (_) { return null; }
+    try {
+      const u = new URL(/^https?:\/\//i.test(url) ? url : String(url).replace(/^\/?/, ''), PORTAL + '/');
+      return u.protocol === 'https:' || u.protocol === 'http:' ? u.href : null;
+    } catch (_) { return null; }
   }
   function link(label) {
     const l = flatLinks().find((x) => x.label === label);
@@ -750,10 +752,18 @@
     return a ? { url: `${ULTRA}${BB}/v1/courses/${encodeURIComponent(cid)}/contents/${encodeURIComponent(contentId)}/attachments/${encodeURIComponent(a.id)}/download`, fileName: a.fileName } : null;
   }
 
+  // Only http(s) may be opened (content handler URLs are teacher-supplied; never run javascript:/data:).
+  // Note: window.open(…, 'noopener') ALWAYS returns null, so it can't be used to detect a blocked popup.
   function openUrl(win, url) {
-    if (win && !win.closed) { try { win.location.href = url; return; } catch (_) { /* fall through */ } }
-    const w = window.open(url, '_blank', 'noopener');
-    if (!w) location.href = url;
+    let u = null;
+    try { u = new URL(String(url || '')); } catch (_) { u = null; }
+    if (!u || (u.protocol !== 'https:' && u.protocol !== 'http:')) { if (win && !win.closed) win.close(); return; }
+    const href = u.href;
+    if (win && !win.closed) { try { win.location.href = href; return; } catch (_) { /* fall through */ } }
+    let w = null;
+    try { w = window.open(href, '_blank'); } catch (_) { w = null; }
+    if (w) { try { w.opener = null; } catch (_) { /* cross-origin already */ } return; }
+    location.href = href; // popup blocked: navigate this tab instead of doing nothing
   }
 
   /** Download a file item: attachment → blob (default credentials) → <a download>. Never throws; → true when saved. */

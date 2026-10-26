@@ -25,7 +25,7 @@
   --switch-w: 38px; --switch-h: 22px;
   /* color — light */
   --bg: #F2F2F7; --bg-2: #FFFFFF; --bg-3: #FFFFFF;
-  --label: #000000; --label-2: rgba(60, 60, 67, .72); --label-3: rgba(60, 60, 67, .30);
+  --label: #000000; --label-2: rgba(60, 60, 67, .76); /* .72 dips to 4.47:1 on --bg */ --label-3: rgba(60, 60, 67, .30);
   --separator: rgba(60, 60, 67, .22); --separator-strong: rgba(60, 60, 67, .36);
   --fill: rgba(120, 120, 128, .14); --fill-2: rgba(120, 120, 128, .08);
   --red: #D70015; --red-fill: #FF3B30;
@@ -134,10 +134,11 @@
 /* ========================================================================== base */
 .tp-theme *, .tp-theme *::before, .tp-theme *::after { box-sizing: border-box; }
 .tp-theme [hidden] { display: none !important; }
-.tp-theme a { color: var(--tint-text); }
+/* :where() keeps this at element specificity, so component classes (.va-ccard, .cv-row, …) win. */
+:where(.tp-theme) a { color: var(--tint-text); }
 .tp-theme button, .tp-theme input, .tp-theme select, .tp-theme textarea { font: inherit; color: inherit; letter-spacing: inherit; }
-.tp-theme h1, .tp-theme h2, .tp-theme h3, .tp-theme p, .tp-theme ul, .tp-theme ol { margin: 0; }
-.tp-theme ul, .tp-theme ol { padding: 0; list-style: none; }
+:where(.tp-theme) :where(h1, h2, h3, p, ul, ol) { margin: 0; } /* zero specificity: .va-dayhead, .tp-sec-foot … keep their margins */
+:where(.tp-theme) :where(ul, ol) { padding: 0; list-style: none; }
 .tp-theme img { max-width: 100%; height: auto; }
 .tp-theme :focus { outline: none; }
 .tp-theme :focus-visible { outline: 2px solid var(--tint-text); outline-offset: 2px; border-radius: 4px; }
@@ -322,7 +323,7 @@
   min-height: 50px; width: 100%; padding: 4px 2px; border: 0; border-radius: var(--r-pill); background: none;
   color: var(--label-2) !important; text-decoration: none; cursor: pointer;
 }
-.tp-tab.active { color: var(--tint-text) !important; background: var(--tint-soft); }
+.tp-tab.active { color: var(--tint-text) !important; background: color-mix(in srgb, var(--tint) 7%, var(--bg-2)); } /* translucent --tint-soft dropped the 11px label to ~4:1 */
 .tp-tab-label { font-size: .6875rem; line-height: .8125rem; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tp-tab-dot { position: absolute; top: 6px; left: calc(50% + 8px); width: 8px; height: 8px; border-radius: 50%; background: var(--red-fill); }
 
@@ -408,12 +409,13 @@
 /* inset grouped card + hairline separators inset to text start */
 .tp-group { position: relative; background: var(--bg-2); border-radius: var(--r-group); overflow: hidden; }
 .tp-group > * { position: relative; }
-.tp-group > * + *::before, .tp-disclosure-body > * + *::before {
+/* separator above every row that has a visible row before it (search hides rows with [hidden]) */
+.tp-group > :not([hidden]) ~ *::before, .tp-disclosure-body > :not([hidden]) ~ *::before {
   content: ''; position: absolute; top: 0; right: 0; left: var(--row-px); height: var(--hairline);
   background: var(--separator); pointer-events: none; z-index: 1;
 }
-.tp-group > .has-lead + *::before, .tp-group > * + .has-lead::before,
-.tp-disclosure-body > * + .has-lead::before { left: var(--inset); }
+.tp-group > .has-lead + *::before, .tp-group > :not([hidden]) ~ .has-lead::before,
+.tp-disclosure-body > :not([hidden]) ~ .has-lead::before { left: var(--inset); }
 .tp-disclosure-body > * { position: relative; }
 .tp-group + .tp-group { margin-top: 12px; }
 
@@ -512,8 +514,9 @@ a.tp-row:active, button.tp-row:active, summary.tp-row:active { background: var(-
 .tp-btn:disabled, .tp-btn[aria-disabled="true"] { opacity: .45; cursor: default; }
 .tp-btn-filled { background: var(--tint-fill); color: var(--on-tint) !important; font-weight: 600; }
 .tp-btn-filled:hover:not(:disabled) { filter: brightness(1.08); }
-.tp-btn-tinted { background: var(--tint-soft); color: var(--tint-text) !important; font-weight: 600; }
-.tp-btn-tinted:hover:not(:disabled) { background: color-mix(in srgb, var(--tint) 24%, transparent); }
+/* --tint-text is tuned to exactly 4.5:1 on --bg, so a tinted fill must stay lighter than --bg: a little tint over --bg-2 */
+.tp-btn-tinted { background: color-mix(in srgb, var(--tint) 7%, var(--bg-2)); color: var(--tint-text) !important; font-weight: 600; }
+.tp-btn-tinted:hover:not(:disabled) { background: color-mix(in srgb, var(--tint) 11%, var(--bg-2)); }
 .tp-btn-plain { color: var(--tint-text) !important; padding-inline: 8px; }
 .tp-btn-plain:hover:not(:disabled) { background: var(--fill-2); }
 .tp-btn-gray { background: var(--fill); color: var(--label) !important; }

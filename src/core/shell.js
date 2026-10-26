@@ -29,7 +29,6 @@
   let started = false, firstView = true, renderSeq = 0;
   let searchQ = '';
   let refreshing = false;
-  let ownNav = { hash: '', at: 0 }; // last tplus hash we set (guards against the portal's own router redirecting)
   let lastPath = '';
   let titleObserver = null;
 
@@ -37,14 +36,27 @@
   const safe = (fn, fallback) => { try { return fn(); } catch (_) { return fallback; } };
 
   // ---------------- location → route ----------------
+  // Portal URL scheme: '#/home?tplus=<route>[&id=<param>]'. The portal's AngularJS router rewrites
+  // every unknown hash path (incl. our old '#/tplus/<route>') to '#/home', but keeps the query on
+  // '#/home', so our route lives in that query. Plain '#/home' = the configured start page.
   const isHomeHash = (h) => !h || h === '#' || h === '#/' || /^#\/home(\/|\?|$)/.test(h);
-  function parseHash(h) {
-    const m = /^#\/tplus\/([a-z]+)(?:\/([^?]*))?/.exec(h || '');
-    if (!m || !ROUTES.includes(m[1])) return null;
-    let p = m[2] ? safe(() => decodeURIComponent(m[2]), m[2]) : '';
+  const LEGACY = /^#\/tplus\/([a-z]+)(?:\/([^?]*))?/;
+  const isLegacyHash = (h) => /^#\/tplus(\/|$)/.test(h || '');
+  function mkRoute(route, p) {
+    if (!ROUTES.includes(route)) return null;
     const params = {};
-    if (p) { if (m[1] === 'course') params.luId = p; else params.id = p; }
-    return { route: m[1], params };
+    if (p) { if (route === 'course') params.luId = p; else params.id = p; }
+    return { route, params };
+  }
+  function parseHash(h) {
+    h = h || '';
+    const legacy = LEGACY.exec(h);
+    if (legacy) return mkRoute(legacy[1], legacy[2] ? safe(() => decodeURIComponent(legacy[2]), legacy[2]) : '');
+    const m = /^#\/home\/?\?(.*)$/.exec(h);
+    if (!m) return null;
+    const q = safe(() => new URLSearchParams(m[1]), null);
+    const route = q && q.get('tplus');
+    return route ? mkRoute(route, q.get('id') || '') : null;
   }
   const startRoute = () => (START_PAGES.includes(settings().startPage) ? settings().startPage : 'overview');
 
@@ -55,7 +67,7 @@
     if (origin === 'portal') {
       const h = location.hash;
       const tp = parseHash(h);
-      if (tp || isHomeHash(h) || /^#\/tplus/.test(h)) {
+      if (tp || isHomeHash(h) || isLegacyHash(h)) {
         const r = tp || { route: startRoute(), params: {} };
         return { mode: wrap.portal !== false ? 'shell' : 'classic', ...r };
       }
@@ -69,8 +81,10 @@
   // Synchronous early guess (before settings load) so the host page never flashes.
   function preflight() {
     origin = /ultra\.edu\.kuleuven\.cloud$/.test(location.hostname) ? 'ultra' : 'portal';
+    // Before the portal's router boots (document_start), or it bounces the old form to '#/home'.
+    safe(upgradeLegacyHash);
     const wraps = origin === 'portal'
-      ? (isHomeHash(location.hash) || /^#\/tplus/.test(location.hash))
+      ? (isHomeHash(location.hash) || isLegacyHash(location.hash))
       : OUTLINE.test(location.pathname);
     if (wraps) document.documentElement.classList.add('tplus-on');
   }
@@ -79,9 +93,9 @@
   function paramOf(params) {
     if (!params) return '';
     const v = params.id ?? params.luId ?? params.cid ?? params.param;
-    return v != null && v !== '' ? '/' + encodeURIComponent(v) : '';
+    return v != null && v !== '' ? '&id=' + encodeURIComponent(v) : '';
   }
-  const hashFor = (route, params) => `#/tplus/${route}${paramOf(params)}`;
+  const hashFor = (route, params) => `#/home?tplus=${encodeURIComponent(route)}${paramOf(params)}`;
 
   function href(route, params = {}) {
     if (route === 'course') {
@@ -105,7 +119,6 @@
     const inPlace = origin === 'portal' && route !== 'course' && ROUTES.includes(route);
     if (inPlace) {
       const h = hashFor(route, params);
-      ownNav = { hash: h, at: Date.now() };
       if (location.hash === h) { onLocation(true); return; }
       location.hash = h; // → hashchange → onLocation
       return;
@@ -461,8 +474,9 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     const up = $('.tp-updated');
     const ms = safe(() => TP.data?.lastUpdated?.(), null);
     if (up) {
-      // Non-blocking error state: keep cached data visible, offer a retry.
-      const failed = ['enrollments', 'events'].some((k) => safe(() => TP.data?.status?.(k)?.error, null));
+      // Non-blocking error state: keep cached data visible, offer a retry. On Ultra the portal data
+      // arrives via the best-effort relay and isn't the view's primary data: stay silent there.
+      const failed = origin === 'portal' && ['enrollments', 'events'].some((k) => safe(() => TP.data?.status?.(k)?.error, null));
       const stamp = ms ? esc(t('common.updated', { time: TP.fmt.time(ms) })) : '';
       up.innerHTML = failed
         ? `${stamp ? stamp + ' · ' : ''}<span class="tp-updated-err">${icon('warning', { size: 13 })}${esc(t('shell.loadError'))}</span> · <button type="button" class="tp-link-btn" data-shell="refresh">${esc(t('common.retry'))}</button>`
@@ -748,13 +762,17 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     });
   }
 
+  // Old '#/tplus/<route>[/<p>]' links (bookmarks, v1.0 builds) → the form the portal router keeps.
+  function upgradeLegacyHash() {
+    if (origin !== 'portal' || !isLegacyHash(location.hash)) return;
+    const r = parseHash(location.hash);
+    const h = r ? hashFor(r.route, r.params) : '#/home';
+    history.replaceState(history.state, '', location.pathname + location.search + h);
+  }
+
+  // Both popstate and hashchange fire for one hash navigation; onLocation is idempotent.
   function onHashChange() {
-    // The portal's own router may bounce our '#/tplus/…' hash to '#/home'; put ours back silently.
-    if (isHomeHash(location.hash) && ownNav.hash && Date.now() - ownNav.at < 1500) {
-      history.replaceState(history.state, '', location.pathname + location.search + ownNav.hash);
-      return;
-    }
-    if (parseHash(location.hash)) ownNav = { hash: location.hash, at: Date.now() };
+    upgradeLegacyHash();
     onLocation();
   }
 
@@ -763,6 +781,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
 
   function onShellClick(ev) {
     if (ev.target === $('.tp-sheet')) { closeSheet(); return; } // backdrop click
+    if (ev.target.closest?.('[data-action="tp-retry-view"]')) { renderView(); return; } // render-error row
     const el = ev.target.closest?.('[data-shell], a[data-route], a[href]');
     if (!el) return;
     const act = el.dataset?.shell;
@@ -902,7 +921,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     if (started) return;
     started = true;
     origin = /ultra\.edu\.kuleuven\.cloud$/.test(location.hostname) ? 'ultra' : 'portal';
-    if (origin === 'portal' && parseHash(location.hash)) ownNav = { hash: location.hash, at: Date.now() };
+    upgradeLegacyHash();
 
     window.addEventListener('keydown', onWindowKey, true);
 
@@ -926,12 +945,12 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     safe(() => TP.data?.on?.('error', () => {
       if (mode !== 'shell') return;
       rerender();
-      if (!refreshing && Date.now() - lastErrToast > 60000) { lastErrToast = Date.now(); toast(t('shell.loadError')); }
+      if (origin === 'portal' && !refreshing && Date.now() - lastErrToast > 60000) { lastErrToast = Date.now(); toast(t('shell.loadError')); }
     }));
 
     if (origin === 'portal') {
       window.addEventListener('hashchange', onHashChange);
-      window.addEventListener('popstate', () => onLocation());
+      window.addEventListener('popstate', onHashChange);
       onLocation();
     } else {
       lastPath = location.pathname;

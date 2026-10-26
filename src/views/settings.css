@@ -1,4 +1,5 @@
 /* Toledo+ — Settings view (views-B). Inset grouped, label leading / control trailing. */
+.st-view > .tp-section { margin: 0; } /* the flex gap is the section gap (was doubled to ~56px) */
 .st-view { display: flex; flex-direction: column; gap: 28px; max-width: 720px; min-width: 0; }
 .st-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
@@ -14,8 +15,11 @@
 .st-ctl { flex: 0 1 auto; min-width: 0; max-width: 100%; display: flex; justify-content: flex-end; }
 .st-row-stack { flex-direction: column; align-items: stretch; padding-top: 10px; padding-bottom: 12px; }
 .st-row-stack .st-ctl { justify-content: flex-start; }
-.st-ctl .tp-segmented { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
-.st-ctl .tp-segmented::-webkit-scrollbar { display: none; }
+.st-ctl .tp-segmented { max-width: 100%; }
+/* narrow: a 4-option control (language) becomes 2×2 instead of silently scrolling "Français" out of view */
+@media (max-width: 480px) {
+  .st-ctl .tp-segmented:has(> :nth-child(4)) { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+}
 .st-value, .st-muted { color: var(--label-2); font-size: var(--fs-body, .9375rem); }
 
 .st-row-toggle { padding-top: 0; padding-bottom: 0; }
@@ -39,7 +43,7 @@
 .st-view .st-action.st-danger { color: var(--red); }
 .st-view .st-action.st-danger.is-armed { font-weight: 600; }
 .st-file { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
-.st-file:focus-visible + label { outline: 2px solid var(--tint); outline-offset: 2px; border-radius: 6px; }
+.st-file:focus-visible + label { outline: 2px solid var(--tint-text, var(--tint)); outline-offset: 2px; border-radius: 6px; }
 
 /* course drill-ins */
 .st-course-disc > summary { padding-left: 16px; }
@@ -60,7 +64,7 @@
 }
 .st-view .st-link-btn:hover { background: var(--fill); }
 
-.st-view :is(a, button, summary, .st-input, .st-view .st-icon-btn):focus-visible { outline: 2px solid var(--tint); outline-offset: 2px; border-radius: 8px; }
+.st-view :is(a, button, summary, .st-input, .st-view .st-icon-btn):focus-visible { outline: 2px solid var(--tint-text, var(--tint)); outline-offset: 2px; border-radius: 8px; }
 
 @media (max-width: 480px) {
   .st-course { padding-left: 16px; }
