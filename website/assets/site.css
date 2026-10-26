@@ -171,6 +171,8 @@ html { scrollbar-color: color-mix(in srgb, var(--label) 26%, transparent) transp
 .nav-links a:hover { text-decoration: none; color: var(--tint-text); }
 .nav-end { display: flex; align-items: center; gap: 12px; margin-left: auto; }
 .nav-links + .nav-end { margin-left: 0; }
+.nav-end .nav-demo { white-space: nowrap; }
+@media (max-width: 559px) { .nav-end .nav-demo { display: none; } } /* phones: the hero already links to the demo */
 @media (min-width: 834px) { .nav-links { display: flex; } }
 .lang { display: flex; gap: 2px; font-size: .8125rem; font-weight: 600; background: var(--fill); padding: 2px; border-radius: 999px; }
 .lang a { color: var(--label-2); padding: 4px 9px; border-radius: 999px; min-width: 24px; min-height: 24px; text-align: center; }
