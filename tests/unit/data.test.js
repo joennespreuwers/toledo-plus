@@ -607,6 +607,28 @@ test("session expired: status(key).auth, one 'auth' event, loginUrl; recovers on
   assert.equal(D.status('events').auth, false);
 });
 
+test("Ultra 401 (no Ultra session yet): 'ultraAuth' event, Toledo session not flagged; clears on success", async () => {
+  let ultraOk = false;
+  const { D } = await setup({ net: { json: async (url) => {
+    if (/ultra\.edu/.test(url) && !ultraOk) throw Object.assign(new Error('401'), { status: 401, auth: true });
+    return /ultra\.edu/.test(url) ? { results: [] } : [];
+  } } });
+  const auth = [], ultra = [];
+  D.on('auth', (e) => auth.push(plain(e)));
+  D.on('ultraAuth', (e) => ultra.push(plain(e)));
+  const dbg = console.debug; console.debug = () => {};
+  try { await D.refresh(); } finally { console.debug = dbg; }
+  assert.equal(D.authExpired(), false, 'Toledo session is fine');
+  assert.equal(auth.length, 0, 'no "session expired" banner');
+  assert.equal(D.ultraAuthExpired(), true);
+  eq(ultra, [{ expired: true }]);
+  assert.match(D.ultraLoginUrl(), /^https:\/\/ultra\.edu\.kuleuven\.cloud\//);
+  ultraOk = true;
+  await D.load('ultraDeadlines', { force: true });
+  assert.equal(D.ultraAuthExpired(), false);
+  eq(ultra.at(-1), { expired: false });
+});
+
 test("extension context invalidated: one 'stale' event, no more writes or loads", async () => {
   const { D, chrome, world } = await setup();
   let stale = 0; D.on('stale', () => stale++);

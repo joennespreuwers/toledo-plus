@@ -606,6 +606,35 @@ describe('session expired (portal API answers with the HTML login page)', () => 
   });
 });
 
+describe('no Ultra session yet (Ultra answers 401, Toledo works)', () => {
+  let h; let page;
+  const handler = (route) => route.fulfill({ status: 401, contentType: 'application/json', body: '{"status":401}' });
+  before(async () => {
+    h = await launch();
+    page = h.page;
+    await h.ctx.route('https://ultra.edu.kuleuven.cloud/learn/api/public/v1/calendars/**', handler);
+  });
+  after(async () => { await h?.close(); });
+
+  it('explains it with an "Open Ultra" banner instead of "session expired"; it goes away once Ultra answers', async () => {
+    const nl = strings('nl');
+    await page.goto('https://toledo.kuleuven.be/portal/#/home');
+    await waitForShell(page);
+    const banner = page.locator('#tplus-root [data-banner="ultra"]');
+    await banner.waitFor({ state: 'visible', timeout: 15000 });
+    const txt = await banner.innerText();
+    assert.ok(txt.includes(nl['shell.ultraTitle']) && txt.includes(nl['shell.ultraOpen']), txt);
+    const a = banner.locator('a');
+    assert.match(await a.getAttribute('href'), /^https:\/\/ultra\.edu\.kuleuven\.cloud\//);
+    assert.equal(await a.getAttribute('target'), '_blank');
+    assert.equal(await page.locator('#tplus-root [data-banner="auth"]').count(), 0, 'no "session expired" banner');
+    await screenshot(page, 'banner-ultra');
+    await h.ctx.unroute('https://ultra.edu.kuleuven.cloud/learn/api/public/v1/calendars/**', handler);
+    await page.locator('#tplus-root [data-shell="refresh"]').first().click();
+    await banner.waitFor({ state: 'detached', timeout: 15000 });
+  });
+});
+
 describe('greeting with first name + mail button (v1.5)', () => {
   let h; let page;
   before(async () => { h = await launch(); page = h.page; });

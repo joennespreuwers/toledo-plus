@@ -9,6 +9,9 @@ Het formaat volgt [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) en he
 ### Added
 - `npm run dev`: opens Chrome with the extension and reloads it on every save (web-ext, dev only; persistent profile in `.dev-profile/`).
 
+### Fixed
+- Zonder Ultra-sessie (Ultra nog niet geopend sinds het aanmelden) toonde Toledo+ "Je sessie is verlopen" terwijl Toledo gewoon werkte, en "Log opnieuw in" hielp niet. Nu verschijnt "Nog niet aangemeld bij Ultra" met een knop "Open Ultra"; terug in Toledo laden de deadlines vanzelf.
+
 ## [1.5.0] - 2026-10-26
 
 ### Added
