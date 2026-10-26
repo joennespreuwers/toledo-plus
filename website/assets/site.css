@@ -178,7 +178,7 @@ html { scrollbar-color: color-mix(in srgb, var(--label) 26%, transparent) transp
 .lang a[aria-current="true"] { background: var(--card); color: var(--label); box-shadow: 0 1px 2px rgba(31, 36, 48, .12); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lang a[aria-current="true"] { background: #3A4356; } }
 :root[data-theme="dark"] .lang a[aria-current="true"] { background: #3A4356; }
-/* theme toggle: one icon button cycling System → Light → Dark (assets/site.js) */
+/* theme toggle: one icon button, Light ⇄ Dark; the icon shows the theme you see (data-mode, assets/site.js) */
 .theme-toggle {
   appearance: none; display: inline-grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 999px;
   background: var(--fill); color: var(--label); cursor: pointer;
@@ -187,7 +187,7 @@ html { scrollbar-color: color-mix(in srgb, var(--label) 26%, transparent) transp
 .theme-toggle:hover { background: var(--tint-soft); color: var(--tint-text); }
 .theme-toggle:active { scale: .92; }
 .theme-toggle .ti { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; display: none; }
-.theme-toggle[data-mode="system"] .ti-system, .theme-toggle[data-mode="light"] .ti-light, .theme-toggle[data-mode="dark"] .ti-dark { display: block; }
+.theme-toggle[data-mode="light"] .ti-light, .theme-toggle[data-mode="dark"] .ti-dark { display: block; }
 
 /* ------------------------------------------------------------ buttons */
 .btn {

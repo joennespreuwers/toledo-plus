@@ -1,5 +1,6 @@
 /* Toledo+ website — progressive enhancement only (the site works without JS). No tracking, no cookies.
-   1. theme toggle (System → Licht → Donker): <html data-theme>, remembered in localStorage 'tp-theme' (also read by /demo/)
+   1. theme toggle (Licht ⇄ Donker, follows the system until the first click): <html data-theme>, remembered in
+      localStorage 'tp-theme' (also read by /demo/)
    2. copy buttons for chrome://extensions etc. (browsers don't allow linking to those pages), with a "Gekopieerd" pop
    3. scroll reveal of sections below the fold (IntersectionObserver; nothing is hidden unless this script ran)
    4. smooth wheel scrolling with Lenis (assets/vendor/lenis, MIT), loaded on demand — never under reduced motion,
@@ -14,46 +15,49 @@
   var assets = me ? me.replace(/site\.js(\?.*)?$/, '') : 'assets/';
 
   // ---------------------------------------------------------------- 1. theme
+  // Two states, Light ⇄ Dark. With nothing stored the page follows the system; the first click flips the theme you
+  // *see* (system dark → light), so every click changes something. (The old System → Light → Dark cycle had a dead
+  // click whenever the system already matched the next step: System(light) → Light looked like nothing happened.)
   var T = {
-    nl: { system: 'Thema: systeem', light: 'Thema: licht', dark: 'Thema: donker', hint: 'Wissel tussen systeem, licht en donker' },
-    en: { system: 'Theme: system', light: 'Theme: light', dark: 'Theme: dark', hint: 'Switch between system, light and dark' },
-    fr: { system: 'Thème : système', light: 'Thème : clair', dark: 'Thème : sombre', hint: 'Basculer entre système, clair et sombre' },
+    nl: { light: 'Thema: licht', dark: 'Thema: donker', toLight: 'Schakel over naar licht', toDark: 'Schakel over naar donker' },
+    en: { light: 'Theme: light', dark: 'Theme: dark', toLight: 'Switch to light', toDark: 'Switch to dark' },
+    fr: { light: 'Thème : clair', dark: 'Thème : sombre', toLight: 'Passer au thème clair', toDark: 'Passer au thème sombre' },
   }[lang] || null;
-  var ORDER = ['system', 'light', 'dark'];
   function stored() { try { var v = localStorage.getItem('tp-theme'); return v === 'light' || v === 'dark' ? v : 'system'; } catch (_) { return 'system'; } }
-  function store(m) { try { if (m === 'system') localStorage.removeItem('tp-theme'); else localStorage.setItem('tp-theme', m); } catch (_) { /* private mode */ } }
+  function store(m) { try { localStorage.setItem('tp-theme', m); } catch (_) { /* private mode: still applied for this page */ } }
   var mqDark = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : { matches: false };
-  function syncThemeColor() {
-    var m = stored();
-    var dark = m === 'dark' || (m === 'system' && mqDark.matches);
-    document.querySelectorAll('meta[name="theme-color"]').forEach(function (el) {
-      if (m === 'system') { el.setAttribute('content', /dark/.test(el.getAttribute('media') || '') ? '#12151C' : '#F5F4F2'); return; }
-      el.setAttribute('content', dark ? '#12151C' : '#F5F4F2');
-    });
-  }
-  function applyTheme(m, animate) {
+  var mode = stored(); // 'system' | 'light' | 'dark' — what <html data-theme> says (system = no attribute)
+  function effective() { return mode === 'system' ? (mqDark.matches ? 'dark' : 'light') : mode; }
+  function paint(animate) {
     if (animate && !reduced) {
       root.classList.add('theme-anim');
-      clearTimeout(applyTheme.t);
-      applyTheme.t = setTimeout(function () { root.classList.remove('theme-anim'); }, 260);
+      clearTimeout(paint.t);
+      paint.t = setTimeout(function () { root.classList.remove('theme-anim'); }, 260);
     }
-    if (m === 'system') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', m);
-    syncThemeColor();
+    if (mode === 'system') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', mode);
+    var eff = effective();
+    document.querySelectorAll('meta[name="theme-color"]').forEach(function (el) {
+      if (mode === 'system') el.setAttribute('content', /dark/.test(el.getAttribute('media') || '') ? '#12151C' : '#F5F4F2');
+      else el.setAttribute('content', eff === 'dark' ? '#12151C' : '#F5F4F2');
+    });
     document.querySelectorAll('[data-theme-toggle]').forEach(function (b) {
-      b.setAttribute('data-mode', m);
-      if (T) { b.setAttribute('aria-label', T[m]); b.title = T.hint; }
+      b.setAttribute('data-mode', eff); // icon = the theme you see now
+      if (T) { b.setAttribute('aria-label', T[eff]); b.title = eff === 'dark' ? T.toLight : T.toDark; }
     });
   }
   document.querySelectorAll('[data-theme-toggle]').forEach(function (b) {
     b.hidden = false;
     b.addEventListener('click', function () {
-      var next = ORDER[(ORDER.indexOf(stored()) + 1) % ORDER.length];
-      store(next);
-      applyTheme(next, true);
+      mode = effective() === 'dark' ? 'light' : 'dark';
+      store(mode);
+      paint(true);
     });
   });
-  applyTheme(stored(), false);
-  window.addEventListener('storage', function (e) { if (e.key === 'tp-theme') applyTheme(stored(), true); });
+  paint(false);
+  // System theme changes while following the system → keep the icon/label honest.
+  try { mqDark.addEventListener('change', function () { if (mode === 'system') paint(false); }); } catch (_) { /* old Safari */ }
+  // Another tab (or the demo) changed the choice.
+  window.addEventListener('storage', function (e) { if (e.key === 'tp-theme') { mode = stored(); paint(true); } });
 
   // ---------------------------------------------------------------- 2. copy buttons
   if (navigator.clipboard && window.isSecureContext) {

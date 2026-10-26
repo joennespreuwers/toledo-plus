@@ -14,9 +14,9 @@
 
   var LANGS = ['nl', 'en', 'fr'];
   var TEXT = {
-    nl: { back: 'Terug naar toledoplus.be', home: 'Home', home_href: '../', theme: { system: 'Thema: systeem', light: 'Thema: licht', dark: 'Thema: donker' }, demo: 'Demo met nepdata', install: 'Installeer Toledo+', lang: 'Taal', notInDemo: 'Dat werkt alleen in de echte Toledo, niet in de demo.', failed: 'De demo kon niet laden. Probeer de pagina te herladen.', site: 'https://toledoplus.be/' },
-    en: { back: 'Back to toledoplus.be', home: 'Home', home_href: '../en/', theme: { system: 'Theme: system', light: 'Theme: light', dark: 'Theme: dark' }, demo: 'Demo with fake data', install: 'Install Toledo+', lang: 'Language', notInDemo: 'That only works in the real Toledo, not in the demo.', failed: 'The demo could not load. Try reloading the page.', site: 'https://toledoplus.be/en/' },
-    fr: { back: 'Retour à toledoplus.be', home: 'Accueil', home_href: '../fr/', theme: { system: 'Thème : système', light: 'Thème : clair', dark: 'Thème : sombre' }, demo: 'Démo avec de fausses données', install: 'Installer Toledo+', lang: 'Langue', notInDemo: 'Cela ne fonctionne que dans le vrai Toledo, pas dans la démo.', failed: 'La démo n’a pas pu se charger. Rechargez la page.', site: 'https://toledoplus.be/fr/' },
+    nl: { back: 'Terug naar toledoplus.be', home: 'Home', home_href: '../', theme: { light: 'Thema: licht', dark: 'Thema: donker', toLight: 'Schakel over naar licht', toDark: 'Schakel over naar donker' }, demo: 'Demo met nepdata', install: 'Installeer Toledo+', lang: 'Taal', notInDemo: 'Dat werkt alleen in de echte Toledo, niet in de demo.', failed: 'De demo kon niet laden. Probeer de pagina te herladen.', site: 'https://toledoplus.be/' },
+    en: { back: 'Back to toledoplus.be', home: 'Home', home_href: '../en/', theme: { light: 'Theme: light', dark: 'Theme: dark', toLight: 'Switch to light', toDark: 'Switch to dark' }, demo: 'Demo with fake data', install: 'Install Toledo+', lang: 'Language', notInDemo: 'That only works in the real Toledo, not in the demo.', failed: 'The demo could not load. Try reloading the page.', site: 'https://toledoplus.be/en/' },
+    fr: { back: 'Retour à toledoplus.be', home: 'Accueil', home_href: '../fr/', theme: { light: 'Thème : clair', dark: 'Thème : sombre', toLight: 'Passer au thème clair', toDark: 'Passer au thème sombre' }, demo: 'Démo avec de fausses données', install: 'Installer Toledo+', lang: 'Langue', notInDemo: 'Cela ne fonctionne que dans le vrai Toledo, pas dans la démo.', failed: 'La démo n’a pas pu se charger. Rechargez la page.', site: 'https://toledoplus.be/fr/' },
   };
   var JOURNEY = 'https://icts-p-toledo-journey.cloud.icts.kuleuven.be';
   var M = window.TPDemoMock;
@@ -36,9 +36,12 @@
   }
   var lang = pickLang();
   // Theme: shared with the website (localStorage 'tp-theme'); drives the app's own appearance setting.
+  // Same as the site: Light ⇄ Dark, following the system until the first click, which flips the theme you see.
   var THEMES = ['system', 'light', 'dark'];
+  var mqDark = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : { matches: false };
   function storedTheme() { try { var v = localStorage.getItem('tp-theme'); return v === 'light' || v === 'dark' ? v : 'system'; } catch (_) { return 'system'; } }
   var theme = storedTheme();
+  function effTheme() { return theme === 'system' ? (mqDark.matches ? 'dark' : 'light') : theme; }
   var tx = function (k) { return (TEXT[lang] || TEXT.nl)[k]; };
 
   // ---------------------------------------------------------------- chrome shim
@@ -197,7 +200,7 @@
     bar.setAttribute('role', 'region');
     document.documentElement.insertBefore(bar, document.body);
     bar.addEventListener('click', function (ev) {
-      if (ev.target.closest && ev.target.closest('button[data-theme-toggle]')) { setTheme(THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length]); return; }
+      if (ev.target.closest && ev.target.closest('button[data-theme-toggle]')) { setTheme(effTheme() === 'dark' ? 'light' : 'dark'); return; }
       var b = ev.target.closest && ev.target.closest('button[data-lang]');
       if (!b) return;
       setLang(b.getAttribute('data-lang'));
@@ -213,14 +216,13 @@
       return '<button type="button" data-lang="' + l + '" lang="' + l + '" aria-pressed="' + (l === lang) + '">' + l.toUpperCase() + '</button>';
     }).join('');
     var th = tx('theme');
-    var icons = '<svg class="ti-system" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/></svg>' +
-      '<svg class="ti-light" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></svg>' +
+    var icons = '<svg class="ti-light" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></svg>' +
       '<svg class="ti-dark" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg>';
     bar.innerHTML = '<a class="demo-back" href="' + tx('home_href') + '"><span aria-hidden="true">‹&nbsp;</span><span class="long">' + tx('back') + '</span><span class="short">' + tx('home') + '</span></a>' +
       '<span class="demo-mid"><span class="demo-tag">' + tx('demo') + '</span> <span class="demo-sep" aria-hidden="true">·</span> ' +
       '<a href="' + tx('site') + '#install">' + tx('install') + ' ›</a></span>' +
       '<span class="demo-end"><span class="demo-langs" role="group" aria-label="' + tx('lang') + '">' + langs + '</span>' +
-      '<button type="button" class="demo-theme" data-theme-toggle data-mode="' + theme + '" aria-label="' + th[theme] + '" title="' + th[theme] + '">' + icons + '</button></span>';
+      '<button type="button" class="demo-theme" data-theme-toggle data-mode="' + effTheme() + '" aria-label="' + th[effTheme()] + '" title="' + (effTheme() === 'dark' ? th.toLight : th.toDark) + '">' + icons + '</button></span>';
   }
   function setTheme(m, fromStorage) {
     if (THEMES.indexOf(m) < 0) return;
@@ -228,10 +230,16 @@
     if (!fromStorage) { try { if (m === 'system') localStorage.removeItem('tp-theme'); else localStorage.setItem('tp-theme', m); } catch (_) { /* private mode */ } }
     if (m === 'system') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', m);
     try { TP.settings.set({ appearance: m }); } catch (_) { /* not loaded yet: the seed above has it */ }
+    paintToggle();
+  }
+  function paintToggle() {
     var b = document.querySelector('#demo-bar [data-theme-toggle]');
-    if (b) { var th = tx('theme'); b.setAttribute('data-mode', m); b.setAttribute('aria-label', th[m]); b.title = th[m]; }
+    if (!b) return;
+    var th = tx('theme'), eff = effTheme();
+    b.setAttribute('data-mode', eff); b.setAttribute('aria-label', th[eff]); b.title = eff === 'dark' ? th.toLight : th.toDark;
   }
   window.addEventListener('storage', function (e) { if (e.key === 'tp-theme') setTheme(storedTheme(), true); });
+  try { mqDark.addEventListener('change', function () { if (theme === 'system') paintToggle(); }); } catch (_) { /* old Safari */ }
   function setLang(l) {
     if (LANGS.indexOf(l) < 0 || l === lang) return;
     lang = l;
