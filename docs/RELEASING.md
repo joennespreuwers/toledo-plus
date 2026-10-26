@@ -10,7 +10,7 @@ nieuwe functie overal klopt. De PR-template bevat dezelfde checklist in het kort
 | Git-tag `vX.Y.Z`, zip (`toledo-plus.zip` + `toledo-plus-X.Y.Z.zip`), GitHub-release met notities uit `CHANGELOG.md` | `release.yml` zodra een gewijzigde versie in `manifest.json` op `main` landt (na de tests) |
 | `api.toledoplus.be/v1/latest` → nieuwe versie ("Nieuwe versie beschikbaar" in de extensie) | `release.yml` → job *worker* (`wrangler deploy --var LATEST_VERSION:…`) |
 | API-code (`worker/**`) deployen + schema toepassen | `worker.yml` bij elke wijziging op `main` |
-| Website + demo publiceren, versienummer op de site, cache-busting van css/js/afbeeldingen en de og-afbeelding | `pages.yml` bij elke wijziging aan `website/**`, `src/**`, `manifest.json`, … |
+| Website + demo publiceren, **verse screenshots + og-afbeeldingen** (NL/EN/FR, licht/donker) uit de echte UI, versienummer op de site, cache-busting | `pages.yml` bij elke wijziging aan `website/**`, `src/**`, `manifest.json`, … |
 | Tests (unit + e2e) op elke PR | `ci.yml` |
 
 Eenmalig nodig (repo › Settings › Secrets and variables › Actions): `CLOUDFLARE_API_TOKEN` (sjabloon *Edit Cloudflare
@@ -39,7 +39,7 @@ Alleen wijzigingen aan de website, docs, tests of CI krijgen **geen** nieuwe ver
 | Als je… | …werk dan ook bij |
 |---|---|
 | iets toevoegt dat gebruikers zien | `CHANGELOG.md` (Unreleased), de functielijst op de website (`website/index.html`, `en/`, `fr/`), `README.md`/`README.en.md` |
-| de UI zichtbaar verandert | screenshots + `og.png`: `NODE_PATH=$(npm root -g) node website/tools/screens.mjs`, daarna `node website/tools/check.mjs` |
+| de UI zichtbaar verandert | niets voor de screenshots (die maakt de deploy opnieuw); wel `node website/tools/check.mjs` als je de website zelf aanpast |
 | teksten toevoegt | alle drie de talen in `src/i18n/*.js` (NL, EN, FR) |
 | een instelling toevoegt | standaardwaarde + migratie (versie verhogen) in `src/core/settings.js`, rij in `src/views/settings.js` (max. 10 groepen), test |
 | nieuwe gegevens leest, een nieuwe host of een nieuw recht nodig hebt | `PRIVACY.md`, `website/privacy.html` + `en/` + `fr/`, `host_permissions`/`permissions` in `manifest.json`, `background.js`-allowlist, `tests/unit/manifest.test.js`, `AGENTS.md` (netwerkregel) |
