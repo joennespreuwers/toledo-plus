@@ -8,7 +8,7 @@
       'announcements.filter.label': 'Filter',
       'announcements.filter.all': 'Alles',
       'announcements.filter.courses': 'Vakken',
-      'announcements.filter.school': 'School',
+      'announcements.filter.school': 'Ad Valvas',
       'announcements.filter.unread': 'Ongelezen',
       'announcements.readAll': 'Alles gelezen',
       'announcements.allRead': 'Alle mededelingen gemarkeerd als gelezen',
@@ -31,7 +31,7 @@
       'announcements.filter.label': 'Filter',
       'announcements.filter.all': 'All',
       'announcements.filter.courses': 'Courses',
-      'announcements.filter.school': 'School',
+      'announcements.filter.school': 'Ad Valvas',
       'announcements.filter.unread': 'Unread',
       'announcements.readAll': 'Mark all read',
       'announcements.allRead': 'All announcements marked as read',
@@ -54,7 +54,7 @@
       'announcements.filter.label': 'Filtre',
       'announcements.filter.all': 'Tout',
       'announcements.filter.courses': 'Cours',
-      'announcements.filter.school': 'École',
+      'announcements.filter.school': 'Ad Valvas',
       'announcements.filter.unread': 'Non lues',
       'announcements.readAll': 'Tout marquer comme lu',
       'announcements.allRead': 'Toutes les annonces sont marquées comme lues',
@@ -74,4 +74,17 @@
     },
   });
   if (TP.i18n && TP.i18n.add) add();
+
+  // v1.4 — UX cleanup
+  if (TP.i18n && TP.i18n.add) TP.i18n.add({
+    nl: {
+      'announcements.error': 'Kon de mededelingen niet laden',
+    },
+    en: {
+      'announcements.error': 'Couldn’t load announcements',
+    },
+    fr: {
+      'announcements.error': 'Impossible de charger les annonces',
+    },
+  });
 })();

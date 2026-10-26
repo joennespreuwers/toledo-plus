@@ -8,7 +8,7 @@
   "homepage": "https://github.com/joennespreuwers/toledo-plus#readme",
   "repository": { "type": "git", "url": "git+https://github.com/joennespreuwers/toledo-plus.git" },
   "bugs": { "url": "https://github.com/joennespreuwers/toledo-plus/issues" },
-  "engines": { "node": ">=20" },
+  "engines": { "node": ">=22" },
   "scripts": {
     "test": "npm run test:unit && npm run test:e2e",
     "test:unit": "node scripts/run-tests.mjs unit",

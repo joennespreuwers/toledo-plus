@@ -5,7 +5,14 @@ const assert = require('node:assert/strict');
 const { launch, waitForShell, waitFor, screenshot } = require('../helpers/launch');
 const { S, strings, openPortal, waitForRoute, mainText, waitSettings } = require('../helpers/app');
 
-const ROUTES = ['courses', 'deadlines', 'planning', 'announcements', 'settings', 'overview'];
+const ROUTES = ['courses', 'deadlines', 'agenda', 'announcements', 'kuloket', 'settings', 'overview'];
+const NAV = ['overview', 'courses', 'deadlines', 'agenda', 'announcements', 'kuloket', 'settings'];
+const DAY = 864e5;
+// course ids from the fixtures (codes are synthetic and may change: never hard-code them)
+const ENR = require('../helpers/fixtures').load().portal.enrollments;
+const enr = (name) => ENR.find((e) => e.title === name || e.title.startsWith(name + ' ['));
+const lu = (name) => enr(name).learningUnitId;
+const sr = (page, fn, arg) => page.evaluate(([src, a]) => new Function('sr', 'arg', `return (${src})(sr, arg);`)(document.querySelector('#tplus-root').shadowRoot, a), [fn.toString(), arg]);
 
 describe('portal shell', () => {
   let h; let page;
@@ -18,7 +25,7 @@ describe('portal shell', () => {
     assert.equal(await page.locator('#classic-portal').isVisible(), false, 'original portal should be hidden');
     await page.locator(S.sidebar).waitFor();
     const nl = strings('nl');
-    for (const r of ['overview', 'courses', 'deadlines', 'planning', 'announcements', 'settings']) {
+    for (const r of NAV) {
       assert.equal(await page.locator(S.navLink(r)).count() >= 1, true, `sidebar link ${r}`);
     }
     assert.equal(await page.locator(S.navLink('overview')).first().getAttribute('aria-current'), 'page');
@@ -127,11 +134,19 @@ describe('portal shell', () => {
     assert.ok(dupes <= 1, `Toledo + Ultra duplicate not deduped (${dupes}×)`);
   });
 
-  it('planning view shows today/tomorrow and links to the KU Loket timetable', async () => {
-    await openPortal(h, 'planning');
-    const txt = await mainText(page);
-    assert.ok(txt.includes('Filmtaal 1') && txt.includes('Geluid 1'), 'upcoming lessons');
-    assert.equal(await page.locator('#tplus-root a[href="https://kuloket.example.edu/uurrooster"]').count() >= 1, true, 'KULOKET-UURROOSTER link');
+  it('old "planning" links render the agenda (ROUTE_ALIASES)', async () => {
+    await page.goto('https://toledo.kuleuven.be/portal/#/home?tplus=planning');
+    await waitForShell(page);
+    await page.waitForFunction(() => document.querySelector('#tplus-root').shadowRoot.querySelector('.tp-view')?.dataset.route === 'agenda', null, { timeout: 8000 });
+    assert.equal(await page.locator(S.navLink('agenda')).first().getAttribute('aria-current'), 'page', 'Agenda is the current nav item');
+    assert.equal(await page.locator(S.navLink('planning')).count(), 0, 'no separate planning item');
+    // the overview schedule links to the agenda
+    await openPortal(h);
+    const link = page.locator(`${S.section('schedule')} a[data-route="agenda"]`);
+    assert.equal(await link.count(), 1, '"Agenda ›" link under the timetable');
+    assert.match(await link.getAttribute('href'), /#\/home\?tplus=agenda$/);
+    const txt = await page.locator(S.section('schedule')).innerText();
+    assert.ok(txt.includes('Filmtaal 1'), 'today\'s lessons (Toledo fallback without KU Loket data)');
   });
 
   it('announcements view shows course announcements and Ad Valvas', async () => {
@@ -146,32 +161,77 @@ describe('portal shell', () => {
     const txt = await mainText(page);
     for (const c of ['Filmtaal 1', 'Regie 1', 'Geluid 1']) assert.ok(txt.includes(c), c);
     assert.ok(!txt.includes('Wiskunde 1'), 'older academic year should be in the (collapsed) archive');
-    assert.ok(!txt.includes('[N50265]'), 'course names are shown without the [code] suffix');
+    assert.ok(!/\[[A-Z]\d{4,}\]/.test(txt), 'course names are shown without the [code] suffix');
   });
 
-  it('Toledo favourites are pinned; pinning a course also makes it a Toledo favourite', async () => {
-    const GELUID = 'ULTRA-B-LUCA-N50008-2627';
+  it('sidebar "Vakken": current, non-hidden courses in the student\'s order; collapsible; no pin UI anywhere', async () => {
+    const GELUID = lu('Geluid 1');
+    await h.setSettings({ courses: { sort: 'name' } });
     await openPortal(h, 'courses');
-    const pinnedNav = () => page.locator('#tplus-root nav.tp-sidebar ul[aria-labelledby="tp-sb-pinned"]').innerText().catch(() => '');
-    let side = await pinnedNav();
-    assert.ok(side.includes('Filmtaal 1') && side.includes('Regie 1'), `Toledo favourites in "Vastgezet": ${side}`);
-    assert.ok(!side.includes('Geluid 1'));
-    assert.equal(await page.locator('#tplus-root .cs-view [data-action="fav"]').count(), 0, 'no separate favourite star');
+    const group = () => sr(page, (r) => {
+      const ul = r.querySelector('nav.tp-sidebar #tp-sb-courses');
+      return ul ? { hidden: ul.hidden, names: [...ul.querySelectorAll('.tp-sb-label')].map((x) => x.textContent), dots: ul.querySelectorAll('.tp-dot').length,
+        counts: [...ul.querySelectorAll('.tp-sb-count .tp-sr')].map((x) => x.textContent), btn: r.querySelector('[data-shell="sb-courses"]')?.getAttribute('aria-expanded') } : null;
+    });
+    let g = await group();
+    assert.ok(g && g.names.length >= 10, `sidebar group lists the current courses: ${g && g.names}`);
+    const sorted = [...g.names].sort((a, b) => a.localeCompare(b, 'nl', { sensitivity: 'base', numeric: true }));
+    assert.deepEqual(g.names, sorted, 'in the student\'s order (sort: name)');
+    assert.ok(!g.names.includes('Wiskunde 1'), 'older academic year not listed');
+    assert.equal(g.dots, g.names.length, 'colour dot per course');
+    assert.ok(g.counts.length >= 1, 'unread count on courses with news');
+    assert.equal(g.btn, 'true');
+    // hide a course → it leaves the group
+    await h.setSettings({ courses: { items: { [GELUID]: { hidden: true } } } });
+    await openPortal(h, 'courses');
+    g = await group();
+    assert.ok(!g.names.includes('Geluid 1'), 'hidden course not in the sidebar');
+    await h.setSettings({ courses: { items: { [GELUID]: { hidden: false } }, sort: 'activity' } });
+    // collapse
+    await page.locator('#tplus-root [data-shell="sb-courses"]').click();
+    g = await group();
+    assert.equal(g.hidden, true, 'collapsed');
+    assert.equal(g.btn, 'false');
+    assert.ok(await waitFor(async () => (await h.getState())?.ui?.sbCoursesClosed === true), 'collapse state persisted');
+    await page.locator('#tplus-root [data-shell="sb-courses"]').click();
+    // no pin controls / labels anywhere (views + edit mode + settings)
     await page.locator('#tplus-root [data-shell="view-action"][data-id="edit"]').click();
-    h.rec.reset();
-    await page.locator(`#tplus-root input[name="pin__${GELUID}"]`).check({ force: true });
-    const patch = await waitFor(() => h.rec.patches.find((p) => /\/portal\/api\/enrollments\//.test(p.path)), { timeout: 5000 });
-    assert.deepEqual(patch.body, { favorite: true }, 'PATCH enrollments {favorite:true}');
-    await waitSettings(h, (s) => s.courses?.items?.[GELUID]?.pinned === true);
-    await page.waitForFunction(() => /Geluid 1/.test(document.querySelector('#tplus-root').shadowRoot.querySelector('ul[aria-labelledby="tp-sb-pinned"]')?.textContent || ''), null, { timeout: 5000 });
-    // unpin again → favourite removed in Toledo
-    h.rec.reset();
-    await page.locator(`#tplus-root input[name="pin__${GELUID}"]`).uncheck({ force: true });
-    const un = await waitFor(() => h.rec.patches.find((p) => /\/portal\/api\/enrollments\//.test(p.path)), { timeout: 5000 });
-    assert.deepEqual(un.body, { favorite: false });
-    await page.locator('#tplus-root [data-shell="view-action"][data-id="edit"]').click();
-    side = await pinnedNav();
-    assert.ok(!side.includes('Geluid 1'), 'unpinned course left the sidebar group');
+    for (const route of [null, 'settings']) {
+      if (route) await openPortal(h, route);
+      const pins = await sr(page, (r) => r.querySelectorAll('[name^="pin__"], [data-action="pin"], [aria-labelledby="tp-sb-pinned"]').length);
+      assert.equal(pins, 0, `no pin UI (${route || 'courses edit'})`);
+      const txt = await mainText(page);
+      assert.ok(!/Vastzet|Vastgezet/.test(txt), 'no pin wording');
+    }
+  });
+
+  it('sidebar badges: none on Overzicht, Deadlines = open count (red only when overdue), KU Loket without badge', async () => {
+    await openPortal(h);
+    const badges = () => sr(page, (r) => {
+      const item = (route) => r.querySelector(`nav.tp-sidebar a[data-route="${route}"]`);
+      const d = item('deadlines');
+      return {
+        overview: !!item('overview').querySelector('.tp-sb-count, .tp-badge'),
+        kuloket: !!item('kuloket')?.querySelector('.tp-badge-red'),
+        dlCount: d.querySelector('.tp-sb-count [aria-hidden]')?.textContent || null,
+        dlRed: d.querySelector('.tp-badge-red')?.textContent || null,
+      };
+    });
+    let b = await badges();
+    assert.equal(b.overview, false, 'no count on Overzicht (it duplicated "Nieuw")');
+    assert.equal(b.kuloket, false);
+    // fixtures: "Montage-oefening 1" is 2 days overdue → red badge with the overdue count (not the open count)
+    assert.equal(b.dlRed, '1', `red badge = overdue count: ${JSON.stringify(b)}`);
+    assert.equal(b.dlCount, null, 'no second count next to the red badge');
+    // mark it done → a plain open count in label-2
+    await openPortal(h, 'deadlines');
+    const row = page.locator('#tplus-root .va-dl', { hasText: 'Montage-oefening 1' }).first();
+    await row.locator('[data-action="dl-done"]').click();
+    await page.waitForFunction(() => !document.querySelector('#tplus-root').shadowRoot.querySelector('nav.tp-sidebar a[data-route="deadlines"] .tp-badge-red'), null, { timeout: 5000 });
+    b = await badges();
+    assert.ok(b.dlCount && Number(b.dlCount) >= 4 && !b.dlRed, `open deadlines as a plain count: ${JSON.stringify(b)}`);
+    await page.locator('#tplus-root .va-dl', { hasText: 'Montage-oefening 1' }).first().locator('[data-action="dl-done"]').click();
+    await page.waitForFunction(() => !!document.querySelector('#tplus-root').shadowRoot.querySelector('nav.tp-sidebar a[data-route="deadlines"] .tp-badge-red'), null, { timeout: 5000 });
   });
 
   it('search filters the overview and shows an empty state', async () => {
@@ -267,6 +327,71 @@ describe('portal shell', () => {
     assert.equal((await waitSettings(h, (x) => x.wrap && x.wrap.portal === true))?.wrap.portal, true);
   });
 
+  it('account menu: no second "Instellingen", neutral mail badge, clearer Toledo notification settings', async () => {
+    await openPortal(h);
+    const nl = strings('nl');
+    await page.locator(S.menuBtn).click();
+    const menu = page.locator('#tplus-root .tp-menu');
+    await menu.waitFor({ state: 'visible' });
+    assert.equal(await menu.locator('[data-route="settings"]').count(), 0, 'Instellingen only in the sidebar/More');
+    assert.equal(await menu.locator('.tp-badge-red').count(), 0, 'mail badge is not red');
+    assert.equal(await menu.locator('.tp-badge-gray').count(), 1, 'gray mail badge');
+    assert.ok((await menu.innerText()).includes(nl['shell.notifSettings']));
+    assert.equal(nl['shell.notifSettings'], 'Meldingsinstellingen in Toledo');
+    await page.keyboard.press('Escape');
+  });
+
+  it('consistent unread style; "Ad Valvas" segment; new badges are tint-soft (never solid like overdue)', async () => {
+    await openPortal(h, 'announcements');
+    const nl = strings('nl');
+    const r = await sr(page, (root) => {
+      const rows = [...root.querySelectorAll('.va-ann-list > *')];
+      const bad = rows.filter((el) => {
+        const unread = !!el.querySelector('.va-unread:not(.va-unread-off)');
+        const title = el.querySelector('.tp-row-title');
+        return unread !== !!(title && title.classList.contains('strong'));
+      }).length;
+      return { rows: rows.length, bad };
+    });
+    assert.ok(r.rows >= 3 && r.bad === 0, `every unread row = dot + 600 (${JSON.stringify(r)})`);
+    const segs = await page.locator('#tplus-root input[name="an-filter"] + span').allInnerTexts();
+    assert.ok(segs.includes('Ad Valvas') && !segs.includes('School'), `segments: ${segs}`);
+    assert.equal(nl['announcements.filter.school'], 'Ad Valvas');
+    await openPortal(h);
+    const badge = await sr(page, (root) => {
+      const b = root.querySelector('.va-feed .tp-badge-tint');
+      const red = root.querySelector('nav .tp-badge-red');
+      return b && red ? { tint: getComputedStyle(b).backgroundColor, red: getComputedStyle(red).backgroundColor } : null;
+    });
+    assert.ok(badge && badge.tint !== badge.red, 'new badge differs from the overdue badge');
+    const [rr, gg, bb] = badge.tint.match(/\d+/g).map(Number);
+    assert.ok(rr > 200 && gg > 200 && bb > 200, `new badge is a soft tint, not a solid fill: ${badge.tint}`);
+  });
+
+  it('search on the overview filters the "Nieuw" count and hides empty day headers (B11)', async () => {
+    await openPortal(h);
+    const count = () => sr(page, (root) => root.querySelector('section[data-section="ov-new"] .tp-sec-title .tp-count')?.textContent || '');
+    const before = Number(await count());
+    await page.locator(S.search).fill('geluid');
+    await page.waitForTimeout(400);
+    const after = Number(await count());
+    const visible = await sr(page, (root) => [...root.querySelectorAll('.va-feed .va-feed-item:not(.is-read)')].filter((x) => !x.hidden && !x.closest('[hidden]')).length);
+    assert.ok(after < before && after === visible, `count follows the filter: ${before} → ${after} (visible ${visible})`);
+    const heads = await sr(page, (root) => [...root.querySelectorAll('[data-va-day]')].filter((d) => !d.hidden).map((d) => d.querySelectorAll('[data-q]:not([hidden])').length));
+    assert.ok(heads.every((n) => n > 0), `no empty day headers while searching: ${heads}`);
+    await page.locator(S.search).fill('');
+    await page.waitForTimeout(300);
+    assert.equal(Number(await count()), before, 'count restored');
+  });
+
+  it('default course colours are unique among the current courses', async () => {
+    await h.setSettings({ courses: { items: {} } });
+    await openPortal(h, 'courses');
+    const colors = await sr(page, (root) => [...root.querySelectorAll('.cs-grid .cs-swatch')].map((e) => getComputedStyle(e).backgroundColor));
+    assert.ok(colors.length >= 10, `cards: ${colors.length}`);
+    assert.equal(new Set(colors).size, colors.length, `duplicate default colours: ${colors}`);
+  });
+
   it('no console errors or page errors overall', () => {
     assert.deepEqual(h.errors, []);
     assert.deepEqual(h.rec.unknown.map((e) => `${e.method} ${e.url}`), [], 'calls to endpoints that are not in the contract/mocks');
@@ -283,5 +408,177 @@ describe('portal degrades gracefully', () => {
     const txt = await mainText(h.page);
     assert.ok(txt.includes("Opdracht 'Onder de huid'"), 'portal deadlines still shown');
     assert.deepEqual(h.errors.filter((e) => /pageerror|Uncaught/.test(e)), [], 'no uncaught errors');
+  });
+});
+
+const PROD_CID = Object.entries(require('../helpers/fixtures').load().ultra.courses).find(([, c]) => c.courseId === lu('Productie 1'))[0];
+
+describe('deadlines: overdue, detail sheet, onboarding (v1.4)', () => {
+  let h; let page;
+  before(async () => {
+    h = await launch();
+    page = h.page;
+    // B2: a deadline 10 days overdue (outside the old now−7d window) must stay visible until it is marked done.
+    h.fx.portal.events.push({ id: 'ev-old-late', type: 'notifications', subType: 'due', eventType: 'update', date: Date.now() - 10 * DAY,
+      sourceId: lu('Productie 1'), source: enr('Productie 1').title, title: 'Oude vergeten opdracht', read: false, seen: false, dismissed: false,
+      url: `https://ultra.edu.kuleuven.cloud/ultra/redirect?redirectType=nautilus&courseId=${PROD_CID}&contentId=_9100_1` });
+  });
+  after(async () => { await h?.close(); });
+
+  it('onboarding card shows once on the overview and stays dismissed', async () => {
+    await openPortal(h);
+    const nl = strings('nl');
+    const card = page.locator('#tplus-root section.va-onboard');
+    assert.equal(await card.count(), 1, 'onboarding card on first use');
+    const txt = await card.innerText();
+    for (const k of ['overview.onboard.what', 'overview.onboard.classic', 'overview.onboard.read']) assert.ok(txt.includes(nl[k].slice(0, 30)), k);
+    await screenshot(page, 'overview-onboarding');
+    await card.locator('[data-action="ov-onboard-close"]').first().click();
+    await page.waitForFunction(() => !document.querySelector('#tplus-root').shadowRoot.querySelector('section.va-onboard'), null, { timeout: 4000 });
+    assert.ok(await waitFor(async () => (await h.getState())?.ui?.onboarded === true), 'state.ui.onboarded');
+    await page.reload();
+    await openPortal(h);
+    assert.equal(await page.locator('#tplus-root section.va-onboard').count(), 0, 'not shown again');
+  });
+
+  it('overdue deadlines older than a week stay visible ("Te laat" › "Ouder dan een week")', async () => {
+    const nl = strings('nl');
+    const ov = await page.locator(S.section('deadlines')).innerText();
+    assert.ok(ov.includes('Oude vergeten opdracht'), 'overview shows the 10-day-old overdue deadline');
+    await openPortal(h, 'deadlines');
+    const late = page.locator('#tplus-root section[data-section="dl-g-overdue"]');
+    assert.equal(await late.count(), 1, '"Te laat" group');
+    assert.ok((await late.locator('.tp-sec-title').innerText()).includes(nl['deadlines.group.overdue']));
+    const old = late.locator('details[data-dl-old]');
+    assert.equal(await old.count(), 1, '"Ouder dan een week" disclosure');
+    assert.equal(await old.evaluate((d) => d.open), false, 'collapsed by default');
+    assert.ok((await old.locator('summary').innerText()).includes(nl['deadlines.group.older'].replace('{n}', '1')));
+    assert.ok(await old.locator('.va-dl', { hasText: 'Oude vergeten opdracht' }).count() === 1);
+    const sub = await page.locator('#tplus-root .tp-subtitle').innerText();
+    assert.match(sub, /\d+ open · 2 te laat/, `subtitle "n open · m te laat": ${sub}`);
+    // vocabulary: "Te laat" on the rows, "Zet in agenda" as the action
+    assert.ok((await late.innerText()).includes('Te laat'));
+    assert.equal(await page.locator('#tplus-root [data-shell="view-action"]').first().innerText(), nl['deadlines.export']);
+    assert.equal(nl['deadlines.export'], 'Zet in agenda');
+    // search opens the collapsed group and counts follow the filter (B11)
+    await page.locator(S.search).fill('vergeten');
+    await page.waitForTimeout(400);
+    assert.equal(await old.evaluate((d) => d.open), true, 'search opens the disclosure with the hit');
+    assert.equal((await late.locator('.tp-sec-title .tp-count').innerText()).trim(), '1', 'section count follows the search');
+    assert.equal(await page.locator('#tplus-root section[data-section="dl-g-w0"]:visible, #tplus-root section[data-section="dl-g-w1"]:visible').count(), 0, 'empty group headers hidden');
+    await page.locator(S.search).fill('');
+  });
+
+  it('a deadline row opens the detail sheet: course, due, source, actions; "Zet in agenda" downloads one event', async () => {
+    await openPortal(h, 'deadlines');
+    const nl = strings('nl');
+    const row = page.locator('#tplus-root .va-dl', { hasText: 'Productiedossier' }).first();
+    await row.locator('.va-dl-open').click();
+    const dlg = page.locator('#tplus-root dialog.tp-detail');
+    await dlg.waitFor({ state: 'visible', timeout: 4000 });
+    assert.equal(await dlg.evaluate((d) => d.open), true);
+    assert.equal((await dlg.locator('#tp-detail-title').innerText()).trim(), 'Productiedossier');
+    const txt = await dlg.innerText();
+    for (const want of ['Productie 1', nl['va.sheet.due'], nl['va.sheet.source'], nl['va.sheet.openCourse'], nl['va.addToCalendar'], nl['va.sheet.markDone']]) {
+      assert.ok(txt.includes(want), `sheet shows "${want}"`);
+    }
+    await dlg.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished.catch(() => {}))));
+    await screenshot(page, 'deadline-sheet-light-desktop');
+    const [dl] = await Promise.all([
+      page.waitForEvent('download', { timeout: 5000 }),
+      dlg.locator('[data-detail-action="ics"]').click(),
+    ]);
+    assert.match(dl.suggestedFilename(), /\.ics$/);
+    const ics = await (async () => { const p = await dl.path(); return require('fs').readFileSync(p, 'utf8'); })();
+    assert.equal((ics.match(/BEGIN:VEVENT/g) || []).length, 1, 'single event');
+    assert.ok(ics.includes('Productiedossier'));
+    // mark done from the sheet
+    await dlg.locator('[data-detail-action="done"]').click();
+    const key = await row.getAttribute('data-key');
+    assert.ok(await waitFor(async () => !!(await h.getState())?.done?.[key]), 'marked done in state');
+    assert.ok((await dlg.innerText()).includes(nl['va.sheet.markOpen']), 'sheet updates to "niet klaar"');
+    await dlg.locator('[data-detail-action="done"]').click();
+    // Esc closes and returns focus to the row
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector('#tplus-root').shadowRoot.querySelector('dialog.tp-detail').open, null, { timeout: 3000 });
+    const focused = await sr(page, (r) => r.activeElement?.classList.contains('va-dl-open'));
+    assert.ok(focused, 'focus back on the row');
+  });
+
+  it('"Open in vak" lands on the course with the assignment focused (state.focus)', async () => {
+    await openPortal(h, 'deadlines');
+    await page.locator('#tplus-root .va-dl', { hasText: 'Oude vergeten opdracht' }).first().evaluate((el) => { const d = el.closest('details'); if (d) d.open = true; });
+    await page.locator('#tplus-root .va-dl', { hasText: 'Oude vergeten opdracht' }).first().locator('.va-dl-open').click();
+    await page.locator('#tplus-root dialog.tp-detail [data-detail-action="course"]').click();
+    await page.waitForURL(/ultra\.edu\.kuleuven\.cloud\/ultra\/courses\//, { timeout: 15000 });
+    const st = await h.getState();
+    assert.ok(st && (st.focus === null || st.focus === undefined || st.focus.id === '_9100_1'), `focus hand-off: ${JSON.stringify(st && st.focus)}`);
+    assert.deepEqual(h.errors.filter((e) => /pageerror/.test(e)), []);
+  });
+});
+
+describe('error states (portal API down)', () => {
+  let h; let page;
+  before(async () => { h = await launch({ mock: { portalDown: true } }); page = h.page; });
+  after(async () => { await h?.close(); });
+
+  it('no infinite skeletons and no false empty states; inline error rows with "Opnieuw"', async () => {
+    await page.goto('https://toledo.kuleuven.be/portal/#/home');
+    await waitForShell(page);
+    const nl = strings('nl');
+    await page.waitForFunction(() => document.querySelector('#tplus-root').shadowRoot.querySelectorAll('.tp-error-row').length >= 2, null, { timeout: 20000 });
+    await page.waitForTimeout(800);
+    const state = await sr(page, (r) => ({
+      skel: [...r.querySelectorAll('main .tp-skeleton')].length,
+      errors: r.querySelectorAll('main .tp-error-row').length,
+      retry: r.querySelectorAll('main .tp-error-row [data-action="va-retry"]').length,
+      text: r.querySelector('main').innerText,
+    }));
+    assert.equal(state.skel, 0, 'no skeleton left after the load failed');
+    assert.ok(state.errors >= 2 && state.retry >= 2, `per-section error rows with retry: ${JSON.stringify({ e: state.errors, r: state.retry })}`);
+    for (const k of ['overview.new.empty', 'overview.schedule.none', 'overview.ann.empty', 'overview.courses.empty']) {
+      assert.ok(!state.text.includes(nl[k]), `false empty state "${nl[k]}"`);
+    }
+    await screenshot(page, 'overview-error');
+    // retry asks Toledo again
+    h.rec.reset();
+    await page.locator('#tplus-root main [data-action="va-retry"]').first().click();
+    assert.ok(await waitFor(() => h.rec.requests.some((r) => /\/portal\/api\//.test(r.url)), { timeout: 5000 }), 'retry re-requests the portal API');
+    for (const route of ['announcements', 'courses', 'deadlines']) {
+      await page.goto(`https://toledo.kuleuven.be/portal/#/home?tplus=${route}`);
+      await waitForShell(page);
+      await page.waitForFunction(() => !!document.querySelector('#tplus-root').shadowRoot.querySelector('main .tp-error-row'), null, { timeout: 15000 });
+      const t2 = await mainText(page);
+      assert.ok(!t2.includes(nl['announcements.empty.all']) && !t2.includes(nl['courses.empty']) && !t2.includes(nl['deadlines.empty.open']), `${route}: no false empty`);
+      assert.equal(await page.locator('#tplus-root main .tp-skeleton').count(), 0, `${route}: no skeleton`);
+    }
+  });
+});
+
+describe('session expired (portal API answers with the HTML login page)', () => {
+  let h; let page;
+  const LOGIN = '<!doctype html><html><head><title>KU Leuven Login</title></head><body><form action="/idp/profile/SAML2">login</form></body></html>';
+  const handler = (route) => route.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: LOGIN });
+  before(async () => {
+    h = await launch();
+    page = h.page;
+    await h.ctx.route('https://toledo.kuleuven.be/portal/api/**', handler);
+  });
+  after(async () => { await h?.close(); });
+
+  it('shows a non-blocking "Log opnieuw in" banner; it goes away once Toledo answers again', async () => {
+    const nl = strings('nl');
+    await page.goto('https://toledo.kuleuven.be/portal/#/home');
+    await waitForShell(page);
+    const banner = page.locator('#tplus-root [data-banner="auth"]');
+    await banner.waitFor({ state: 'visible', timeout: 15000 });
+    const txt = await banner.innerText();
+    assert.ok(txt.includes(nl['shell.authTitle']) && txt.includes(nl['shell.login']), txt);
+    assert.match(await banner.locator('a').getAttribute('href'), /^https:\/\/toledo\.kuleuven\.be\//);
+    assert.ok(await page.locator(S.sidebar).isVisible(), 'the app stays usable');
+    await screenshot(page, 'banner-auth');
+    await h.ctx.unroute('https://toledo.kuleuven.be/portal/api/**', handler);
+    await page.locator('#tplus-root [data-shell="refresh"]').first().click();
+    await banner.waitFor({ state: 'detached', timeout: 15000 });
   });
 });

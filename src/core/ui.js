@@ -41,8 +41,6 @@
     external: '<path d="M14 4.5h5.5V10M19.5 4.5 11 13"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/>',
     mail: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="m3.5 7.5 8.5 6 8.5-6"/>',
     bell: '<path d="M6 9a6 6 0 1 1 12 0c0 6.5 2.5 8 2.5 8h-17S6 15.5 6 9"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/>',
-    pin: '<path d="M9 3.5h6l-1 6 3.5 3.5v1.5h-11V13L10 9.5z"/><path d="M12 14.5V21"/>',
-    pinFill: '<path d="M9 3.5h6l-1 6 3.5 3.5v1.5h-11V13L10 9.5z" fill="currentColor"/><path d="M12 14.5V21"/>',
     star: '<path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>',
     starFill: '<path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" fill="currentColor"/>',
     eye: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>',
@@ -62,6 +60,10 @@
     trash: '<path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 12.5a1.5 1.5 0 0 0 1.5 1.5h6a1.5 1.5 0 0 0 1.5-1.5l1-12.5"/>',
     info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.8v.2"/>',
     warning: '<path d="M10.3 4.2 2.9 17a2 2 0 0 0 1.7 3h14.8a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0z"/><path d="M12 9.5v4M12 16.8v.2"/>',
+    grip: '<circle cx="9" cy="6.5" r="1.2" fill="currentColor"/><circle cx="15" cy="6.5" r="1.2" fill="currentColor"/><circle cx="9" cy="12" r="1.2" fill="currentColor"/><circle cx="15" cy="12" r="1.2" fill="currentColor"/><circle cx="9" cy="17.5" r="1.2" fill="currentColor"/><circle cx="15" cy="17.5" r="1.2" fill="currentColor"/>',
+    location: '<path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/>',
+    exam: '<path d="M7 3.5h7.5L19 8v11a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 6 19V5a1.5 1.5 0 0 1 1-1.5z"/><path d="M14.5 3.5V8H19M9 13l2 2 4-4.5"/>',
+    sparkle: '<path d="M12 3.5 13.8 10 20.5 12l-6.7 2L12 20.5 10.2 14 3.5 12l6.7-2z"/>',
     classic: '<rect x="3" y="4.5" width="18" height="15" rx="3"/><path d="M3 9h18M7 6.8h.01M9.5 6.8h.01"/>',
   };
   const ICONS = Object.keys(P);
@@ -162,14 +164,17 @@
       + `<p class="tp-nr-sub">${esc(t('common.noResults.for', { q }))}</p></div>`;
   }
 
-  function skeleton(rows = 3) {
+  /** Loading placeholder with real row geometry, inside an inset group (B1). opts.lead: 'tile'|'date'|'dot'|'none'. */
+  function skeleton(rows = 3, opts = {}) {
+    const lead = ['tile', 'date', 'dot', 'none'].includes(opts.lead) ? opts.lead : 'tile';
     const r = Array.from({ length: Math.max(1, rows) }, (_, i) =>
-      `<div class="tp-skel-row"><span class="tp-skel-lead"></span><span class="tp-skel-lines"><span class="tp-skel-line" style="width:${[72, 56, 64, 48, 60][i % 5]}%"></span><span class="tp-skel-line short"></span></span></div>`).join('');
-    return `<div class="tp-skeleton" role="status" aria-label="${esc(t('common.loading'))}">${r}</div>`;
+      `<div class="tp-skel-row${lead === 'date' ? ' tp-skel-tall' : ''}">${lead === 'none' ? '' : `<span class="tp-skel-lead tp-skel-${lead}"></span>`}<span class="tp-skel-lines"><span class="tp-skel-line" style="width:${[72, 56, 64, 48, 60][i % 5]}%"></span><span class="tp-skel-line short"></span></span></div>`).join('');
+    return `<div class="tp-group tp-skeleton${opts.cls ? ' ' + esc(opts.cls) : ''}" role="status" aria-label="${esc(t('common.loading'))}">${r}</div>`;
   }
 
-  const errorRow = (text, retryAction = 'retry') =>
-    `<div class="tp-error-row" role="alert">${icon('warning', { size: 17 })}<span class="tp-error-text">${esc(text)}</span>${retryAction ? button(t('common.retry'), { action: retryAction, kind: 'plain' }) : ''}</div>`;
+  /** Inline per-section error row with a retry button (B1). opts.attrs → extra attributes on the retry button. */
+  const errorRow = (text, retryAction = 'retry', opts = {}) =>
+    `<div class="tp-error-row" role="alert">${icon('warning', { size: 17 })}<span class="tp-error-text">${esc(text)}</span>${retryAction ? button(t('common.retry'), { action: retryAction, kind: 'plain', attrs: opts.attrs }) : ''}</div>`;
 
   function button(label, o = {}) {
     const kind = ['filled', 'tinted', 'plain', 'gray'].includes(o.kind) ? o.kind : 'plain';

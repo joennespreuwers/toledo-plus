@@ -12,7 +12,7 @@ describe('ultra course page', () => {
   let h; let page; let tree;
   before(async () => {
     h = await launch(); page = h.page;
-    tree = h.fx.ultra.trees._200661_1;
+    tree = h.fx.ultra.trees._900661_1;
   });
   after(async () => { await h?.close(); });
 
@@ -46,6 +46,61 @@ describe('ultra course page', () => {
     assert.match(await sub.innerText(), /^\d+ items?( · \d+ nieuw)?$/);
     assert.equal(await sub.locator('.tp-dot').count(), 0, 'no coloured dot in the header line');
     await screenshot(page, 'ultra-course-light-desktop');
+  });
+
+  it('header "n nieuw" uses the feed\'s source; blue dots; "Alleen nieuw" filter; teachers card instead of chips ≥1100', async () => {
+    const info = await page.evaluate(() => {
+      const sr = document.querySelector('#tplus-root').shadowRoot;
+      const active = sr.querySelector('nav.tp-sidebar .tp-sb-course.active .tp-sb-count [aria-hidden]');
+      return {
+        header: (sr.querySelector('.cv-sub-new')?.textContent || '').trim(),
+        feed: active ? Number(active.textContent) : null,
+        dots: sr.querySelectorAll('[data-sec="recent"] .cv-new-dot, [data-tree] .cv-new-dot').length,
+        chips: getComputedStyle(sr.querySelector('.cv-teachers') || document.body).display,
+        teachersCard: !!sr.querySelector('[data-sec="teachers"]'),
+      };
+    });
+    assert.match(info.header, /^\d+ nieuw$/, `header: ${info.header}`);
+    assert.equal(Number(info.header.split(' ')[0]), info.feed, 'same number as the Nieuw feed / sidebar for this course (B10)');
+    assert.ok(info.dots >= 2, 'blue dots on new items in Recent and Inhoud');
+    assert.equal(info.chips, 'none', 'teacher chips hidden ≥1100px');
+    assert.ok(info.teachersCard, 'Docenten card kept');
+    // "Alleen nieuw"
+    const toggle = page.locator('#tplus-root [data-action="only-new"]');
+    await toggle.click();
+    await page.waitForFunction(() => document.querySelector('#tplus-root').shadowRoot.querySelector('[data-action="only-new"]')?.getAttribute('aria-pressed') === 'true', null, { timeout: 3000 });
+    const only = await page.evaluate(() => {
+      const sr = document.querySelector('#tplus-root').shadowRoot;
+      const leaves = [...sr.querySelectorAll('[data-tree] .cv-leaf, [data-tree] details.cv-doc')];
+      return { n: leaves.length, allNew: leaves.every((l) => !!l.querySelector('.cv-new-dot')) };
+    });
+    assert.ok(only.n >= 1 && only.allNew, `only new leaves left in Inhoud: ${JSON.stringify(only)}`);
+    const txt = await mainText(page);
+    assert.ok(!txt.includes('Les 1 — Introductie'), 'folders without new items are hidden');
+    await screenshot(page, 'ultra-course-only-new');
+    await toggle.click();
+    await page.waitForFunction(() => document.querySelector('#tplus-root').shadowRoot.querySelector('[data-action="only-new"]')?.getAttribute('aria-pressed') === 'false', null, { timeout: 3000 });
+    assert.ok((await mainText(page)).includes('Les 1 — Introductie'));
+  });
+
+  it('course deadlines: "Te laat" wording; the row shows the assignment here, a small icon opens Toledo', async () => {
+    const dl = page.locator('#tplus-root [data-sec="deadlines"]');
+    const txt = await dl.innerText();
+    assert.ok(!/Verlopen/.test(txt), 'no "Verlopen" (vocabulary is "Te laat")');
+    const ext = dl.locator('a.cv-ext');
+    if (await ext.count()) {
+      assert.equal(await ext.first().getAttribute('target'), '_blank');
+    }
+    const focusBtn = dl.locator('[data-action="focus-item"]').first();
+    assert.equal(await focusBtn.count(), 1, 'a course deadline that is in the content tree focuses it');
+    {
+      const id = await focusBtn.getAttribute('data-id');
+      await focusBtn.click();
+      await page.waitForFunction((x) => {
+        const sr = document.querySelector('#tplus-root').shadowRoot;
+        return !!sr.querySelector(`[data-tree] .cv-focus, [data-tree] [data-fk$="t:${x}"].cv-focus`) || sr.activeElement?.dataset?.fk?.endsWith('t:' + x);
+      }, id, { timeout: 4000 });
+    }
   });
 
   it('uses absolute URLs only (nothing hits the <base href> CDN)', async () => {
@@ -126,7 +181,7 @@ describe('ultra course page', () => {
   });
 
   it('shows a deep bar with a back link on a non-outline Ultra page (SPA navigation)', async () => {
-    await page.evaluate(() => history.pushState({}, '', location.origin + '/ultra/courses/_200661_1/outline/file/_5000_1'));
+    await page.evaluate(() => history.pushState({}, '', location.origin + '/ultra/courses/_900661_1/outline/file/_5000_1'));
     await page.waitForFunction(() => !!document.querySelector('#tplus-deep')?.shadowRoot?.querySelector('nav'), null, { timeout: 5000 });
     assert.equal(await page.evaluate(() => document.documentElement.classList.contains('tplus-on')), false, 'shell should step aside on item pages');
     assert.ok(await page.locator('#site-wrap').isVisible(), 'original Ultra page visible');
@@ -174,9 +229,9 @@ describe('portal → course navigation', () => {
   it('opening a course from the courses view lands on the Ultra outline (journey redirect)', async () => {
     const { openPortal } = require('../helpers/app');
     await openPortal(h, 'courses');
-    const link = h.page.locator('#tplus-root main a[href*="batchUid=ULTRA-B-LUCA-N50265-2627"]').first();
+    const link = h.page.locator('#tplus-root main a[href*="batchUid=ULTRA-B-LUCA-X10265-2627"]').first();
     assert.equal(await link.count(), 1, 'course link uses enrollment.link');
-    await Promise.all([h.page.waitForURL(/\/ultra\/courses\/_200661_1\/outline/, { timeout: 10000 }), link.click()]);
+    await Promise.all([h.page.waitForURL(/\/ultra\/courses\/_900661_1\/outline/, { timeout: 10000 }), link.click()]);
     await waitForShell(h.page);
     assert.ok((await mainText(h.page)).includes('Filmtaal 1'));
     assert.deepEqual(h.errors, []);

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Runs node:test files of one suite: `node scripts/run-tests.mjs unit|e2e [filter]`.
-// (Node 20 has no glob support for --test, so we list the files ourselves.)
+// (We list the files ourselves instead of relying on --test globs.)
 import { readdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { spawnSync } from 'node:child_process';

@@ -1,5 +1,6 @@
-/* Toledo+ — Settings view (views-B).
-   Inset grouped settings, applied instantly through TP.settings.set (no Save button). */
+/* Toledo+ — Settings view.
+   Inset grouped settings (≤ 10 groups), applied instantly through TP.settings.set (no Save button).
+   '#/home?tplus=settings&id=sections' is the "Secties aanpassen" subpage (edit mode for the overview blocks). */
 (() => {
   'use strict';
   const TP = (globalThis.TP ||= {});
@@ -12,7 +13,7 @@
   const ISSUE = 'https://github.com/joennespreuwers/toledo-plus/issues/new/choose';
   const ALL = 999; // feed.maxCourses value meaning "all"
 
-  const ui = { openCourses: new Set(), resetArmed: false, resetTimer: 0 };
+  const ui = { resetArmed: false, resetTimer: 0, icsEdit: false, drag: null };
   let cur = null;
 
   // Settings apply in memory immediately; don't wait for the (debounced) storage write to repaint.
@@ -61,10 +62,13 @@
 
   function accentOptions() {
     const P = TP.util.PALETTE;
-    return Object.keys(P).map((k) => ({ value: k, color: P[k], label: t('courses.colors.' + k) }));
+    // N7: red and pink are reserved for "te laat" and never offered as accent.
+    const keys = TP.util.ACCENTS || Object.keys(P).filter((k) => k !== 'red' && k !== 'pink');
+    return keys.map((k) => ({ value: k, color: P[k], label: t('courses.colors.' + k) }));
   }
+  const navRow = (label, attrs, value) => `<a class="st-row st-link-row st-nav-row"${TP.ui.attrs(attrs)}><span class="st-label">${esc(label)}</span><span class="st-trail">${value ? `<span class="st-value">${esc(value)}</span>` : ''}${TP.ui.icon('chevronRight', { size: 14, strokeWidth: 2.2 })}</span></a>`;
 
-  // ---------- sections ----------
+  // ---------- groups (≤ 10: Taal · Weergave · Overzicht · Deadlines · Vakken · Agenda · Zoeken · Synchronisatie · Geavanceerd · Over) ----------
   function language(s) {
     const seg = TP.ui.segmented('s:language', opts([['system', t('settings.lang.system')], ['nl', 'Nederlands'], ['en', 'English'], ['fr', 'Français']]), s.language, { label: t('settings.lang.label') });
     return block('lang', t('settings.lang'), ctlRow(t('settings.lang.label'), (id) => labelled(seg, id)));
@@ -73,37 +77,28 @@
   function look(s) {
     const app = TP.ui.segmented('s:appearance', opts(['system', 'light', 'dark'].map((v) => [v, t('settings.appearance.' + v)])), s.appearance);
     const den = TP.ui.segmented('s:density', opts(['compact', 'standard', 'comfortable'].map((v) => [v, t('settings.density.' + v)])), s.density);
-    const acc = TP.ui.swatches('s:accent', accentOptions(), s.accent);
+    const acc = TP.ui.swatches('s:accent', accentOptions(), TP.util.accentKey ? TP.util.accentKey(s.accent) : s.accent);
     return block('look', t('settings.look'),
       ctlRow(t('settings.appearance'), (id) => labelled(app, id))
       + ctlRow(t('settings.accent'), (id) => labelled(acc, id), { stack: true })
       + ctlRow(t('settings.density'), (id) => labelled(den, id)));
   }
 
-  // One "Overzicht" group: start page, overview blocks (switch + ↑/↓), and the "Nieuw" feed options.
+  // "Overzicht": start page, the sections subpage, and the "Nieuw" feed options.
   function overview(s) {
-    const page = TP.ui.select('s:startPage', opts(['overview', 'courses', 'deadlines', 'planning'].map((v) => [v, t('settings.page.' + v)])), s.startPage, { ariaLabel: t('settings.start.label') });
+    const start = ['planning', 'agenda'].includes(s.startPage) ? 'agenda' : s.startPage;
+    const page = TP.ui.select('s:startPage', opts(['overview', 'courses', 'deadlines', 'agenda'].map((v) => [v, t('settings.page.' + v)])), start, { ariaLabel: t('settings.start.label') });
     const list = (s.overview && s.overview.sections) || [];
-    const rows = list.map((x, i) => {
-      const name = t('settings.sec.' + x.id);
-      return `<div class="st-row st-row-toggle st-row-order">
-        ${TP.ui.toggle('sec' + SEP + x.id, x.on !== false, name)}
-        <span class="st-move">
-          <button type="button" class="st-icon-btn" data-action="sec-up" data-id="${esc(x.id)}" data-fk="up:${esc(x.id)}" aria-label="${esc(t('settings.moveUp', { name }))}" ${i === 0 ? 'disabled' : ''}>${TP.ui.icon('arrowUp', { size: 15 })}</button>
-          <button type="button" class="st-icon-btn" data-action="sec-down" data-id="${esc(x.id)}" data-fk="down:${esc(x.id)}" aria-label="${esc(t('settings.moveDown', { name }))}" ${i === list.length - 1 ? 'disabled' : ''}>${TP.ui.icon('arrowDown', { size: 15 })}</button>
-        </span>
-      </div>`;
-    }).join('');
+    const on = list.filter((x) => x.on !== false).length;
     const f = s.feed || {};
     const max = Number(f.maxCourses) || 5;
     const sel = TP.ui.select('n:feed.maxCourses', [3, 5, 8].map((n) => ({ value: n, label: String(n) })).concat({ value: ALL, label: t('settings.feed.all') }),
       [3, 5, 8].includes(max) ? max : ALL, { ariaLabel: t('settings.feed.max') });
     return block('overview', t('settings.overview'),
       ctlRow(t('settings.start.label'), page)
-      + rows
+      + navRow(t('settings.sections.edit'), { href: TP.shell.href('settings', { id: 'sections' }), 'data-fk': 'open-sections' }, t('settings.sections.count', { n: on, total: list.length }))
       + toggleRow('s:feed.includeAnnouncements', f.includeAnnouncements, t('settings.feed.ann'), t('settings.feed.annDesc'))
-      + ctlRow(t('settings.feed.max'), sel),
-      t('settings.sections.foot'));
+      + ctlRow(t('settings.feed.max'), sel));
   }
 
   function deadlines(s) {
@@ -114,51 +109,52 @@
     return block('dl', t('settings.dl'), ctlRow(t('settings.dl.horizon'), hz) + ctlRow(t('settings.dl.urgent'), ur) + ctlRow(t('settings.dl.reminder'), rm));
   }
 
-  function courseRow(c) {
-    const cs = TP.settings.course(c.luId);
-    const name = c.name || TP.util.courseName(c.title);
-    const tags = [c.pinned ? t('settings.courses.pinned') : '', cs.hidden ? t('settings.courses.hidden') : ''].filter(Boolean).join(' · ');
-    const inputId = nid('nick');
-    const colId = nid('col');
-    const body = `
-      <div class="st-course">
-        <div class="st-field">
-          <label for="${inputId}">${esc(t('settings.nickname'))}</label>
-          <input id="${inputId}" type="text" class="st-input" name="nick${SEP}${esc(c.luId)}" value="${esc(cs.nickname || '')}"
-            placeholder="${esc(TP.util.courseName(c.title))}" autocomplete="off" spellcheck="false" maxlength="60">
-        </div>
-        <div class="st-field">
-          <span class="st-field-label" id="${colId}">${esc(t('settings.color'))}</span>
-          <div class="st-swatch-line">
-            ${labelled(TP.ui.swatches('color' + SEP + c.luId, accentOptions(), cs.color || c.colorKey || ''), colId)}
-            ${cs.color ? `<button type="button" class="st-link-btn" data-action="color-reset" data-lu="${esc(c.luId)}" data-fk="cr:${esc(c.luId)}">${esc(t('settings.colorReset'))}</button>` : ''}
-          </div>
-        </div>
-        <div class="st-course-toggles">
-          ${TP.ui.toggle('pin' + SEP + c.luId, !!c.pinned, t('settings.pin'))}
-          ${TP.ui.toggle('hide' + SEP + c.luId, !!cs.hidden, t('settings.hide'))}
-        </div>
-      </div>`;
-    return TP.ui.disclosure({
-      id: c.luId,
-      open: ui.openCourses.has(c.luId),
-      cls: 'st-course-disc',
-      summary: {
-        leading: TP.ui.dot(c.color),
-        title: esc(name),
-        subtitle: esc([c.code, tags].filter(Boolean).join(' · ')),
-      },
-      body,
-    });
+  // N5: one place for nickname/colour/hide/order → Vakken › Bewerk.
+  function coursesBlock() {
+    return block('courses', t('settings.courses'),
+      navRow(t('settings.courses.edit'), { href: TP.shell.href('courses', { id: 'edit' }), 'data-fk': 'open-courses' }),
+      t('settings.courses.foot'));
   }
 
-  function coursesBlock(s) {
-    let list = [];
-    try { list = TP.data.courses({ currentOnly: true, includeHidden: true }) || []; } catch { list = []; }
-    const rows = list.length ? list.map(courseRow).join('') : `<div class="st-row"><span class="st-muted">${esc(t('settings.courses.none'))}</span></div>`;
-    return block('courses', t('settings.courses'),
-      toggleRow('s:courses.showCommunities', s.courses && s.courses.showCommunities, t('settings.courses.communities'), t('settings.courses.communitiesDesc')) + rows,
-      t('settings.courses.foot'));
+  // Agenda: KU Loket status + the personal iCal link (masked; paste / replace / remove).
+  function agenda() {
+    const K = TP.kuloket;
+    if (!K) return block('agenda', t('settings.agenda'), `<div class="st-row"><span class="st-label">KU Loket</span><span class="st-value">${esc(t('settings.agenda.unavailable'))}</span></div>`);
+    let st = null;
+    try { st = K.status ? K.status() : null; } catch { st = null; }
+    const L = (st && st.lessons) || {};
+    let line;
+    if (L.ok) line = t('settings.agenda.ok', { time: L.t ? TP.fmt.time(L.t) : '—', source: t('settings.agenda.src.' + (L.source === 'ics' ? 'ics' : 'kuloket')) });
+    else if (L.error === 'auth') line = t('settings.agenda.auth');
+    else if (L.error) line = t('settings.agenda.error');
+    else line = t('settings.agenda.idle');
+    let masked = '';
+    try { masked = K.getIcsUrlMasked ? K.getIcsUrlMasked() : ''; } catch { masked = ''; }
+    const canSet = typeof K.setIcsUrl === 'function';
+    let ics = '';
+    if (canSet) {
+      if (masked && !ui.icsEdit) {
+        ics = `<div class="st-row"><span class="st-label">${esc(t('settings.agenda.ics'))}</span><span class="st-value st-mono" data-ics-masked>${esc(masked)}</span></div>
+        <div class="st-row st-row-actions">
+          <button type="button" class="st-action" data-action="ics-edit" data-fk="ics-edit">${TP.ui.icon('link', { size: 16 })}<span>${esc(t('settings.agenda.icsReplace'))}</span></button>
+          <button type="button" class="st-action st-danger" data-action="ics-remove" data-fk="ics-remove">${TP.ui.icon('trash', { size: 16 })}<span>${esc(t('settings.agenda.icsRemove'))}</span></button>
+        </div>`;
+      } else {
+        const id = nid('ics');
+        ics = `<form class="st-row st-row-stack st-ics" data-form="ics" novalidate>
+          <label class="st-field-label" for="${id}">${esc(t('settings.agenda.icsPaste'))}</label>
+          <div class="st-ics-line"><input id="${id}" type="url" class="st-input" name="st-ics" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://cloud.timeedit.net/…/s.ics?…">
+          <button type="submit" class="tp-btn tp-btn-tinted" data-fk="ics-save">${esc(t('common.save'))}</button>
+          ${masked ? `<button type="button" class="tp-btn tp-btn-plain" data-action="ics-cancel" data-fk="ics-cancel">${esc(t('common.cancel'))}</button>` : ''}</div>
+          <p class="st-form-error" role="alert" hidden></p>
+        </form>`;
+      }
+    }
+    const app = K.icalAppUrl ? K.icalAppUrl() : null;
+    return block('agenda', t('settings.agenda'),
+      `<div class="st-row"><span class="st-label">KU Loket</span><span class="st-value" data-kul-status>${esc(line)}</span></div>${ics}`
+      + (app ? `<a class="st-row st-link-row" href="${esc(app)}" target="_blank" rel="noopener"><span class="st-label">${esc(t('settings.agenda.icsWhere'))}</span><span class="st-trail">${TP.ui.icon('external', { size: 15 })}<span class="st-sr">${esc(t('settings.newTab'))}</span></span></a>` : ''),
+      t('settings.agenda.foot'));
   }
 
   function search(s) {
@@ -179,24 +175,19 @@
   function sync(s) {
     const y = s.sync || {};
     return block('sync', t('settings.sync'),
-      toggleRow('s:sync.markReadInToledo', y.markReadInToledo, t('settings.sync.read'))
-      + toggleRow('s:sync.favoritesToToledo', y.favoritesToToledo, t('settings.sync.fav')),
+      toggleRow('s:sync.markReadInToledo', y.markReadInToledo !== false, t('settings.sync.read')),
       t('settings.sync.foot'));
   }
 
-  function wrap(s) {
+  // "Geavanceerd": which Toledo pages Toledo+ replaces + settings export/import/reset.
+  function advanced(s) {
     const w = s.wrap || {};
-    return block('wrap', t('settings.wrap'),
+    const fileId = nid('import');
+    return block('advanced', t('settings.advanced'),
       toggleRow('s:wrap.portal', w.portal, t('settings.wrap.portal'))
       + toggleRow('s:wrap.courses', w.courses, t('settings.wrap.courses'))
-      + toggleRow('s:wrap.deepBar', w.deepBar, t('settings.wrap.deepBar')),
-      t('settings.wrap.foot'));
-  }
-
-  function data() {
-    const fileId = nid('import');
-    return block('data', t('settings.data'), `
-      <div class="st-row st-row-actions">
+      + toggleRow('s:wrap.deepBar', w.deepBar, t('settings.wrap.deepBar'))
+      + `<div class="st-row st-row-actions">
         <button type="button" class="st-action" data-action="export" data-fk="export">${TP.ui.icon('download', { size: 16 })}<span>${esc(t('settings.data.export'))}</span></button>
       </div>
       <div class="st-row st-row-actions">
@@ -205,7 +196,7 @@
       </div>
       <div class="st-row st-row-actions">
         <button type="button" class="st-action st-danger${ui.resetArmed ? ' is-armed' : ''}" data-action="reset" data-fk="reset">${TP.ui.icon(ui.resetArmed ? 'warning' : 'refresh', { size: 16 })}<span>${esc(t(ui.resetArmed ? 'settings.data.confirm' : 'settings.data.reset'))}</span></button>
-      </div>`, t('settings.data.foot'));
+      </div>`, t('settings.advanced.foot'));
   }
 
   function about() {
@@ -220,7 +211,28 @@
       t('settings.about.privacy'));
   }
 
+  // ---------- subpage: Overzicht › Secties (edit mode: drag handle + ↑/↓ + switch) ----------
+  function sectionsPage(s) {
+    const list = (s.overview && s.overview.sections) || [];
+    const rows = list.map((x, i) => {
+      const name = t('settings.sec.' + x.id);
+      return `<li class="st-row st-row-toggle st-row-order st-sec-row" data-sec="${esc(x.id)}">
+        <span class="st-grip" data-grip aria-hidden="true" title="${esc(t('settings.sections.drag'))}">${TP.ui.icon('grip', { size: 16 })}</span>
+        ${TP.ui.toggle('sec' + SEP + x.id, x.on !== false, name)}
+        <span class="st-move">
+          <button type="button" class="st-icon-btn" data-action="sec-up" data-id="${esc(x.id)}" data-fk="up:${esc(x.id)}" aria-label="${esc(t('settings.moveUp', { name }))}" ${i === 0 ? 'disabled' : ''}>${TP.ui.icon('arrowUp', { size: 15 })}</button>
+          <button type="button" class="st-icon-btn" data-action="sec-down" data-id="${esc(x.id)}" data-fk="down:${esc(x.id)}" aria-label="${esc(t('settings.moveDown', { name }))}" ${i === list.length - 1 ? 'disabled' : ''}>${TP.ui.icon('arrowDown', { size: 15 })}</button>
+        </span>
+      </li>`;
+    }).join('');
+    return `<div class="st-view st-sub">
+      <p><a class="st-back" href="${esc(TP.shell.href('settings'))}" data-route="settings" data-fk="back">${TP.ui.icon('chevronLeft', { size: 16, strokeWidth: 2.4 })}<span>${esc(t('settings.title'))}</span></a></p>
+      ${TP.ui.section({ id: 'st-sections', title: esc(t('settings.sections.title')), body: `<ul class="tp-group st-group st-sec-list" role="list">${rows}</ul>`, footer: esc(t('settings.sections.foot')) })}
+    </div>`;
+  }
+
   // ---------- render ----------
+  const isSub = (ctx) => ((ctx && ctx.params) || {}).id === 'sections';
   function render(ctx) {
     cur = ctx;
     const root = ctx.root;
@@ -228,7 +240,13 @@
     try { ctx.setActions && ctx.setActions([]); } catch { /* ignore */ }
     const focus = snapFocus(root);
     const s = TP.settings.get();
-    root.innerHTML = `<div class="st-view">${language(s)}${look(s)}${overview(s)}${deadlines(s)}${coursesBlock(s)}${search(s)}${sync(s)}${wrap(s)}${data()}${about()}</div>`;
+    if (isSub(ctx)) {
+      try { ctx.setTitle && ctx.setTitle(t('settings.sections.title')); } catch { /* ignore */ }
+      root.innerHTML = sectionsPage(s);
+    } else {
+      try { ctx.setTitle && ctx.setTitle(t('settings.title')); } catch { /* ignore */ }
+      root.innerHTML = `<div class="st-view">${language(s)}${look(s)}${overview(s)}${deadlines(s)}${coursesBlock()}${agenda()}${search(s)}${sync(s)}${advanced(s)}${about()}</div>`;
+    }
     restoreFocus(root, focus);
   }
   // Async callers only repaint while the settings view is still what the container shows.
@@ -243,15 +261,30 @@
     return out;
   }
 
+  function sectionList() {
+    return ((TP.settings.get().overview || {}).sections || []).map((x) => ({ id: x.id, on: x.on !== false }));
+  }
   async function moveSection(id, dir) {
-    const list = ((TP.settings.get().overview || {}).sections || []).map((x) => ({ id: x.id, on: x.on !== false }));
+    const list = sectionList();
     const i = list.findIndex((x) => x.id === id);
     const j = i + dir;
     if (i < 0 || j < 0 || j >= list.length) return;
     [list[i], list[j]] = [list[j], list[i]];
     save(TP.settings.set({ overview: { sections: list } }));
     rerender();
-    TP.shell.announce?.(t(dir < 0 ? 'settings.moveUp' : 'settings.moveDown', { name: t('settings.sec.' + id) }));
+    TP.shell.announce?.(t('settings.movedTo', { name: t('settings.sec.' + id), n: j + 1, total: list.length }));
+  }
+  function moveSectionTo(id, target, after) {
+    if (!id || !target || id === target) return;
+    const list = sectionList();
+    const item = list.find((x) => x.id === id);
+    const rest = list.filter((x) => x.id !== id);
+    let k = rest.findIndex((x) => x.id === target);
+    if (!item || k < 0) return;
+    if (after) k++;
+    rest.splice(k, 0, item);
+    save(TP.settings.set({ overview: { sections: rest } }));
+    rerender();
   }
 
   function exportSettings() {
@@ -296,6 +329,23 @@
     rerender();
   }
 
+  async function saveIcs(form) {
+    const input = form.querySelector('input[name="st-ics"]');
+    const err = form.querySelector('.st-form-error');
+    const v = String((input && input.value) || '').trim();
+    let ok = false;
+    try { ok = !!v && (await TP.kuloket.setIcsUrl(v)) !== false; } catch { ok = false; }
+    if (!ok) {
+      if (err) { err.hidden = false; err.textContent = t('settings.agenda.icsInvalid'); }
+      if (input) { input.setAttribute('aria-invalid', 'true'); input.focus(); }
+      return;
+    }
+    ui.icsEdit = false;
+    TP.shell.toast?.(t('settings.agenda.icsSaved'));
+    rerender();
+    cur?.root.querySelector('[data-fk="ics-edit"]')?.focus({ preventScroll: true });
+  }
+
   function bind(root) {
     if (root.__tpSettingsBound) return;
     root.__tpSettingsBound = true;
@@ -320,13 +370,23 @@
       else if (act === 'sec-down') moveSection(b.dataset.id, 1);
       else if (act === 'export') exportSettings();
       else if (act === 'reset') resetClick();
-      else if (act === 'reindex') {
+      else if (act === 'ics-edit') { ui.icsEdit = true; rerender(); cur?.root.querySelector('input[name="st-ics"]')?.focus(); }
+      else if (act === 'ics-cancel') { ui.icsEdit = false; rerender(); cur?.root.querySelector('[data-fk="ics-edit"]')?.focus(); }
+      else if (act === 'ics-remove') {
+        Promise.resolve(TP.kuloket && TP.kuloket.setIcsUrl('')).catch(() => {}).finally(() => { TP.shell.toast?.(t('settings.agenda.icsRemoved')); rerender(); });
+      } else if (act === 'reindex') {
         if (b.getAttribute('aria-busy') === 'true') return;
         TP.shell.announce?.(t('settings.search.rebuilding'));
         Promise.resolve(TP.index.rebuild()).catch(() => {}).finally(rerender);
         rerender();
       }
-      else if (act === 'color-reset') { save(TP.settings.setCourse(b.dataset.lu, { color: null })); rerender(); }
+    });
+
+    root.addEventListener('submit', (ev) => {
+      const form = ev.target.closest && ev.target.closest('[data-form="ics"]');
+      if (!form) return;
+      ev.preventDefault();
+      saveIcs(form);
     });
 
     root.addEventListener('change', async (ev) => {
@@ -334,6 +394,7 @@
       if (!el.closest || !el.closest('.st-view') || !el.name) return;
       const name = el.name;
       if (name === 'st-import') { importSettings(el); return; }
+      if (name === 'st-ics') return; // saved on submit
       const value = el.type === 'checkbox' ? el.checked : el.value;
       let p = null;
       if (name.startsWith('s:')) p = TP.settings.set(patchFor(name.slice(2), value));
@@ -343,40 +404,55 @@
         if (k < 0) return;
         const kind = name.slice(0, k), id = name.slice(k + SEP.length);
         if (kind === 'sec') {
-          const list = ((TP.settings.get().overview || {}).sections || []).map((x) => ({ id: x.id, on: x.id === id ? !!value : x.on !== false }));
+          const list = sectionList().map((x) => ({ id: x.id, on: x.id === id ? !!value : x.on }));
           p = TP.settings.set({ overview: { sections: list } });
-        } else if (kind === 'nick') p = TP.settings.setCourse(id, { nickname: String(value).trim() });
-        else if (kind === 'color') p = TP.settings.setCourse(id, { color: value });
-        else if (kind === 'pin') {
-          p = Promise.resolve(TP.data.setPinned(id, !!value)).then((ok) => { if (ok === false) TP.shell.toast?.(t('common.pinFailed')); });
         }
-        else if (kind === 'hide') p = TP.settings.setCourse(id, { hidden: !!value });
       }
       if (!p) return;
       save(p); // applied in memory synchronously; persistence is debounced by core
-      // A nickname commits on blur: repaint after focus has moved on, so it lands on the next control.
-      if (name.startsWith('nick' + SEP)) setTimeout(rerender, 0); else rerender();
+      rerender();
     });
 
-    root.addEventListener('keydown', (ev) => {
-      if (ev.key === 'Enter' && ev.target.matches && ev.target.matches('.st-view input.st-input')) {
-        ev.preventDefault();
-        ev.target.dispatchEvent(new Event('change', { bubbles: true }));
-      }
+    // Sections subpage: drag handle (pointer); ↑/↓ are the keyboard path.
+    root.addEventListener('pointerdown', (ev) => {
+      const g = ev.target.closest && ev.target.closest('[data-grip]');
+      const li = g && g.closest('.st-sec-row');
+      if (li) li.draggable = true;
     });
-
-    // Remember which course drill-ins are open (toggle doesn't bubble → capture).
-    root.addEventListener('toggle', (ev) => {
-      const d = ev.target;
-      if (!d.matches || !d.matches('.st-view details.st-course-disc') || !d.isConnected) return;
-      if (d.open) ui.openCourses.add(d.dataset.id); else ui.openCourses.delete(d.dataset.id);
-    }, true);
+    root.addEventListener('dragstart', (ev) => {
+      const li = ev.target.closest && ev.target.closest('.st-sec-row');
+      if (!li || !li.draggable) { ev.preventDefault(); return; }
+      ui.drag = li.dataset.sec;
+      li.classList.add('is-dragging');
+      try { ev.dataTransfer.effectAllowed = 'move'; ev.dataTransfer.setData('text/plain', ui.drag); } catch { /* ignore */ }
+    });
+    root.addEventListener('dragover', (ev) => {
+      const li = ev.target.closest && ev.target.closest('.st-sec-row');
+      if (!ui.drag || !li) return;
+      ev.preventDefault();
+      const r = li.getBoundingClientRect();
+      root.querySelectorAll('.st-sec-row').forEach((x) => x.classList.remove('drop-before', 'drop-after'));
+      if (li.dataset.sec !== ui.drag) li.classList.add(ev.clientY > r.top + r.height / 2 ? 'drop-after' : 'drop-before');
+    });
+    root.addEventListener('drop', (ev) => {
+      const li = ev.target.closest && ev.target.closest('.st-sec-row');
+      if (!ui.drag || !li) return;
+      ev.preventDefault();
+      const r = li.getBoundingClientRect();
+      const id = ui.drag;
+      ui.drag = null;
+      moveSectionTo(id, li.dataset.sec, ev.clientY > r.top + r.height / 2);
+    });
+    root.addEventListener('dragend', () => {
+      ui.drag = null;
+      root.querySelectorAll('.st-sec-row').forEach((x) => { x.draggable = false; x.classList.remove('is-dragging', 'drop-before', 'drop-after'); });
+    });
   }
 
   TP.shell.register('settings', {
     title: () => t('settings.title'),
     showUpdated: false, // "Bijgewerkt hh:mm" means nothing here
     render,
-    destroy() { clearTimeout(ui.resetTimer); ui.resetArmed = false; },
+    destroy() { clearTimeout(ui.resetTimer); ui.resetArmed = false; ui.icsEdit = false; },
   });
 })();

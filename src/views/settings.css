@@ -74,3 +74,30 @@
 .st-view .st-row-toggle { padding-left: 0; padding-right: 0; }
 .st-view .st-row-order { padding-right: 12px; }
 .st-index-status { text-align: right; overflow-wrap: anywhere; font-size: var(--fs-subhead, .8125rem); }
+
+/* drill-in rows ("Secties aanpassen…", "Vakken aanpassen…") */
+.st-nav-row { cursor: pointer; }
+.st-nav-row .st-trail { align-items: center; gap: 6px; }
+.st-nav-row .st-value { font-size: var(--fs-subhead, .8125rem); }
+
+/* Agenda: masked iCal link + paste form */
+.st-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: var(--fs-subhead, .8125rem); overflow-wrap: anywhere; }
+.st-ics { gap: 8px; }
+.st-ics-line { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.st-ics-line .st-input { flex: 1 1 220px; max-width: none; }
+.st-form-error { margin: 0; color: var(--red); font-size: var(--fs-subhead, .8125rem); }
+.st-input[aria-invalid="true"] { box-shadow: inset 0 0 0 1px var(--red); }
+
+/* subpage: Overzicht › Secties */
+.st-back {
+  display: inline-flex; align-items: center; gap: 2px; min-height: 32px; padding: 4px 8px 4px 2px; border-radius: 8px;
+  color: var(--tint-text, var(--tint)); text-decoration: none; font-size: var(--fs-body, .9375rem);
+}
+.st-back:hover { background: var(--fill); }
+.st-sec-list { list-style: none; margin: 0; padding: 0; }
+.st-view .st-sec-row { padding-left: 4px; gap: 4px; }
+.st-grip { flex: none; display: grid; place-items: center; width: 24px; height: 36px; color: var(--label-3); cursor: grab; touch-action: none; }
+.st-sec-row.is-dragging { opacity: .5; }
+.st-sec-row.drop-before { box-shadow: inset 0 2px 0 var(--tint-text); }
+.st-sec-row.drop-after { box-shadow: inset 0 -2px 0 var(--tint-text); }
+.st-sec-row > .tp-toggle { padding-left: 4px; }

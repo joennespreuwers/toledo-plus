@@ -11,7 +11,7 @@
   const icon = (n, o) => TP.ui.icon(n, o);
 
   const PER_GROUP = 8;
-  const NAV = ['overview', 'courses', 'deadlines', 'planning', 'announcements', 'settings'];
+  const NAV = ['overview', 'courses', 'deadlines', 'agenda', 'announcements', 'kuloket', 'settings'];
   const KIND_ICON = { file: 'doc', video: 'film', image: 'image', page: 'page', assignment: 'task', link: 'link', tool: 'tool', folder: 'folder', announcement: 'megaphone', notice: 'bell' };
   const FILE_KINDS = new Set(['file', 'video', 'image']);
 
@@ -91,7 +91,7 @@
     if (nav.length) groups.push({ id: 'nav', title: t('palette.group.nav'), items: nav });
 
     const courses = scored(safe(() => TP.data.courses({}), []), words, (c) => [c.name, [c.code, c.title]]).map(({ x: c }) => ({
-      type: 'course', luId: c.luId, title: c.name, sub: [c.code, c.pinned ? t('nav.pinned') : ''].filter(Boolean).join(' · '), color: c.color,
+      type: 'course', luId: c.luId, title: c.name, sub: c.code || '', color: c.color,
     }));
     if (courses.length) groups.push({ id: 'courses', title: t('palette.group.courses'), items: courses });
 

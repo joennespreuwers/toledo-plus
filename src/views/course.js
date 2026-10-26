@@ -23,6 +23,7 @@
     prevVisit: 0, openIds: null, q: '',
     busy: new Set(), // content ids being downloaded
     focusUsed: false, // params.focus already applied
+    onlyNew: false,   // F3: "Alleen nieuw" filter
   };
   let cur = null;
 
@@ -30,7 +31,45 @@
   const H = (n) => (n && n.contentHandler && n.contentHandler.id) || '';
   const isFolder = (n) => !!n && (n.hasChildren || Array.isArray(n.kids) || /x-bb-(folder|lesson|module)/.test(H(n)));
   const created = (n) => ms(n.created || n.modified);
-  const isNew = (n) => !!st.prevVisit && ms(n.created) > st.prevVisit;
+  // F3/B10: "new" = what the Nieuw feed reports for this course (unread portal events, matched by content id or
+  // title) + items created after the previous visit. The header count and the blue dots use the same source.
+  const normT = (x) => String(x || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  let feedNew = { ids: new Set(), titles: new Set(), events: [] };
+  function computeFeedNew() {
+    const lu = st.luId || (st.data && st.data.course && st.data.course.courseId) || null;
+    const out = { ids: new Set(), titles: new Set(), events: [] };
+    if (lu) {
+      let groups = [];
+      try { groups = TP.data.feed() || []; } catch { groups = []; }
+      for (const g of groups) {
+        if (g.luId !== lu) continue;
+        for (const e of g.items || []) {
+          if (e.read) continue;
+          out.events.push(e);
+          const id = itemIdOf(e.url);
+          if (id) out.ids.add(id);
+          out.titles.add(normT(e.title));
+        }
+      }
+    }
+    feedNew = out;
+  }
+  function itemIdOf(url) {
+    let u = String(url || '');
+    try { u = decodeURIComponent(u); } catch { /* raw */ }
+    return (u.match(/content_?[iI]d=(_\d+_\d+)/) || u.match(/contents?\/(_\d+_\d+)/) || u.match(/outline\/[a-z]+\/(_\d+_\d+)/) || [])[1] || null;
+  }
+  const isNew = (n) => (!!st.prevVisit && ms(n.created) > st.prevVisit) || feedNew.ids.has(n.id) || (!!n.title && feedNew.titles.has(normT(n.title)));
+  function newCount(leaves) {
+    const fresh = leaves.filter((x) => isNew(x.node));
+    const matchedIds = new Set(fresh.map((x) => x.node.id));
+    const matchedTitles = new Set(fresh.map((x) => normT(x.node.title)));
+    const extra = feedNew.events.filter((e) => {
+      const id = itemIdOf(e.url);
+      return !(id && matchedIds.has(id)) && !matchedTitles.has(normT(e.title));
+    }).length;
+    return fresh.length + extra;
+  }
   function flatten(nodes, path = [], out = []) {
     for (const n of nodes || []) {
       if (isFolder(n)) flatten(n.kids, path.concat(n.title || ''), out);
@@ -153,8 +192,8 @@
   function spinner() { return '<span class="cv-spin" aria-hidden="true"></span>'; }
 
   function headerHtml() {
-    const c = courseModel();
     const staff = (st.data && st.data.staff) || [];
+    // Teacher chips: phones/tablets only; ≥1100px the "Docenten" card in the side column says it (CSS).
     const teachers = staff.length ? `<ul class="cv-teachers" role="list">${staff.map((s) => `<li>${s.email
       ? `<a href="mailto:${esc(s.email)}" aria-label="${esc(t('course.mail', { name: s.name }))}">${TP.ui.icon('mail', { size: 14 })}<span>${esc(s.name)}</span></a>`
       : `<span>${esc(s.name)}</span>`}</li>`).join('')}</ul>` : '';
@@ -164,15 +203,11 @@
       if (st.partial) sub = `${spinner()}<span>${esc(t('course.loading'))}</span>`;
       else {
         const leaves = flatten(st.data.roots);
-        const fresh = leaves.filter((x) => isNew(x.node)).length;
-        sub = `<span>${esc(t('course.items', { n: leaves.length }))}${fresh ? ` · <span title="${esc(t('course.newSince', { n: fresh }))}">${esc(t('course.newCount', { n: fresh }))}</span>` : ''}</span>`;
+        const fresh = newCount(leaves);
+        sub = `<span>${esc(t('course.items', { n: leaves.length }))}${fresh ? ` · <span class="cv-sub-new" title="${esc(t('course.newSince', { n: fresh }))}">${esc(t('course.newCount', { n: fresh }))}</span>` : ''}</span>`;
       }
     }
-    const pinned = !!(c && c.pinned);
-    const lu = st.luId || (c && c.luId);
-    const actions = `
-      ${lu ? `<button type="button" class="cv-btn" data-action="pin" data-fk="pin" aria-pressed="${pinned}">${TP.ui.icon(pinned ? 'pinFill' : 'pin', { size: 16 })}<span>${esc(t('course.pin'))}</span></button>` : ''}
-      <button type="button" class="cv-btn" data-action="classic" data-fk="classic">${TP.ui.icon('external', { size: 16 })}<span>${esc(t('course.classic'))}</span></button>`;
+    const actions = `<button type="button" class="cv-btn" data-action="classic" data-fk="classic">${TP.ui.icon('classic', { size: 16 })}<span>${esc(t('course.classic'))}</span></button>`;
     return `
       <header class="cv-head">
         <div class="cv-head-main">
@@ -257,23 +292,45 @@
 
   function recentHtml() {
     if (st.partial) return '';
-    const items = flatten(st.data.roots).sort((a, b) => created(b.node) - created(a.node)).slice(0, 5);
+    let items = flatten(st.data.roots).sort((a, b) => created(b.node) - created(a.node));
+    if (st.onlyNew) items = items.filter((x) => isNew(x.node));
+    items = items.slice(0, 5);
     if (!items.length) return '';
     return sec('recent', t('course.recent'), TP.ui.group(items.map((x) => leafHtml(x, { showPath: true })).join(''), { cls: 'cv-group' }));
   }
 
+  // "Alleen nieuw": keep new leaves and the folders that lead to them.
+  function pruneNew(nodes) {
+    const out = [];
+    for (const n of nodes || []) {
+      if (isFolder(n)) {
+        const kids = pruneNew(n.kids);
+        if (kids.length) out.push({ ...n, kids });
+      } else if (isNew(n)) out.push(n);
+    }
+    return out;
+  }
+
   function treeHtml() {
-    const roots = st.data.roots || [];
+    const all = st.data.roots || [];
+    const roots = st.onlyNew && !st.partial ? pruneNew(all) : all;
+    const newToggle = !st.partial && all.length
+      ? [{ action: 'only-new', label: t('course.onlyNew'), icon: st.onlyNew ? 'checkCircle' : 'circle', attrs: { 'data-fk': 'only-new', 'aria-pressed': st.onlyNew ? 'true' : 'false' } }]
+      : [];
     if (!roots.length) {
-      return sec('content', t('course.content'), st.partial ? TP.ui.skeleton(5) : TP.ui.group(TP.ui.empty(t('course.noContent')), { cls: 'cv-group' }));
+      const empty = st.onlyNew && all.length ? t('course.noNew') : t('course.noContent');
+      return sec('content', t('course.content'), st.partial ? TP.ui.skeleton(5) : TP.ui.group(TP.ui.empty(empty), { cls: 'cv-group' }), { actions: newToggle });
     }
     const latest = roots.filter(isFolder).sort((a, b) => newest(b) - newest(a))[0];
     const folderIds = [];
     (function walk(ns) { for (const n of ns || []) if (isFolder(n)) { folderIds.push(n.id); walk(n.kids); } })(roots);
-    const openSet = st.openIds || new Set(latest ? [latest.id] : []);
+    const openSet = st.onlyNew ? new Set(folderIds) : (st.openIds || new Set(latest ? [latest.id] : []));
     const allOpen = folderIds.length > 0 && folderIds.every((id) => openSet.has(id));
-    const actions = folderIds.length ? [{ action: 'toggle-all', label: t(allOpen ? 'course.collapseAll' : 'course.expandAll'), attrs: { 'data-fk': 'toggle-all', 'data-open': allOpen ? '1' : '0' } }] : [];
+    const actions = newToggle.concat(folderIds.length && !st.onlyNew ? [{ action: 'toggle-all', label: t(allOpen ? 'course.collapseAll' : 'course.expandAll'), attrs: { 'data-fk': 'toggle-all', 'data-open': allOpen ? '1' : '0' } }] : []);
+    const saved = st.openIds;
+    if (st.onlyNew) st.openIds = openSet;
     const body = `<div class="cv-tree" data-tree>${TP.ui.group(roots.map((n) => nodeHtml(n, [], 0, latest && latest.id)).join(''), { cls: 'cv-group' })}</div>`;
+    st.openIds = saved;
     return sec('content', t('course.content'), body, { actions });
   }
 
@@ -297,12 +354,14 @@
     }
     const now = Date.now();
     const all = [...seen.values()].sort((a, b) => a.due - b.due);
-    const up = all.filter((d) => d.due >= now - DAY / 2);
-    const past = all.filter((d) => d.due < now - DAY / 2).slice(-2).reverse();
+    // Overdue (not done) stays, however old (B2) — same rule as the Deadlines view.
+    const late = all.filter((d) => !d.done && d.due < now).reverse();
+    const up = all.filter((d) => d.due >= now);
+    const past = all.filter((d) => d.done && d.due < now).slice(-2).reverse();
     const row = (d) => {
       const overdue = !d.done && d.due < now;
       const urgent = !d.done && !overdue && TP.fmt.daysUntil(d.due) <= urgentDays;
-      const tone = d.done || (d.due < now - DAY / 2 && !overdue) ? 'muted' : overdue ? 'overdue' : urgent ? 'urgent' : 'normal';
+      const tone = d.done ? 'muted' : overdue ? 'overdue' : urgent ? 'urgent' : 'normal';
       const trail = overdue
         ? `<span class="cv-due is-overdue">${TP.ui.icon('clock', { size: 13 })}${esc(t('course.overdue'))}</span>`
         : `<span class="cv-due${urgent ? ' is-urgent' : ''}">${urgent ? TP.ui.icon('clock', { size: 13 }) : ''}${esc(TP.fmt.rel(d.due))}</span>`;
@@ -310,12 +369,43 @@
         <span class="cv-main"><span class="cv-name cv-strong" title="${esc(d.title)}">${esc(d.title)}</span>
         <span class="cv-meta">${esc(TP.fmt.date(d.due, { weekday: 'long' }))} · ${esc(TP.fmt.time(d.due))}</span></span>${trail}`;
       const lq = esc(String(d.title || '').toLowerCase());
+      const cls = `cv-row cv-dl${d.done ? ' is-done' : ''}`;
+      // The row shows the assignment in this course (unfolded + highlighted); a small icon opens it in Toledo.
+      const id = itemIdOf(d.url);
+      const inTree = id && st.data && findNode(id);
+      const ext = d.url ? `<a class="cv-mini cv-ext" href="${esc(d.url)}" target="_blank" rel="noopener" aria-label="${esc(t('course.openToledoLabel', { title: d.title }))}" title="${esc(t('course.openToledo'))}">${TP.ui.icon('external', { size: 15 })}</a>` : '';
+      if (inTree) return `<div class="${cls} cv-dl-split" data-lq="${lq}"><button type="button" class="cv-row-main cv-dl-main" data-action="focus-item" data-id="${esc(id)}" data-fk="dl:${esc(id)}">${inner}</button>${ext}</div>`;
       return d.url
-        ? `<a class="cv-row cv-row-main cv-dl${d.done ? ' is-done' : ''}" href="${esc(d.url)}" data-lq="${lq}">${inner}</a>`
-        : `<div class="cv-row cv-dl${d.done ? ' is-done' : ''}" data-lq="${lq}">${inner}</div>`;
+        ? `<a class="${cls} cv-row-main" href="${esc(d.url)}" target="_blank" rel="noopener" data-lq="${lq}">${inner}<span class="cv-sr">${esc(t('course.newTab'))}</span></a>`
+        : `<div class="${cls}" data-lq="${lq}">${inner}</div>`;
     };
-    const rows = up.map(row).join('') + past.map(row).join('');
+    const rows = late.map(row).join('') + up.map(row).join('') + past.map(row).join('');
     return sec('deadlines', t('course.deadlines'), TP.ui.group(rows || TP.ui.empty(t('course.noDeadlines')), { cls: 'cv-group' }));
+  }
+
+  // Next lesson of this course from KU Loket (Agent B; optional), in the side column.
+  function nextLessonHtml() {
+    const K = TP.kuloket;
+    if (!K || typeof K.peekLessons !== 'function') return '';
+    const c = courseModel();
+    const lu = st.luId || (c && c.luId);
+    const code = (c && c.code) || '';
+    const now = Date.now();
+    let list = null;
+    try { list = K.peekLessons({ from: now, to: now + 21 * DAY }); } catch { list = null; }
+    if (!Array.isArray(list)) return '';
+    const next = list.filter((l) => l && l.end > now && ((lu && l.courseLuId === lu) || (code && l.courseCode === code)))
+      .sort((a, b) => a.start - b.start)[0];
+    if (!next) return '';
+    const L = next.location || {};
+    const loc = [L.room || L.mnemonic, L.building].filter(Boolean).join(' · ');
+    const who = (next.teachers || []).filter(Boolean).join(', ');
+    const when = `${TP.fmt.date(next.start, { weekday: 'long', day: 'numeric', month: 'short' })} · ${TP.fmt.time(next.start)}–${TP.fmt.time(next.end)}`;
+    const inner = `${TP.ui.dateTile(next.start)}<span class="cv-main"><span class="cv-name cv-strong">${esc(next.kind === 'examen' ? t('course.exam') : (next.title || t('course.lesson')))}</span>
+      <span class="cv-meta cv-wrap">${esc(when)}</span>${loc ? `<span class="cv-meta cv-wrap">${TP.ui.icon('location', { size: 12 })} ${esc(loc)}</span>` : ''}${who ? `<span class="cv-meta cv-wrap">${esc(who)}</span>` : ''}</span>`;
+    const lq = esc(String(next.title || '').toLowerCase());
+    const body = TP.ui.group(`<a class="cv-row cv-row-main cv-lesson" href="${esc(TP.shell.href('agenda'))}" data-lq="${lq}">${inner}<span class="cv-trail">${TP.ui.icon('chevronRight', { size: 14 })}</span></a>`, { cls: 'cv-group' });
+    return sec('next', t('course.nextLesson'), body);
   }
 
   function announcementsHtml() {
@@ -371,9 +461,10 @@
     if (st.error) {
       body = TP.ui.group(TP.ui.errorRow(t(st.error === 'resolve' ? 'course.resolveError' : 'course.error'), 'retry'), { cls: 'cv-group' });
     } else if (!st.data) {
-      body = TP.ui.cols(sec('content', t('course.content'), TP.ui.skeleton(6)), TP.ui.skeleton(3));
+      body = TP.ui.cols(sec('content', t('course.content'), TP.ui.skeleton(6)), sec('deadlines', t('course.deadlines'), TP.ui.skeleton(3, { lead: 'date' })));
     } else {
-      body = TP.ui.cols(recentHtml() + treeHtml(), deadlinesHtml() + announcementsHtml() + teachersHtml());
+      computeFeedNew();
+      body = TP.ui.cols(recentHtml() + treeHtml(), nextLessonHtml() + deadlinesHtml() + announcementsHtml() + teachersHtml());
     }
     root.innerHTML = `<div class="cv-view">${headerHtml()}${body}<div class="cv-noresults" hidden></div></div>`;
     if (hadView) root.querySelectorAll('.cv-view details[data-keep]').forEach((d) => { d.open = keep.has(d.dataset.keep); });
@@ -432,6 +523,11 @@
     if (!f) return;
     if (f.param) st.focusUsed = true;
     else Promise.resolve(TP.state.set({ focus: null })).catch(() => {});
+    focusOn(f.id);
+  }
+  function focusOn(fid) {
+    const f = { id: String(fid) };
+    if (st.onlyNew) st.onlyNew = false;
     const trail = pathTo(f.id, st.data.roots);
     if (!trail) { TP.shell.toast?.(t('course.focusMissing')); return; }
     const node = findNode(f.id);
@@ -574,16 +670,14 @@
         if (act === 'toggle-all') { ev.preventDefault(); toggleAll(a); return; }
         if (act === 'classic') { ev.preventDefault(); onClassic(); return; }
         if (act === 'retry') { ev.preventDefault(); st.key = null; if (cur) render(cur); return; }
-        if (act === 'pin') {
+        if (act === 'only-new') {
           ev.preventDefault();
-          const c = courseModel();
-          const lu = st.luId || (c && c.luId);
-          if (lu) {
-            Promise.resolve(TP.data.setPinned(lu, !(c && c.pinned))).then((ok) => { if (ok === false) TP.shell.toast?.(t('common.pinFailed')); }, () => {});
-            paint();
-          }
+          st.onlyNew = !st.onlyNew;
+          paint();
+          TP.shell.announce?.(t(st.onlyNew ? 'course.onlyNewOn' : 'course.onlyNewOff'));
           return;
         }
+        if (act === 'focus-item') { ev.preventDefault(); focusOn(a.dataset.id); return; }
       }
       const link = ev.target.closest('a[data-recent]');
       if (link && root.contains(link)) {

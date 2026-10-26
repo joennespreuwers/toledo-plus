@@ -1,4 +1,5 @@
-/* Toledo+ — Deadlines view: full list grouped by week, filters, own deadlines, .ics export. */
+/* Toledo+ — Deadlines view: exams (KU Loket) + overdue on top, then grouped by week; filters, own deadlines,
+   "Zet in agenda" (.ics); every row opens the detail sheet (F6). */
 (() => {
   'use strict';
   const TP = (globalThis.TP ||= {});
@@ -14,7 +15,9 @@
     addOpen: false,
     draft: {},                 // unsent add-form values (survive re-renders)
     doneKeep: new Set(),       // keys toggled this session (stay visible in current filter)
+    oldOpen: false,            // "Ouder dan een week (n)" disclosure
   };
+  const DAY = 864e5;
 
   function startOfWeek(ms) {
     const d = new Date(ms);
@@ -49,8 +52,8 @@
       map.get(key).items.push(d);
     };
     for (const d of list) {
-      if (!d.done && d.due < now) push('overdue', t('deadlines.group.overdue'), -Infinity, d);
-      else if (d.due < w0) push('earlier', t('deadlines.group.earlier'), Infinity, d);
+      if (VA().isOverdue(d, now) || (d.done && S.doneKeep.has(d.key) && d.due < now && S.filter === 'open')) push('overdue', t('deadlines.group.overdue'), -Infinity, d);
+      else if (d.due < w0 || d.due < now) push('earlier', t('deadlines.group.earlier'), Infinity, d);
       else {
         const ws = startOfWeek(d.due);
         if (ws === w0) push('w0', t('deadlines.group.thisWeek'), ws, d);
@@ -59,8 +62,34 @@
       }
     }
     const groups = [...map.values()].sort((a, b) => a.sort - b.sort);
-    for (const g of groups) g.items.sort((a, b) => (g.key === 'earlier' ? b.due - a.due : a.due - b.due));
+    for (const g of groups) g.items.sort((a, b) => (g.key === 'earlier' || g.key === 'overdue' ? b.due - a.due : a.due - b.due));
     return groups;
+  }
+
+  /** Upcoming exams from KU Loket (Agent B's TP.kuloket; optional). */
+  function exams() {
+    let list = null;
+    try { list = TP.kuloket && typeof TP.kuloket.peekExams === 'function' ? TP.kuloket.peekExams() : null; } catch { list = null; }
+    const now = Date.now();
+    return (Array.isArray(list) ? list : []).filter((e) => e && e.start && (e.end || e.start) >= now).sort((a, b) => a.start - b.start);
+  }
+  function examRow(e) {
+    let c = null;
+    try { c = e.courseLuId && TP.data.course ? TP.data.course(e.courseLuId) : null; } catch { c = null; }
+    const name = (c && c.name) || e.title || '';
+    const L = e.location || {};
+    const loc = [L.room || L.mnemonic, L.building].filter(Boolean).join(' · ');
+    const when = `${TP.fmt.date(e.start, { weekday: 'short', day: 'numeric', month: 'short' })} ${TP.fmt.time(e.start)}${e.end ? '–' + TP.fmt.time(e.end) : ''}`;
+    const days = TP.fmt.daysUntil(e.start);
+    return TP.ui.row({
+      href: e.courseLuId ? TP.shell.href('course', { luId: e.courseLuId }) : undefined,
+      leading: TP.ui.dateTile(e.start, { tone: days <= 3 ? 'urgent' : 'normal' }),
+      title: esc(name),
+      subtitle: `${TP.ui.dot((c && c.color) || 'var(--label-3)')} <span>${esc([when, loc, e.text].filter(Boolean).join(' · '))}</span>`,
+      trailing: `<span class="va-urg${days <= 3 ? ' is-urgent' : ''}">${esc(TP.fmt.rel(e.start))}</span>`,
+      q: `${name} ${e.courseCode || ''} ${loc}`.toLowerCase(),
+      cls: 'va-exam has-lead',
+    });
   }
 
   function courseOptions() {
@@ -109,6 +138,16 @@
     return TP.ui.group(VA().addAttrs(html, { 'data-dl-add': '' }), { cls: 'va-dl-add' });
   }
 
+  function groupSection(g, rowsHtml, cls) {
+    return VA().addAttrs(TP.ui.section({
+      id: 'dl-g-' + g.key,
+      title: esc(g.title),
+      count: g.count != null ? g.count : g.items.length,
+      body: rowsHtml,
+      cls,
+    }), { 'data-va-sec': g.key });
+  }
+
   function render(ctx) {
     S.ctx = ctx;
     const V = VA();
@@ -120,21 +159,41 @@
     const st = TP.settings.get() || {};
     const urgentDays = (st.deadlines && st.deadlines.urgentDays) ?? 3;
     const list = filtered();
-    const openCount = allDeadlines().filter((d) => !d.done).length;
-    try { ctx.setSubtitle && ctx.setSubtitle(esc(t('deadlines.count', { n: openCount }))); } catch { /* ignore */ }
+    const now = Date.now();
+    const open = allDeadlines().filter((d) => !d.done);
+    const late = open.filter((d) => V.isOverdue(d, now)).length;
+    // "7 open · 1 te laat"
+    try {
+      ctx.setSubtitle && ctx.setSubtitle(esc(t('deadlines.count', { n: open.length }))
+        + (late ? `<span aria-hidden="true"> · </span><strong class="va-late">${esc(t('deadlines.lateCount', { n: late }))}</strong>` : ''));
+    } catch { /* ignore */ }
 
-    let body;
-    const loading = !list.length && !V.loaded('events') && !V.loadError('events');
-    if (loading) body = V.skeleton(4);
-    else if (!list.length) body = TP.ui.group(TP.ui.empty(t('deadlines.empty.' + S.filter)));
-    else {
-      const now = Date.now();
-      body = groupsOf(list).map((g) => VA().addAttrs(TP.ui.section({
-        id: 'dl-g-' + g.key,
-        title: esc(g.title),
-        count: g.items.length,
-        body: TP.ui.group(g.items.map((d) => V.deadlineRow(d, { prefix: 'dl', urgentDays, now, removable: true })).join(''), { cls: 'va-dl-group' + (g.key === 'overdue' ? ' is-overdue' : '') }),
-      }), { 'data-va-sec': g.key })).join('');
+    const state = V.state('events');
+    const ex = S.course === 'all' && S.filter !== 'done' ? exams() : [];
+    let body = '';
+    if (ex.length) {
+      body += groupSection({ key: 'exams', title: t('deadlines.group.exams'), items: ex },
+        TP.ui.group(ex.map(examRow).join(''), { cls: 'va-exam-group' }));
+    }
+    if (state === 'stale-error' || (state === 'error')) body += V.errorBlock(t('deadlines.error'), 'events');
+    if (!list.length && state === 'loading') body += V.skeleton(4, { lead: 'date' });
+    else if (!list.length && state !== 'error') body += TP.ui.group(TP.ui.empty(t('deadlines.empty.' + S.filter)));
+    else if (list.length) {
+      body += groupsOf(list).map((g) => {
+        const row = (d) => V.deadlineRow(d, { prefix: 'dl', urgentDays, now, removable: true });
+        if (g.key !== 'overdue') return groupSection(g, TP.ui.group(g.items.map(row).join(''), { cls: 'va-dl-group' }));
+        // B2: overdue stays, however old; older than a week sits in a collapsed disclosure.
+        const recent = g.items.filter((d) => d.due >= now - 7 * DAY);
+        const old = g.items.filter((d) => d.due < now - 7 * DAY);
+        const oldHtml = old.length ? VA().addAttrs(TP.ui.disclosure({
+          id: 'dl-old',
+          open: S.oldOpen,
+          cls: 'va-dl-old',
+          summary: { title: esc(t('deadlines.group.older', { n: old.length })) },
+          body: old.map(row).join(''),
+        }), { 'data-va-collapse': '', 'data-dl-old': '' }) : '';
+        return groupSection(g, TP.ui.group(recent.map(row).join('') + oldHtml, { cls: 'va-dl-group is-overdue' }), 'va-sec-overdue');
+      }).join('');
     }
 
     const footer = `<div class="va-footnotes">
@@ -142,7 +201,7 @@
       <p class="va-foot">${TP.ui.icon('check', { size: 13 })} ${esc(t('deadlines.honest'))}</p>
     </div>`;
 
-    V.paint(ctx.root, `<div class="va-view va-deadlines">
+    V.paint(ctx.root, `<div class="va-view va-deadlines tp-narrow">
       ${filtersHtml()}
       ${addFormHtml()}
       <div class="va-dl-list">${body}</div>
@@ -156,6 +215,7 @@
     const V = VA();
     const now = Date.now();
     const list = filtered().filter((d) => !d.done && d.due >= now);
+    // one file with every open, upcoming deadline in this view (each one is also in its own detail sheet)
     if (!list.length) { V.toast(t('deadlines.empty.open')); return; }
     let ics;
     try { ics = TP.data.ics(list); } catch (err) { console.warn('[Toledo+] ics', err); return; }
@@ -168,7 +228,13 @@
     const el = ev.target.closest('[data-action]');
     if (!el || !ctx || !ctx.root.contains(el)) return;
     const act = el.getAttribute('data-action');
-    if (act === 'dl-done') {
+    if (act === 'va-dl-open') {
+      ev.preventDefault();
+      VA().openDeadline(VA().dls.get(el.getAttribute('data-key')), el, ctx.root);
+    } else if (act === 'va-retry') {
+      ev.preventDefault();
+      await VA().retry(el);
+    } else if (act === 'dl-done') {
       ev.preventDefault();
       const key = el.getAttribute('data-key');
       const wasDone = el.getAttribute('aria-pressed') === 'true';
@@ -204,6 +270,7 @@
 
   function onToggle(ev) {
     const d = ev.target;
+    if (d && d.tagName === 'DETAILS' && d.hasAttribute('data-dl-old')) { if (!S.q) S.oldOpen = d.open; return; }
     if (d && d.tagName === 'DETAILS' && d.closest('[data-dl-add]')) {
       S.addOpen = d.open;
       if (d.open) { const i = d.querySelector('input[name="title"]'); if (i && ev.isTrusted) i.focus(); }

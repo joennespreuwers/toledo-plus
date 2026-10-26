@@ -1,11 +1,19 @@
-/* Toledo+ — Courses view (views-B). Colours only through semantic variables. */
+/* Toledo+ — Courses view. Colours only through semantic variables. */
 .cs-view { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .cs-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-.cs-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; justify-content: space-between; }
-.cs-filter { min-width: 0; max-width: 100%; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
-.cs-filter::-webkit-scrollbar { display: none; }
-.cs-sort { flex: 0 0 auto; }
+/* filter bar: 3 segments + semester/sort menus; wraps instead of scrolling (fits 320px) */
+.cs-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; justify-content: space-between; }
+.cs-filter { min-width: 0; max-width: 100%; }
+.cs-filter .tp-segmented { width: 100%; }
+.cs-filter .tp-seg span { padding: 0 10px; }
+.cs-menus { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; max-width: 100%; }
+.cs-menus .tp-select { min-width: 0; }
+@media (max-width: 420px) {
+  .cs-filter, .cs-menus { flex: 1 1 100%; }
+  .cs-menus .tp-select { flex: 1 1 0; }
+  .cs-menus .tp-select select { width: 100%; }
+}
 .cs-hint { margin: 0; color: var(--label-2); font-size: var(--fs-subhead, .8125rem); line-height: 1.4; }
 
 .cs-grid {
@@ -13,7 +21,6 @@
   display: grid; gap: 12px;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
 }
-.cs-grid.is-editing { grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
 
 .cs-card { background: var(--bg-2); border-radius: var(--r-group, 12px); min-width: 0; display: flex; flex-direction: column; }
 .cs-card[hidden] { display: none; }
@@ -22,44 +29,77 @@
   color: var(--label); text-decoration: none; border-radius: var(--r-group, 12px); min-width: 0;
 }
 a.cs-card-main:hover { background: var(--fill); }
-a.cs-card-main:focus-visible { outline: 2px solid var(--tint); outline-offset: 2px; }
-.cs-card.is-unavailable .cs-view .cs-card-main { opacity: .55; cursor: default; }
+a.cs-card-main:focus-visible { outline: 2px solid var(--tint-text, var(--tint)); outline-offset: 2px; }
+.cs-view .cs-card.is-unavailable .cs-card-main { cursor: default; }
+.cs-view .cs-card.is-unavailable .cs-name { color: var(--label-2); }
+.cs-view .cs-card.is-unavailable .cs-swatch { opacity: .45; }
 
 .cs-swatch { flex: 0 0 auto; width: 10px; align-self: stretch; min-height: 36px; border-radius: 999px; }
 .cs-swatch-sm { width: 10px; height: 10px; min-height: 0; align-self: center; }
-.cs-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; }
-.cs-name { font-weight: 600; font-size: var(--fs-headline, 1rem); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.cs-meta { color: var(--label-2); font-size: var(--fs-subhead, .8125rem); line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cs-unavail { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 999px; background: var(--fill); color: var(--label-2); font-size: var(--fs-footnote, .75rem); font-weight: 600; }
-.cs-meta:empty + .cs-unavail, .cs-meta > .cs-unavail:first-child { margin-left: 0; }
+.cs-text { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; flex: 1 1 auto; }
+.cs-name { max-width: 100%; font-weight: 600; font-size: var(--fs-headline, 1rem); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.cs-meta { max-width: 100%; color: var(--label-2); font-size: var(--fs-subhead, .8125rem); line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-meta:empty { display: none; }
+/* status chip, always visible (not only in edit mode) */
+.cs-unavail { display: inline-block; margin-top: 2px; padding: 1px 8px; border-radius: 999px; background: var(--fill); color: var(--label); font-size: var(--fs-footnote, .75rem); font-weight: 600; }
 .cs-trail { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; color: var(--label-2); }
-.cs-flag { display: inline-flex; color: var(--label-2); }
 
+/* ---------- edit mode: compact list ---------- */
+.cs-edit-list { list-style: none; margin: 0; padding: 0; background: var(--bg-2); border-radius: var(--r-group, 12px); max-width: var(--list-max, 760px); }
+.cs-erow {
+  position: relative; display: flex; align-items: center; gap: 8px 10px; min-height: 56px; padding: 6px 10px 6px 6px;
+}
+.cs-erow + .cs-erow::before { content: ''; position: absolute; top: 0; left: 44px; right: 0; border-top: var(--hairline, .5px) solid var(--separator); }
+.cs-erow[hidden] { display: none; }
+.cs-erow.is-hidden .cs-input, .cs-erow.is-hidden .cs-color-dot { opacity: .55; }
+.cs-erow.is-dragging { opacity: .5; }
+.cs-erow.drop-before { box-shadow: inset 0 2px 0 var(--tint-text); }
+.cs-erow.drop-after { box-shadow: inset 0 -2px 0 var(--tint-text); }
+.cs-grip { flex: none; display: grid; place-items: center; width: 24px; height: 36px; color: var(--label-3); cursor: grab; touch-action: none; }
+.cs-grip:active { cursor: grabbing; }
+.cs-nick { flex: 1 1 140px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cs-erow-meta { color: var(--label-2); font-size: var(--fs-footnote, .75rem); line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-erow-meta:empty { display: none; }
+.cs-input {
+  font: inherit; font-size: var(--fs-body, .9375rem); color: var(--label); background: var(--fill); border: 0; border-radius: 8px;
+  padding: 6px 10px; min-height: 34px; width: 100%; box-sizing: border-box;
+}
+.cs-input::placeholder { color: var(--label-2); }
+.cs-hide { flex: none; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; color: var(--label-2); font-size: var(--fs-footnote, .75rem); }
 .cs-move { flex: 0 0 auto; display: inline-flex; gap: 4px; }
 .cs-view .cs-icon-btn {
   display: inline-grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 8px;
   background: var(--fill); color: var(--tint-text, var(--tint)); cursor: pointer; font: inherit;
 }
 .cs-view .cs-icon-btn:disabled { color: var(--label-3); cursor: default; }
-.cs-view .cs-icon-btn:focus-visible, .cs-view .cs-link-btn:focus-visible, .cs-input:focus-visible, .cs-hidden-sum:focus-visible {
-  outline: 2px solid var(--tint); outline-offset: 2px;
+@media (max-width: 520px) {
+  .cs-erow { flex-wrap: wrap; padding-left: 4px; }
+  .cs-nick { flex-basis: calc(100% - 80px); order: 0; }
+  .cs-hide-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .cs-hide { margin-left: 30px; }
+  .cs-move { margin-left: auto; }
 }
 
-.cs-edit { display: flex; flex-direction: column; gap: 12px; padding: 4px 14px 14px; border-top: var(--hairline, .5px) solid var(--separator); padding-top: 12px; }
-.cs-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.cs-field > label, .cs-field-label { font-size: var(--fs-subhead, .8125rem); color: var(--label-2); }
-.cs-input {
-  font: inherit; font-size: var(--fs-body, .9375rem); color: var(--label); background: var(--fill); border: 0; border-radius: 8px;
-  padding: 8px 10px; min-height: 36px; width: 100%; box-sizing: border-box;
+/* colour popover (details/summary: native toggle, keyboard and Esc via the view) */
+.cs-color { position: relative; flex: none; }
+.cs-color > summary { list-style: none; }
+.cs-color > summary::-webkit-details-marker { display: none; }
+.cs-color-btn { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; }
+.cs-color-btn:hover { background: var(--fill); }
+.cs-color-dot { width: 22px; height: 22px; border-radius: 50%; box-shadow: inset 0 0 0 .5px rgba(0, 0, 0, .2); }
+.cs-pop {
+  position: absolute; z-index: 15; top: calc(100% + 6px); left: 0; width: max-content; max-width: min(296px, calc(100vw - 48px));
+  padding: 12px; display: grid; gap: 8px; justify-items: start;
+  background: var(--glass-pop); border: var(--hairline) solid var(--glass-border); border-radius: var(--r-pop, 16px); box-shadow: var(--shadow-pop);
 }
-.cs-input::placeholder { color: var(--label-3); }
-.cs-swatches { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.cs-toggles { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
 .cs-view .cs-link-btn {
   border: 0; background: none; padding: 4px 6px; min-height: 28px; border-radius: 6px;
   color: var(--tint-text, var(--tint)); font: inherit; font-size: var(--fs-subhead, .875rem); cursor: pointer;
 }
 .cs-view .cs-link-btn:hover { background: var(--fill); }
+.cs-view .cs-icon-btn:focus-visible, .cs-view .cs-link-btn:focus-visible, .cs-input:focus-visible, .cs-hidden-sum:focus-visible, .cs-color-btn:focus-visible {
+  outline: 2px solid var(--tint-text, var(--tint)); outline-offset: 2px;
+}
 
 .cs-hidden { margin-top: 12px; background: var(--bg-2); border-radius: var(--r-group, 12px); }
 .cs-hidden-sum {
@@ -76,5 +116,9 @@ a.cs-card-main:focus-visible { outline: 2px solid var(--tint); outline-offset: 2
 
 .cs-noresults:empty { display: none; }
 
+@media (max-width: 699px) {
+  /* touch: full names wrap instead of hiding behind a hover title */
+  .cs-meta { white-space: normal; }
+}
 @media (prefers-reduced-motion: reduce) { .cs-hidden-sum svg { transition: none; } }
-@media (prefers-contrast: more) { .cs-card, .cs-hidden { outline: 1px solid var(--separator); } }
+@media (prefers-contrast: more) { .cs-card, .cs-hidden, .cs-edit-list { outline: 1px solid var(--separator); } }

@@ -1,6 +1,7 @@
 /* Toledo+ — TP.data: loading, cache, models and mutations.
-   Stale-while-revalidate: everything renders from the cache (chrome.storage.local 'cache' = {key:{v,t}})
-   and is refreshed in the background. Models are pure functions of cache + settings + state. */
+   Stale-while-revalidate: everything renders from the cache (chrome.storage.local 'cache:<key>' = {v, t, rev})
+   and is refreshed in the background. Models are pure functions of cache + settings + state.
+   Depends on TP.util / TP.fmt (loaded first), TP.settings / TP.state and TP.net. */
 (() => {
   'use strict';
   const TP = (globalThis.TP ||= {});
@@ -8,28 +9,40 @@
   const PORTAL = 'https://toledo.kuleuven.be';
   const ULTRA = 'https://ultra.edu.kuleuven.cloud';
   const DAY = 864e5;
+  const HOUR = 36e5;
   const KEYS = ['enrollments', 'events', 'upcoming', 'mail', 'links', 'ultraDeadlines'];
   const PORTAL_KEYS = ['enrollments', 'events', 'upcoming', 'mail', 'links'];
+  const CP = 'cache:';             // one chrome.storage.local item per data key
   const MAX_EVENTS = 600;          // newest events kept in the persisted cache
   const MAX_CACHE_CHARS = 4e6;     // chrome.storage.local quota is 10 MB; stay well below
   const FRESH_MS = 30e3;           // load() without force reuses data younger than this
+  const STALE_MS = 5 * 60e3;       // maybeRefresh(): refresh when the data is older than this
   const GRAPHITE = '#8E8E93';
+  // Deadlines (B2/B13)
+  const PAST_DAYS = 7;             // done items stay listed this long after their due date
+  const CAL_PAST_DAYS = 14;        // Ultra calendar fetch starts this many days back
+  const CAL_WINDOW = 60 * DAY;     // Blackboard calendar API: keep windows ≤ 60 days
+  const CAL_MAX_WINDOWS = 7;       // ≤ 7 windows → ~14 days back + 366 days ahead
+  const VIEW_DAYS = 366;           // what the Deadlines view asks for
+  const DEDUPE_MS = 2 * HOUR;      // same title + course within ±2 h = one deadline
+  const KEEP_OVERDUE_DAYS = 365;   // overdue, not-done Ultra deadlines are kept this long after leaving the fetch window
+  // State bounds
+  const MAX_SEEN = 2000, MAX_READ = 3000, READ_DAYS = 120, DONE_DAYS = 60, VISIT_DAYS = 120, MAX_PENDING = 1000;
+  const PATCH_CHUNK = 100;
+  // Ultra course cache (B5)
+  const COURSE_TTL = 10 * 60e3, COURSE_MAX = 5;
+  const cfg = { folderRetryMs: [1000, 3000] }; // backoff between retry rounds for failed folders (tests shrink it)
 
   // ---------------------------------------------------------------- small helpers
   const S = () => (TP.settings && TP.settings.get ? TP.settings.get() : {}) || {};
   const ST = () => (TP.state && TP.state.get ? TP.state.get() : {}) || {};
-  const U = () => TP.util || {};
+  const U = () => TP.util;
   const log = (...a) => { try { console.debug('[Toledo+]', ...a); } catch (_) { /* noop */ } };
-
-  const courseName = (s) => (U().courseName ? U().courseName(s) : String(s || '').replace(/\s*\[[^\]]*\]\s*$/, '').replace(/^-\s*/, ''));
-  const courseCode = (s) => (U().courseCode ? U().courseCode(s) : ((String(s || '').match(/\[([^\]]+)\]\s*$/) || [])[1] || ''));
-  const colorForIndex = (n) => (U().colorForIndex ? U().colorForIndex(n) : GRAPHITE);
-  const palette = () => U().PALETTE || {};
-  const dayKey = (ms) => {
-    if (TP.fmt && TP.fmt.dayKey) return TP.fmt.dayKey(ms);
-    const d = new Date(ms);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  };
+  const courseName = (s) => U().courseName(s);
+  const courseCode = (s) => U().courseCode(s);
+  const colorForIndex = (n) => U().colorForIndex(n);
+  const dayKey = (ms) => TP.fmt.dayKey(ms);
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const toMs = (v) => {
     if (v == null || v === '') return 0;
     if (typeof v === 'number') return v;
@@ -37,21 +50,14 @@
     return Number.isFinite(t) ? t : 0;
   };
   const arr = (v) => (Array.isArray(v) ? v : (v && Array.isArray(v.results) ? v.results : []));
-  const debounce = (fn, ms) => {
-    if (U().debounce) return U().debounce(fn, ms);
-    let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
-  };
-  async function pool(items, n, fn) {
-    if (U().pool) return U().pool(items, n, fn);
-    const out = []; let i = 0;
-    await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => {
-      while (i < items.length) { const k = i++; out[k] = await fn(items[k], k); }
-    }));
-    return out;
-  }
+  const isObj = (x) => x !== null && typeof x === 'object' && !Array.isArray(x);
   const net = () => {
     if (!TP.net) throw Object.assign(new Error('TP.net missing'), { status: 0 });
     return TP.net;
+  };
+  const setState = (patch, opts) => {
+    if (stale || !TP.state || !TP.state.set) return Promise.resolve();
+    return Promise.resolve(TP.state.set(patch, opts)).catch((e) => log('state write failed', e));
   };
 
   /** FNV-1a 32-bit → base36. Stable across sessions/browsers (used for deadline keys and ICS UIDs). */
@@ -71,7 +77,7 @@
       .replace(/[^a-z0-9]+/g, ' ').trim();
   }
 
-  /** "ULTRA-B-N50265-2627: Filmtaal 1 [N50265]" → {luId:'ULTRA-B-N50265-2627', title:'Filmtaal 1 [N50265]'} */
+  /** "ULTRA-B-X10265-2627: Filmtaal 1 [X10265]" → {luId:'ULTRA-B-X10265-2627', title:'Filmtaal 1 [X10265]'} */
   function parseCalendarName(name) {
     const s = String(name || '');
     const i = s.indexOf(':');
@@ -89,39 +95,103 @@
     }
   }
 
-  // ---------------------------------------------------------------- cache
-  let mem = {};                     // {key:{v,t}}
-  const status = {};                // {key:{loading, error, t}}
-  const inflight = {};
+  // ---------------------------------------------------------------- extension context (F4)
+  let stale = false;
+  const cleanups = [];
+  /** The extension was updated/reloaded: stop timers and writes, tell the shell once ('stale'). */
+  function markStale() {
+    if (stale) return;
+    stale = true;
+    for (const fn of cleanups.splice(0)) { try { fn(); } catch (_) { /* ignore */ } }
+    emit('stale');
+  }
+  function checkStale() {
+    if (!stale && TP.net && TP.net.isStale && TP.net.isStale()) markStale();
+    return stale;
+  }
 
-  function storageGet(k) {
+  // ---------------------------------------------------------------- storage
+  const hasStore = () => typeof chrome !== 'undefined' && !!chrome.storage && !!chrome.storage.local;
+  function sget(keys) {
     return new Promise((res) => {
-      try { chrome.storage.local.get(k, (o) => res((o && o[k]) || null)); } catch (_) { res(null); }
+      if (!hasStore()) { res({}); return; }
+      try { chrome.storage.local.get(keys, (o) => { void (chrome.runtime && chrome.runtime.lastError); res(o || {}); }); } catch (_) { res({}); }
+    });
+  }
+  /** Never rejects (B14): quota and other errors are logged. */
+  function sset(obj) {
+    return new Promise((res) => {
+      if (!hasStore() || checkStale()) { res(false); return; }
+      try {
+        chrome.storage.local.set(obj, () => {
+          const e = chrome.runtime && chrome.runtime.lastError;
+          if (e) log('storage write failed', e.message);
+          res(!e);
+        });
+      } catch (e) { log('storage write failed', e && e.message); res(false); }
+    });
+  }
+  function sremove(keys) {
+    return new Promise((res) => {
+      if (!hasStore() || checkStale()) { res(); return; }
+      try { chrome.storage.local.remove(keys, () => { void (chrome.runtime && chrome.runtime.lastError); res(); }); } catch (_) { res(); }
     });
   }
 
-  function trimForStorage(c) {
-    const out = {};
-    for (const k of KEYS) {
-      if (!c[k]) continue;
-      out[k] = c[k];
-      if (k === 'events' && Array.isArray(c[k].v) && c[k].v.length > MAX_EVENTS) {
-        out[k] = { v: c[k].v.slice().sort((a, b) => (b.date || 0) - (a.date || 0)).slice(0, MAX_EVENTS), t: c[k].t };
-      }
+  // ---------------------------------------------------------------- cache
+  let mem = {};                     // {key:{v, t, rev, range?}}
+  const status = {};                // {key:{loading, error, auth, t}}
+  const inflight = {};
+
+  /** Entry as persisted: events capped at MAX_EVENTS (newest), nothing larger than MAX_CACHE_CHARS. */
+  function trimEntry(key, e) {
+    if (!e) return null;
+    let out = e;
+    if (key === 'events' && Array.isArray(e.v) && e.v.length > MAX_EVENTS) {
+      out = Object.assign({}, e, { v: e.v.slice().sort((a, b) => (b.date || 0) - (a.date || 0)).slice(0, MAX_EVENTS) });
     }
     try {
-      if (JSON.stringify(out).length > MAX_CACHE_CHARS) { delete out.events; log('cache too large, events not persisted'); }
-    } catch (_) { /* ignore */ }
+      if (JSON.stringify(out).length > MAX_CACHE_CHARS) { log(`cache entry ${key} too large, not persisted`); return null; }
+    } catch (_) { return null; }
     return out;
   }
 
-  const persist = debounce(() => {
-    try { chrome.storage.local.set({ cache: trimForStorage(mem) }); } catch (e) { log('cache write failed', e); }
-  }, 400);
+  const writeTimers = {};
+  const written = {};               // key → JSON of the last write by this tab (skip our own onChanged echo)
+  function persist(key) {
+    clearTimeout(writeTimers[key]);
+    writeTimers[key] = setTimeout(() => {
+      delete writeTimers[key];
+      const e = trimEntry(key, mem[key]);
+      if (!e) return;
+      written[key] = JSON.stringify(e);
+      sset({ [CP + key]: e });
+    }, 400);
+  }
+  function flushCache() {
+    const keys = Object.keys(writeTimers);
+    const obj = {};
+    for (const k of keys) {
+      clearTimeout(writeTimers[k]); delete writeTimers[k];
+      const e = trimEntry(k, mem[k]);
+      if (e) { obj[CP + k] = e; written[k] = JSON.stringify(e); }
+    }
+    return Object.keys(obj).length ? sset(obj) : Promise.resolve(true);
+  }
 
-  function put(key, v) {
-    mem[key] = { v, t: Date.now() };
-    persist();
+  /** (t, rev) ordering: a fresh load has a newer t; an optimistic mutation keeps t and bumps rev (B6). */
+  const newer = (a, b) => !b || (a.t || 0) > (b.t || 0) || ((a.t || 0) === (b.t || 0) && (a.rev || 0) > (b.rev || 0));
+
+  function put(key, v, extra) {
+    mem[key] = Object.assign({ v, t: Date.now(), rev: 0 }, extra || {});
+    persist(key);
+    emit('change', key);
+  }
+  /** Optimistic local change of cached data: same t, rev + 1 → other tabs adopt it. */
+  function mutate(key, v) {
+    if (!mem[key]) return;
+    mem[key] = Object.assign({}, mem[key], { v, rev: (mem[key].rev || 0) + 1 });
+    persist(key);
     emit('change', key);
   }
 
@@ -129,20 +199,52 @@
   function init() {
     if (initPromise) return initPromise;
     initPromise = (async () => {
-      const c = await storageGet('cache');
-      if (c && typeof c === 'object') {
-        for (const k of KEYS) if (c[k] && 'v' in c[k]) mem[k] = { v: c[k].v, t: c[k].t || 0 };
+      const got = await sget(KEYS.map((k) => CP + k).concat('cache'));
+      for (const k of KEYS) {
+        const c = got[CP + k];
+        if (c && typeof c === 'object' && 'v' in c) mem[k] = Object.assign({ t: 0, rev: 0 }, c);
       }
-      // Keep tabs in sync: another tab refreshed → take its newer data.
+      // v1.1: one big 'cache' item → one item per key.
+      const legacy = got.cache;
+      if (legacy && typeof legacy === 'object') {
+        const obj = {};
+        for (const k of KEYS) {
+          if (!mem[k] && legacy[k] && 'v' in legacy[k]) { mem[k] = { v: legacy[k].v, t: legacy[k].t || 0, rev: 0 }; obj[CP + k] = mem[k]; }
+        }
+        if (Object.keys(obj).length) await sset(obj);
+        await sremove('cache');
+      }
+      if (mem.events) mem.events.v = withReadSet(mem.events.v);
+      // Keep tabs in sync: another tab refreshed or changed data optimistically → take its newer data.
       try {
-        chrome.storage.onChanged.addListener((changes, area) => {
-          if (area !== 'local' || !changes.cache || !changes.cache.newValue) return;
-          const nv = changes.cache.newValue;
-          for (const k of KEYS) {
-            if (nv[k] && (!mem[k] || (nv[k].t || 0) > (mem[k].t || 0))) { mem[k] = nv[k]; emit('change', k); }
+        const onChanged = (changes, area) => {
+          if (area !== 'local') return;
+          for (const [sk, ch] of Object.entries(changes)) {
+            if (!sk.startsWith(CP)) continue;
+            const k = sk.slice(CP.length);
+            const nv = ch.newValue;
+            if (!KEYS.includes(k) || !nv || JSON.stringify(nv) === written[k]) continue;
+            if (newer(nv, mem[k])) {
+              mem[k] = k === 'events' ? Object.assign({}, nv, { v: withReadSet(nv.v) }) : nv;
+              emit('change', k);
+            }
+          }
+        };
+        chrome.storage.onChanged.addListener(onChanged);
+        cleanups.push(() => { try { chrome.storage.onChanged.removeListener(onChanged); } catch (_) { /* gone */ } });
+      } catch (_) { /* not in extension context (tests) */ }
+      // Local read-set / done marks changed (here or in another tab) → re-apply to the cached events.
+      try {
+        const unsub = TP.state.subscribe((st, keys = []) => {
+          if (keys.includes('read') && mem.events) {
+            const v = withReadSet(mem.events.v);
+            if (v !== mem.events.v) { mem.events = Object.assign({}, mem.events, { v }); emit('change', 'events'); }
           }
         });
-      } catch (_) { /* not in extension context (tests) */ }
+        cleanups.push(unsub);
+      } catch (_) { /* no state */ }
+      migrateDoneKeys();
+      watchVisibility();
     })();
     return initPromise;
   }
@@ -153,7 +255,17 @@
     const ts = ['enrollments', 'events'].map(stamp).filter(Boolean);
     return ts.length ? Math.max(...ts) : null;
   }
-  function getStatus(key) { return Object.assign({ loading: false, error: null, t: stamp(key) }, status[key] || {}); }
+  function getStatus(key) { return Object.assign({ loading: false, error: null, auth: false, t: stamp(key) }, status[key] || {}); }
+
+  // ---------------------------------------------------------------- session (F4)
+  let authExpired = false;
+  function setAuth(expired, key) {
+    if (expired === authExpired) return;
+    authExpired = expired;
+    emit('auth', { expired, key });
+  }
+  /** The "Log opnieuw in" target: Toledo's own login link when known, else the portal (it redirects to SSO). */
+  function loginUrl() { return link('LOGIN') || `${PORTAL}/portal/`; }
 
   // ---------------------------------------------------------------- loaders
   const portal = (p, opts) => net().json(PORTAL + '/portal/api/' + p, opts);
@@ -185,14 +297,17 @@
     };
   }
 
-  async function loadUltraDeadlines() {
-    const horizon = Number((S().deadlines || {}).horizonDays) || 42;
-    const from = Date.now() - 7 * DAY;
-    const until = Date.now() + horizon * DAY;
-    const windows = [];
-    for (let a = from; a < until; a += 60 * DAY) windows.push([a, Math.min(a + 60 * DAY, until)]);
+  /** Calendar windows (≤ 60 days each, at most CAL_MAX_WINDOWS) covering [from, until). */
+  function calWindows(from, until) {
+    const out = [];
+    for (let a = from; a < until && out.length < CAL_MAX_WINDOWS; a += CAL_WINDOW) out.push([a, Math.min(a + CAL_WINDOW, until)]);
+    return out;
+  }
+  let wantDays = 0;                 // largest horizon a view asked for in this tab (lazy extension, B2)
+
+  async function fetchCalendar(from, until) {
     const items = [];
-    for (const [a, b] of windows) {
+    for (const [a, b] of calWindows(from, until)) {
       const q = `/learn/api/public/v1/calendars/items?since=${encodeURIComponent(new Date(a).toISOString())}&until=${encodeURIComponent(new Date(b).toISOString())}&limit=100`;
       items.push(...await ultraPaged(q));
     }
@@ -206,21 +321,56 @@
       if (seen.has(k)) continue;
       seen.add(k); out.push(d);
     }
+    return out;
+  }
+
+  /** opts.extend: only fetch the part beyond what is cached (lazy, for the 366-day Deadlines view). */
+  async function loadUltraDeadlines(opts = {}) {
+    const now = Date.now();
+    const horizon = Number((S().deadlines || {}).horizonDays) || 42;
+    const days = Math.min(VIEW_DAYS, Math.max(horizon, wantDays, opts.days || 0));
+    const prev = mem.ultraDeadlines;
+    const from = now - CAL_PAST_DAYS * DAY;
+    const until = now + days * DAY;
+    let list;
+    let range;
+    if (opts.extend && prev && prev.range && prev.range.until > from) {
+      const more = await fetchCalendar(prev.range.until, until);
+      const ids = new Set(more.map((d) => d.id || d.title + d.due));
+      list = (prev.v || []).filter((d) => !ids.has(d.id || d.title + d.due)).concat(more);
+      range = { from: prev.range.from, until };
+    } else {
+      list = await fetchCalendar(from, until);
+      range = { from, until };
+      // B2: overdue deadlines that left the fetch window stay until they are marked done.
+      const ids = new Set(list.map((d) => d.id || d.title + d.due));
+      const done = ST().done || {};
+      for (const d of (prev && prev.v) || []) {
+        if (d.due >= from || d.due < now - KEEP_OVERDUE_DAYS * DAY || ids.has(d.id || d.title + d.due)) continue;
+        if (done[ultraKey(d)] || done[legacyKey(d.title, d.courseLuId, d.due)]) continue;
+        list.push(d);
+      }
+    }
     // Free luId → cid mappings for resolveCourseId().
     const known = ST().cidMap || {};
     const add = {};
-    for (const d of out) if (d.courseLuId && d.cid && !known[d.courseLuId]) add[d.courseLuId] = d.cid;
-    if (Object.keys(add).length && TP.state && TP.state.set) TP.state.set({ cidMap: add }).catch(() => {});
-    return out.sort((a, b) => a.due - b.due);
+    for (const d of list) if (d.courseLuId && d.cid && !known[d.courseLuId]) add[d.courseLuId] = d.cid;
+    if (Object.keys(add).length) setState({ cidMap: add });
+    return { value: list.sort((a, b) => a.due - b.due), extra: { range } };
   }
 
   const LOADERS = {
     enrollments: () => portal('enrollments').then(arr),
-    events: () => portal('events').then(arr),
+    events: () => portal('events').then(arr).then(withReadSet),
     upcoming: () => portal('upcoming').then(arr),
     mail: () => portal('emails/unread').then((r) => (r && typeof r.value === 'number' ? r.value : null)),
     links: () => portal('links').then(arr),
     ultraDeadlines: loadUltraDeadlines,
+  };
+  const AFTER = {
+    enrollments: () => pruneState(),
+    events: () => { migrateDoneKeys(); pruneState(); },
+    ultraDeadlines: () => migrateDoneKeys(),
   };
 
   const warned = new Set();
@@ -228,15 +378,21 @@
     if (!LOADERS[key]) return Promise.reject(Object.assign(new Error('unknown key ' + key), { status: 0 }));
     if (inflight[key]) return inflight[key];
     if (!opts.force && mem[key] && Date.now() - mem[key].t < FRESH_MS) return Promise.resolve(mem[key].v);
-    status[key] = { loading: true, error: null };
+    if (checkStale()) return Promise.reject(Object.assign(new Error('extension context invalidated'), { status: 0, stale: true }));
+    status[key] = { loading: true, error: null, auth: false };
     const p = (async () => {
       try {
-        const v = await LOADERS[key]();
-        status[key] = { loading: false, error: null };
-        put(key, v);
+        const r = await LOADERS[key](opts);
+        const v = r && r.extra ? r.value : r;
+        status[key] = { loading: false, error: null, auth: false };
+        put(key, v, r && r.extra);
+        setAuth(Object.values(status).some((s) => s && s.auth), key);
+        try { AFTER[key] && AFTER[key](); } catch (e) { log('after load', key, e); }
         return v;
       } catch (e) {
-        status[key] = { loading: false, error: e };
+        status[key] = { loading: false, error: e, auth: !!(e && e.auth) };
+        if (e && e.stale) markStale();
+        if (e && e.auth) setAuth(true, key);
         if (!warned.has(key)) { warned.add(key); log(`load ${key} failed (using cache)`, e && e.status, e && e.message); }
         emit('error', key);
         throw e;
@@ -248,52 +404,125 @@
     return p;
   }
 
-  /** Loads all portal keys + ultraDeadlines (best-effort). Never rejects. → {ok, errors:{key:Error}} */
-  async function refresh() {
-    const keys = PORTAL_KEYS.concat('ultraDeadlines');
-    const res = await Promise.allSettled(keys.map((k) => load(k, { force: true })));
-    const errors = {};
-    res.forEach((r, i) => { if (r.status === 'rejected') errors[keys[i]] = r.reason; });
-    return { ok: !errors.enrollments && !errors.events, errors };
+  /** Loads all portal keys + ultraDeadlines (best-effort), after sending queued mark-read PATCHes.
+   *  Clears the Ultra course cache (↻ also refreshes course contents). Never rejects.
+   *  → {ok, errors:{key:Error}, auth:boolean, stale:boolean} */
+  let refreshing = null;
+  function refresh() {
+    if (refreshing) return refreshing;
+    refreshing = (async () => {
+      clearCourseCache();
+      emit('courseCache', { cleared: true });
+      if (checkStale()) return { ok: false, errors: {}, auth: authExpired, stale: true };
+      await flushPendingRead().catch(() => {});
+      const keys = PORTAL_KEYS.concat('ultraDeadlines');
+      const res = await Promise.allSettled(keys.map((k) => load(k, { force: true })));
+      const errors = {};
+      res.forEach((r, i) => { if (r.status === 'rejected') errors[keys[i]] = r.reason; });
+      return { ok: !errors.enrollments && !errors.events, errors, auth: authExpired, stale };
+    })().finally(() => { refreshing = null; });
+    return refreshing;
+  }
+
+  /** Refresh only when the data is older than opts.maxAge (default 5 min). → refresh() result or null. */
+  function maybeRefresh(opts = {}) {
+    if (checkStale()) return Promise.resolve(null);
+    const maxAge = opts.maxAge != null ? opts.maxAge : STALE_MS;
+    const last = lastUpdated();
+    if (last && Date.now() - last < maxAge) return Promise.resolve(null);
+    return refresh();
+  }
+
+  // Back to a tab after a while → refresh in the background (the shell may also call maybeRefresh()).
+  function watchVisibility() {
+    if (typeof document === 'undefined' || !document.addEventListener) return;
+    const fn = () => { if (document.visibilityState === 'visible') maybeRefresh().catch(() => {}); };
+    document.addEventListener('visibilitychange', fn);
+    cleanups.push(() => document.removeEventListener('visibilitychange', fn));
+  }
+
+  // ---------------------------------------------------------------- local read-set (B4)
+  /** Events with read:true for every id in state.read (kept even when Toledo sync is off or a PATCH failed). */
+  function withReadSet(list) {
+    const read = ST().read || {};
+    if (!Array.isArray(list) || !Object.keys(read).length) return list;
+    let changed = false;
+    const out = list.map((e) => {
+      if (e && !e.read && e.id != null && read[e.id]) { changed = true; return Object.assign({}, e, { read: true }); }
+      return e;
+    });
+    return changed ? out : list;
+  }
+
+  // ---------------------------------------------------------------- state pruning
+  /** Bounded state maps: read-set (age + size), done marks (> 60 days and no longer in any source),
+   *  visits/openFolders of courses that are not current. */
+  function pruneState() {
+    const st = ST();
+    const now = Date.now();
+    const patch = {};
+    // read: drop old entries, keep the newest MAX_READ
+    const read = Object.entries(st.read || {});
+    const keepRead = read.filter(([, t]) => typeof t === 'number' && t > now - READ_DAYS * DAY).sort((a, b) => b[1] - a[1]).slice(0, MAX_READ);
+    if (keepRead.length !== read.length) {
+      const keep = new Set(keepRead.map(([id]) => id));
+      patch.read = Object.fromEntries(read.filter(([id]) => !keep.has(id)).map(([id]) => [id, null]));
+    }
+    // done: only when the sources are loaded, otherwise every mark would look unreferenced
+    if (peek('events') && peek('ultraDeadlines')) {
+      const live = new Set(candidates().flatMap((c) => [c.key, c.legacy]));
+      for (const c of Array.isArray(S().custom) ? S().custom : []) if (c && c.id) live.add('c' + hash(c.id));
+      const drop = Object.entries(st.done || {}).filter(([k, t]) => !live.has(k) && (typeof t !== 'number' || t < now - DONE_DAYS * DAY));
+      if (drop.length) patch.done = Object.fromEntries(drop.map(([k]) => [k, null]));
+    }
+    // visits / openFolders: only for courses we can tell are not current
+    const en = peek('enrollments');
+    if (Array.isArray(en) && en.length) {
+      const year = maxYear(en.map((e) => ({ type: e.type || 'course', year: e.academicYear || 0 })));
+      const currentLu = new Set(en.filter((e) => (e.type || 'course') !== 'course' || (e.academicYear || 0) === year).map((e) => e.learningUnitId));
+      const cidToLu = {};
+      for (const [lu, cid] of Object.entries(st.cidMap || {})) cidToLu[cid] = lu;
+      const old = (cid, t) => (cidToLu[cid] ? !currentLu.has(cidToLu[cid]) : (typeof t === 'number' && t < now - VISIT_DAYS * DAY));
+      const visits = Object.entries(st.visits || {}).filter(([cid, t]) => old(cid, t));
+      if (visits.length) patch.visits = Object.fromEntries(visits.map(([cid]) => [cid, null]));
+      const vAfter = st.visits || {};
+      const folders = Object.keys(st.openFolders || {}).filter((cid) => (cidToLu[cid] ? !currentLu.has(cidToLu[cid]) : !vAfter[cid] || old(cid, vAfter[cid])));
+      if (folders.length) patch.openFolders = Object.fromEntries(folders.map((cid) => [cid, null]));
+    }
+    if (Object.keys(patch).length) setState(patch);
+    return patch;
   }
 
   // ---------------------------------------------------------------- models
   function courseSettings(luId) {
-    if (TP.settings && TP.settings.course) return TP.settings.course(luId) || {};
-    const it = ((S().courses || {}).items || {})[luId] || {};
-    return Object.assign({ nickname: '', color: null, hidden: false, pinned: null }, it);
-  }
-
-  /** Pinned == Toledo favourite: an explicit choice wins; otherwise, while favourites sync with
-   *  Toledo, a Toledo favourite counts as pinned. */
-  function isPinned(cs, en) {
-    if (cs.pinned === true || cs.pinned === false) return cs.pinned;
-    return !!((S().sync || {}).favoritesToToledo && en && en.favorite);
+    return (TP.settings && TP.settings.course ? TP.settings.course(luId) : null) || {};
   }
 
   function resolveColor(luId, toledoIndex) {
     const cs = courseSettings(luId);
-    const pal = palette();
+    const pal = U().PALETTE || {};
     if (cs.color) {
       if (pal[cs.color]) return { color: pal[cs.color], colorKey: cs.color };
       if (/^#[0-9a-f]{3,8}$/i.test(cs.color)) return { color: cs.color, colorKey: null };
     }
-    const hex = colorForIndex(toledoIndex);
-    if (U().colorKeyForIndex) return { color: hex, colorKey: U().colorKeyForIndex(toledoIndex) };
-    const key = Object.keys(pal).find((k) => String(pal[k]).toLowerCase() === String(hex).toLowerCase()) || null;
-    return { color: hex, colorKey: key };
+    return { color: colorForIndex(toledoIndex), colorKey: U().colorKeyForIndex ? U().colorKeyForIndex(toledoIndex) : null };
   }
 
   function eventTime(e) { return toMs(e.date); }
 
-  /** Feed rules, without the hidden-course filter (Course.unread uses these too). */
+  /** Feed rules, without the hidden-course filter (Course.unread uses these too).
+   *  B3: an item counts as new until its id is in state.feedSeen.ids (or its date ≤ feedSeen.floor),
+   *  so a late-published item with an older date still shows up. */
   function feedEligible(e, s, st) {
     if (!e || e.type !== 'notifications') return false;
     if (e.read || e.dismissed) return false;
+    if (st.read && e.id != null && st.read[e.id]) return false;
     if (e.subType === 'due' || e.subType === 'course') return false;
     if (e.subType === 'announcement' && !((s.feed || {}).includeAnnouncements)) return false;
     if (e.subType === 'advalvas') return false;
-    return eventTime(e) > (st.feedSeenAt || 0);
+    const fs = st.feedSeen || {};
+    if (fs.ids && e.id != null && fs.ids[e.id] != null) return false;
+    return eventTime(e) > (fs.floor || 0);
   }
 
   function buildCourse(en, unreadBy, latestBy) {
@@ -310,8 +539,6 @@
       semester: en.semester || 'UNKNOWN',
       year: en.academicYear || 0,
       type: en.type || 'course',
-      favorite: !!en.favorite,
-      pinned: isPinned(cs, en),
       hidden: !!cs.hidden,
       available: en.available !== false,
       link: en.link || null,
@@ -323,12 +550,13 @@
   function eventStats() {
     const s = S(), st = ST();
     const unreadBy = {}, latestBy = {};
+    const now = Date.now();
     for (const e of peek('events') || []) {
       if (!e || !e.sourceId) continue;
       if (feedEligible(e, s, st)) unreadBy[e.sourceId] = (unreadBy[e.sourceId] || 0) + 1;
       if (e.subType !== 'due' && e.subType !== 'course' && !e.dismissed) {
         const t = eventTime(e);
-        if (t <= Date.now() && t > (latestBy[e.sourceId] || 0)) latestBy[e.sourceId] = t;
+        if (t <= now && t > (latestBy[e.sourceId] || 0)) latestBy[e.sourceId] = t;
       }
     }
     return { unreadBy, latestBy };
@@ -345,7 +573,8 @@
 
   /**
    * opts.includeHidden (default false), opts.includeCommunities (default settings.courses.showCommunities),
-   * opts.currentOnly (default true). Sorted: pinned first, then per settings.courses.sort.
+   * opts.currentOnly (default true). Sorted: courses before communities, then settings.courses.sort:
+   * 'manual' (settings.courses.order, unknown courses last by name) | 'name' | 'activity' (latest activity, then name).
    */
   function courses(opts = {}) {
     const s = S();
@@ -369,7 +598,7 @@
       const pos = (c) => { const i = order.indexOf(c.luId); return i < 0 ? 1e9 : i; };
       cmp = (a, b) => pos(a) - pos(b) || byName(a, b);
     } else cmp = (a, b) => (b.latest - a.latest) || byName(a, b);
-    return list.sort((a, b) => (b.pinned - a.pinned) || (a.type === b.type ? 0 : a.type === 'course' ? -1 : 1) || cmp(a, b));
+    return list.sort((a, b) => (a.type === b.type ? 0 : a.type === 'course' ? -1 : 1) || cmp(a, b));
   }
 
   function course(luId) {
@@ -416,6 +645,7 @@
     if (m in counts) counts[m]++;
   }
 
+  /** Sorted: groups with a deadline ≤ 48 h first, then latest activity. */
   function feed() {
     const s = S(), st = ST();
     const byLu = Object.fromEntries(allCourses().map((c) => [c.luId, c]));
@@ -440,58 +670,126 @@
     const soon = new Set(deadlines({ includeDone: false }).filter((d) => d.due >= now && d.due <= now + 2 * DAY).map((d) => d.courseLuId));
     const list = Object.values(groups);
     list.forEach((g) => g.items.sort((a, b) => eventTime(b) - eventTime(a)));
-    return list.sort((a, b) =>
-      ((b.course && b.course.pinned ? 1 : 0) - (a.course && a.course.pinned ? 1 : 0)) ||
-      ((soon.has(b.luId) ? 1 : 0) - (soon.has(a.luId) ? 1 : 0)) ||
-      (b.latest - a.latest));
+    return list.sort((a, b) => ((soon.has(b.luId) ? 1 : 0) - (soon.has(a.luId) ? 1 : 0)) || (b.latest - a.latest));
   }
 
-  function deadlineKey(title, luId, due) { return 'd' + hash(normTitle(title) + '|' + (luId || '') + '|' + dayKey(due)); }
+  // ---------------------------------------------------------------- deadlines (B2, B13)
+  /** v1.1 key (title + course + due day). Only used to migrate old done marks. */
+  function legacyKey(title, luId, due) { return 'd' + hash(normTitle(title) + '|' + (luId || '') + '|' + dayKey(due)); }
+  /** v1.2 keys: based on the source id, so a moved due date keeps its done mark and ICS UID. */
+  const toledoKey = (e) => (e.id != null && e.id !== '' ? 'd' + hash('t|' + e.id) : legacyKey(e.title, e.sourceId, eventTime(e)));
+  const ultraKey = (d) => (d.id ? 'd' + hash('u|' + d.id) : legacyKey(d.title, d.courseLuId, d.due));
 
-  /** opts.includeDone (default false), opts.horizonDays (default settings.deadlines.horizonDays). Window: now−7d … now+horizon. */
+  /** All Toledo + Ultra deadline candidates (no window, no dedupe). */
+  function candidates() {
+    const out = [];
+    for (const e of peek('events') || []) {
+      if (!e || e.subType !== 'due' || e.dismissed) continue;
+      const due = eventTime(e);
+      if (!due) continue;
+      out.push({ key: toledoKey(e), legacy: legacyKey(e.title, e.sourceId, due), title: e.title || '', courseLuId: e.sourceId || '', courseTitle: e.source || '', due, url: e.url || null, source: 'toledo' });
+    }
+    for (const d of peek('ultraDeadlines') || []) {
+      if (!d || !d.due || !d.title) continue;
+      out.push({ key: ultraKey(d), legacy: legacyKey(d.title, d.courseLuId, d.due), title: d.title, courseLuId: d.courseLuId || '', courseTitle: d.courseTitle || '', due: d.due, url: d.url || null, source: 'ultra' });
+    }
+    return out;
+  }
+
+  /** Move done marks stored under the v1.1 key to the v1.2 source-id key. */
+  function migrateDoneKeys() {
+    const done = ST().done || {};
+    if (!Object.keys(done).length) return {};
+    const patch = {};
+    for (const c of candidates()) {
+      if (c.legacy === c.key || done[c.legacy] == null) continue;
+      if (done[c.key] == null) patch[c.key] = done[c.legacy];
+      patch[c.legacy] = null;
+    }
+    // A legacy key that is also some item's new key must not be deleted.
+    for (const c of candidates()) if (patch[c.key] === null) delete patch[c.key];
+    if (Object.keys(patch).length) setState({ done: patch });
+    return patch;
+  }
+
+  let aliasMap = new Map(); // deadline key → all source keys merged into it (toggleDone marks all)
+
+  /**
+   * opts.includeDone (default false), opts.horizonDays (default settings.deadlines.horizonDays),
+   * opts.pastDays (default 7: how long done items stay listed after their due date).
+   * Overdue items that are not done are always included, however old (overdue:true, ageDays).
+   * Toledo/Ultra duplicates (same normalized title + course, due within ±2 h) are merged.
+   * Asking for a horizon beyond the fetched Ultra calendar range loads the rest lazily ('change' follows).
+   */
   function deadlines(opts = {}) {
     const s = S(), st = ST();
     const horizon = opts.horizonDays != null ? Number(opts.horizonDays) : (Number((s.deadlines || {}).horizonDays) || 42);
     const now = Date.now();
-    const from = now - 7 * DAY, until = now + horizon * DAY;
+    const pastFrom = now - (opts.pastDays != null ? Number(opts.pastDays) : PAST_DAYS) * DAY;
+    const until = now + horizon * DAY;
+    lazyHorizon(horizon);
     const byLu = Object.fromEntries(allCourses().map((c) => [c.luId, c]));
     const done = st.done || {};
-    const out = new Map();
-    const inWindow = (t) => t && t >= from && t <= until;
     const meta = (luId, fallbackTitle) => {
       const c = byLu[luId];
       return { courseName: c ? c.name : courseName(fallbackTitle || ''), color: c ? c.color : GRAPHITE };
     };
 
-    for (const e of peek('events') || []) {
-      if (!e || e.subType !== 'due' || e.dismissed) continue;
-      const due = eventTime(e);
-      if (!inWindow(due)) continue;
-      const key = deadlineKey(e.title, e.sourceId, due);
-      if (out.has(key)) continue;
-      out.set(key, Object.assign({ key, title: e.title || '', courseLuId: e.sourceId || '', due, url: e.url || null, source: 'toledo' }, meta(e.sourceId, e.source)));
-    }
-    for (const d of peek('ultraDeadlines') || []) {
-      if (!inWindow(d.due)) continue;
-      const key = deadlineKey(d.title, d.courseLuId, d.due);
-      const prev = out.get(key);
-      if (prev) { if (!prev.url && d.url) prev.url = d.url; continue; }
-      out.set(key, Object.assign({ key, title: d.title, courseLuId: d.courseLuId || '', due: d.due, url: d.url || null, source: 'ultra' }, meta(d.courseLuId, d.courseTitle)));
+    const buckets = new Map();     // normTitle|course → merged items
+    const merged = [];
+    for (const c of candidates()) {
+      if (c.due > until) continue;
+      const b = normTitle(c.title) + '|' + c.courseLuId;
+      const list = buckets.get(b) || [];
+      const hit = list.find((x) => Math.abs(x.due - c.due) <= DEDUPE_MS);
+      if (hit) {
+        if (!hit.keys.includes(c.key)) hit.keys.push(c.key);
+        if (!hit.url && c.url) hit.url = c.url;
+        continue;
+      }
+      const d = Object.assign({ key: c.key, keys: [c.key], title: c.title, courseLuId: c.courseLuId, due: c.due, url: c.url, source: c.source }, meta(c.courseLuId, c.courseTitle));
+      list.push(d); buckets.set(b, list); merged.push(d);
     }
     for (const c of Array.isArray(s.custom) ? s.custom : []) {
-      const due = toMs(c.due);
-      if (!c || !c.id || !inWindow(due)) continue;
+      const due = toMs(c && c.due);
+      if (!c || !c.id || !due || due > until) continue;
       const key = 'c' + hash(c.id);
       const m = c.courseLuId ? meta(c.courseLuId, '') : { courseName: '', color: GRAPHITE };
       // Custom items are never deduped away (the student must be able to remove them).
-      out.set(key, Object.assign({ key, title: c.title || '', courseLuId: c.courseLuId || '', due, url: null, source: 'custom', customId: c.id }, m));
+      merged.push(Object.assign({ key, keys: [key], title: c.title || '', courseLuId: c.courseLuId || '', due, url: null, source: 'custom', customId: c.id }, m));
     }
-    const list = [...out.values()].map((d) => Object.assign(d, { done: !!done[d.key] }));
-    return list.filter((d) => opts.includeDone || !d.done).sort((a, b) => a.due - b.due || a.title.localeCompare(b.title));
+    const nextAliases = new Map();
+    const out = [];
+    for (const d of merged) {
+      d.done = d.keys.some((k) => !!done[k]);
+      if (d.due < pastFrom && d.done) continue;                 // old and done: gone
+      if (!opts.includeDone && d.done) continue;
+      d.overdue = !d.done && d.due < now;
+      d.ageDays = d.due < now ? Math.floor((now - d.due) / DAY) : 0;
+      for (const k of d.keys) nextAliases.set(k, d.keys);
+      out.push(d);
+    }
+    for (const [k, v] of nextAliases) aliasMap.set(k, v);
+    if (aliasMap.size > 5000) aliasMap = nextAliases;
+    return out.sort((a, b) => a.due - b.due || a.title.localeCompare(b.title));
+  }
+
+  // Lazy extension of the Ultra calendar range (max once per 5 min per horizon, never during a load).
+  let lazyAt = 0, lazyDays = 0;
+  function lazyHorizon(days) {
+    days = Math.min(VIEW_DAYS, Number(days) || 0);
+    const e = mem.ultraDeadlines;
+    if (!e || !e.range || stale) return;
+    if (e.range.until >= Date.now() + days * DAY - DAY) return;
+    wantDays = Math.max(wantDays, days);
+    if (inflight.ultraDeadlines || (days <= lazyDays && Date.now() - lazyAt < STALE_MS)) return;
+    lazyAt = Date.now(); lazyDays = days;
+    setTimeout(() => { load('ultraDeadlines', { force: true, extend: true, days }).catch(() => {}); }, 0);
   }
 
   function announcements(opts = {}) {
     const filter = opts.filter || 'all';
+    const read = ST().read || {};
     const byLu = Object.fromEntries(allCourses().map((c) => [c.luId, c]));
     return (peek('events') || []).filter((e) => {
       if (!e || e.dismissed) return false;
@@ -500,7 +798,7 @@
       if (isAnn && byLu[e.sourceId] && byLu[e.sourceId].hidden) return false;
       if (filter === 'courses') return isAnn;
       if (filter === 'school') return isAdv;
-      if (filter === 'unread') return !e.read;
+      if (filter === 'unread') return !e.read && !read[e.id];
       return true;
     }).sort((a, b) => eventTime(b) - eventTime(a));
   }
@@ -550,75 +848,104 @@
   }
 
   // ---------------------------------------------------------------- mutations
-  async function markRead(events) {
-    const list = (Array.isArray(events) ? events : [events]).filter((e) => e && e.id != null);
-    if (!list.length) return true;
-    const ids = new Set(list.map((e) => e.id));
-    const ev = peek('events');
-    if (Array.isArray(ev)) {
-      mem.events = { v: ev.map((e) => (ids.has(e.id) ? Object.assign({}, e, { read: true }) : e)), t: mem.events.t };
-      persist();
-      emit('change', 'events');
+  const patching = new Set();       // in-flight PATCH promises (flush() waits for them)
+  const track = (p) => { patching.add(p); p.finally(() => patching.delete(p)); return p; };
+
+  /** PATCH batch/events in chunks of 100 with keepalive (survives navigation). → ids that failed. */
+  async function sendRead(entries) {
+    const failed = [];
+    for (let i = 0; i < entries.length; i += PATCH_CHUNK) {
+      const chunk = entries.slice(i, i + PATCH_CHUNK);
+      try {
+        await net().json(PORTAL + '/portal/api/batch/events', { method: 'PATCH', keepalive: true, body: chunk.map((e) => ({ id: e.id, type: e.type, subType: e.subType, read: true })) });
+      } catch (e) {
+        if (e && e.stale) markStale();
+        if (e && e.auth) setAuth(true, 'events');
+        log('markRead sync failed', e && e.status);
+        failed.push(...chunk);
+      }
     }
-    if (!((S().sync || {}).markReadInToledo)) return true;
-    try {
-      await net().json(PORTAL + '/portal/api/batch/events', {
-        method: 'PATCH',
-        body: list.map((e) => ({ id: e.id, type: e.type, subType: e.subType, read: true })),
-      });
-      return true;
-    } catch (e) {
-      log('markRead sync failed', e && e.status);
-      return false;
-    }
+    return failed;
   }
 
+  /** Optimistic: events read:true + local read-set (B4). With sync on: PATCH Toledo; failures are queued
+   *  in state.pendingRead and retried on the next refresh (B7). → false when the Toledo sync failed. */
+  function markRead(events) {
+    const list = (Array.isArray(events) ? events : [events]).filter((e) => e && e.id != null);
+    if (!list.length) return Promise.resolve(true);
+    const ids = new Set(list.map((e) => e.id));
+    const ev = peek('events');
+    if (Array.isArray(ev)) mutate('events', ev.map((e) => (ids.has(e.id) && !e.read ? Object.assign({}, e, { read: true }) : e)));
+    const now = Date.now();
+    setState({ read: Object.fromEntries(list.map((e) => [e.id, now])) });
+    if (!((S().sync || {}).markReadInToledo)) return Promise.resolve(true);
+    return track((async () => {
+      const failed = await sendRead(list);
+      if (!failed.length) return true;
+      const pending = Object.keys(ST().pendingRead || {}).length;
+      if (pending < MAX_PENDING) {
+        setState({ pendingRead: Object.fromEntries(failed.slice(0, MAX_PENDING - pending).map((e) => [e.id, { id: e.id, type: e.type, subType: e.subType, t: now }])) });
+      }
+      return false;
+    })());
+  }
+
+  /** Send queued mark-read PATCHes (called by refresh()). Dropped when the sync was switched off. */
+  function flushPendingRead() {
+    const q = ST().pendingRead || {};
+    const ids = Object.keys(q);
+    if (!ids.length) return Promise.resolve(true);
+    if (!((S().sync || {}).markReadInToledo)) { setState({ pendingRead: {} }, { replace: true }); return Promise.resolve(true); }
+    const entries = ids.map((id) => ({ id: q[id] && q[id].id != null ? q[id].id : id, type: q[id] && q[id].type, subType: q[id] && q[id].subType }));
+    return track((async () => {
+      const failed = new Set((await sendRead(entries)).map((e) => String(e.id)));
+      const patch = Object.fromEntries(ids.filter((id) => !failed.has(id)).map((id) => [id, null]));
+      if (Object.keys(patch).length) setState({ pendingRead: patch });
+      return !failed.size;
+    })());
+  }
+
+  /** Everything new in the feed counts as seen (ids + floor, bounded). With sync on, also marks them read. */
   async function markFeedSeen() {
     const items = feed().flatMap((g) => g.items);
-    try { await TP.state.set({ feedSeenAt: Date.now() }); } catch (e) { log('state write failed', e); }
+    const fs = ST().feedSeen || {};
+    const ids = Object.assign({}, fs.ids || {});
+    for (const e of items) if (e.id != null) ids[e.id] = eventTime(e);
+    let floor = fs.floor || 0;
+    const entries = Object.entries(ids);
+    if (entries.length > MAX_SEEN) {
+      entries.sort((a, b) => b[1] - a[1]);
+      for (const [, t] of entries.slice(MAX_SEEN)) floor = Math.max(floor, t || 0);
+      await setState({ feedSeen: { ids: Object.fromEntries(entries.slice(0, MAX_SEEN)), floor } }, { replace: true });
+    } else {
+      await setState({ feedSeen: { ids: Object.fromEntries(items.filter((e) => e.id != null).map((e) => [e.id, eventTime(e)])) } });
+    }
     emit('change', 'state');
     if ((S().sync || {}).markReadInToledo && items.length) return markRead(items);
     return true;
   }
 
-  async function setFavorite(luId, fav) {
-    const en = peek('enrollments');
-    const row = Array.isArray(en) ? en.find((e) => e.learningUnitId === luId) : null;
-    if (!row) return false;
-    mem.enrollments = { v: en.map((e) => (e === row ? Object.assign({}, e, { favorite: !!fav }) : e)), t: mem.enrollments.t };
-    persist();
-    emit('change', 'enrollments');
-    if (!((S().sync || {}).favoritesToToledo)) return true;
-    try {
-      await net().json(`${PORTAL}/portal/api/enrollments/${encodeURIComponent(row.id)}`, { method: 'PATCH', body: { favorite: !!fav } });
-      return true;
-    } catch (e) {
-      log('favorite sync failed', e && e.status);
-      return false;
-    }
+  let pinWarned = false;
+  /** @deprecated v1.2: pins are gone (maintainer decision). Temporary no-op so old UI code can't crash. */
+  function setPinned() {
+    if (!pinWarned) { pinWarned = true; try { console.warn('[Toledo+] TP.data.setPinned() was removed in v1.2 and does nothing'); } catch (_) { /* noop */ } }
+    return Promise.resolve(false);
   }
 
-  /** Pin/unpin a course (sidebar "Pinned" group, first in lists). While sync.favoritesToToledo is on
-   *  this is also the course's Toledo favourite. → false only when the Toledo sync failed. */
-  async function setPinned(luId, pinned) {
-    if (!luId) return false;
-    pinned = !!pinned;
-    Promise.resolve(TP.settings.setCourse(luId, { pinned })).catch((e) => log('settings write failed', e));
-    emit('change', 'settings');
-    if (!((S().sync || {}).favoritesToToledo)) return true;
-    return setFavorite(luId, pinned);
-  }
-
+  /** Toggle "klaar" for a deadline (and every source key merged into it). → new done state. */
   async function toggleDone(key) {
-    const next = !((ST().done || {})[key]);
+    const keys = aliasMap.get(key) || [key];
+    const done = ST().done || {};
+    const next = !keys.some((k) => !!done[k]);
+    const now = Date.now();
     // TP.state.set deep-merges; null deletes the map entry.
-    await TP.state.set({ done: { [key]: next ? true : null } });
+    await setState({ done: Object.fromEntries(keys.map((k) => [k, next ? now : null])) });
     emit('change', 'state');
     return next;
   }
 
   async function addCustomDeadline({ title, courseLuId, due }) {
-    const id = U().uid ? U().uid() : Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    const id = U().uid();
     const item = { id, title: String(title || '').trim(), courseLuId: courseLuId || '', due: toMs(due) };
     const custom = (Array.isArray(S().custom) ? S().custom : []).concat(item);
     await TP.settings.set({ custom });
@@ -636,9 +963,20 @@
     if (!item || !item.url) return;
     const entry = { title: item.title || '', url: item.url, courseName: item.courseName || '', courseLuId: item.courseLuId || '', kind: item.kind || 'page', ts: Date.now() };
     const recent = [entry].concat((ST().recent || []).filter((r) => r && r.url !== item.url)).slice(0, 12);
-    try { await TP.state.set({ recent }); } catch (e) { log('state write failed', e); }
+    await setState({ recent });
     emit('change', 'state');
   }
+
+  /** Wait for pending writes (state, settings, cache) and mark-read PATCHes — await before navigating away.
+   *  Never rejects. */
+  function flush() {
+    const parts = [...patching].map((p) => p.catch(() => {}));
+    try { if (TP.state && TP.state.flush) parts.push(Promise.resolve(TP.state.flush()).catch(() => {})); } catch (_) { /* ignore */ }
+    try { if (TP.settings && TP.settings.flush) parts.push(Promise.resolve(TP.settings.flush()).catch(() => {})); } catch (_) { /* ignore */ }
+    parts.push(flushCache());
+    return Promise.all(parts).then(() => undefined, () => undefined);
+  }
+  try { if (typeof addEventListener === 'function') addEventListener('pagehide', () => { flushCache(); }); } catch (_) { /* not a page */ }
 
   // ---------------------------------------------------------------- ICS
   const icsStamp = (ms) => new Date(ms).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
@@ -661,6 +999,7 @@
 
   const TRIGGER = { '1h': '-PT1H', '1d': '-P1D', '2d': '-P2D' };
 
+  /** UID = the deadline key (source id based since v1.2), so a moved deadline updates the same calendar event. */
   function ics(list) {
     const reminder = (S().deadlines || {}).reminder || 'none';
     const trig = TRIGGER[reminder];
@@ -688,43 +1027,86 @@
   const itemLink = (cid, contentId) => `${ULTRA}/ultra/redirect?redirectType=nautilus&courseId=${encodeURIComponent(cid)}&contentId=${encodeURIComponent(contentId)}`;
   const isFolder = (c) => !!(c && (c.hasChildren || /x-bb-(folder|lesson|module)/.test((c.contentHandler && c.contentHandler.id) || '')));
   const visible = (c) => c && !(c.availability && c.availability.available === 'No');
-  const courseCache = new Map();   // cid → Promise<result>
-  const courseData = new Map();    // cid → latest (possibly partial) result
+  // B5: complete results only, 10 min TTL, LRU of 5 courses. Map order = recency.
+  const courseCache = new Map();   // cid → {p: Promise<result>, t}
+  const courseData = new Map();    // cid → latest (possibly partial) result (for downloads/announcements)
+
+  function clearCourseCache(cid) {
+    if (cid) { courseCache.delete(cid); return; }
+    courseCache.clear();
+  }
+  function remember(map, cid, v) {
+    map.delete(cid); map.set(cid, v);
+    while (map.size > COURSE_MAX) map.delete(map.keys().next().value);
+  }
 
   /** Breadth-first walk of a course's content tree (in place: folders get .kids). One TP.util.pool per
-   *  level keeps total concurrency at `n`; depth ≤ 6; unavailable items dropped; a broken folder → kids []. */
+   *  level keeps total concurrency at `n`; depth ≤ 6; unavailable items dropped. A folder that fails is
+   *  retried in later rounds (backoff cfg.folderRetryMs); still failing → kids [] and failed:true.
+   *  → number of folders that failed. */
   async function walkTree(cid, roots, n) {
     const base = `${BB}/v1/courses/${encodeURIComponent(cid)}`;
     let level = (roots || []).filter(isFolder);
-    for (let depth = 1; level.length && depth <= 6; depth++) {
-      const next = [];
-      await pool(level, n, async (node) => {
-        try {
-          node.kids = (await ultraPaged(`${base}/contents/${encodeURIComponent(node.id)}/children?limit=200`, 5)).filter(visible);
-        } catch (_) { node.kids = []; }
-        for (const k of node.kids) if (isFolder(k)) next.push(k);
-      });
-      level = next;
+    const depthOf = new Map(level.map((x) => [x, 1]));
+    let failed = [];
+    const fetchKids = async (node) => {
+      try {
+        node.kids = (await ultraPaged(`${base}/contents/${encodeURIComponent(node.id)}/children?limit=200`, 5)).filter(visible);
+        delete node.failed;
+        return true;
+      } catch (e) {
+        if (e && e.stale) markStale();
+        node.kids = []; node.failed = true;
+        return false;
+      }
+    };
+    const walk = async (start) => {
+      let lvl = start;
+      while (lvl.length) {
+        const next = [];
+        await U().pool(lvl, n, async (node) => {
+          if (!(await fetchKids(node))) { failed.push(node); return; }
+          const d = depthOf.get(node) || 1;
+          if (d < 6) for (const k of node.kids) if (isFolder(k)) { depthOf.set(k, d + 1); next.push(k); }
+        });
+        lvl = next;
+      }
+    };
+    await walk(level);
+    for (const ms of cfg.folderRetryMs) {
+      if (!failed.length || stale) break;
+      await sleep(ms);
+      const retry = failed; failed = [];
+      await walk(retry);
     }
-    return roots;
+    return failed.length;
   }
 
   /** Content tree only (no announcements/columns/staff), for the search index crawl. Default concurrency 2.
    *  Rejects when the top level can't be loaded (e.g. no Ultra session behind the relay). */
   async function ultraTree(cid, opts = {}) {
     const top = (await ultraPaged(`${BB}/v1/courses/${encodeURIComponent(cid)}/contents?limit=200`, 5)).filter(visible);
-    return walkTree(cid, top, opts.concurrency || 2);
+    await walkTree(cid, top, opts.concurrency || 2);
+    return top;
   }
 
+  /**
+   * → { course, roots, announcements, deadlines, staff, partial, contentsError?, failedFolders }
+   * contentsError: the top level of the content tree could not be loaded (roots is then [] and the
+   * result is NOT cached, so the next call retries). failedFolders > 0: some folders stayed empty after
+   * retries (marked node.failed); not cached either.
+   */
   function ultraCourse(cid, onProgress) {
     const progress = (r) => { if (onProgress) { try { onProgress(r); } catch (e) { log('onProgress error', e); } } };
-    if (courseCache.has(cid)) {
-      const p = courseCache.get(cid);
+    const hit = courseCache.get(cid);
+    if (hit && Date.now() - hit.t < COURSE_TTL) {
+      remember(courseCache, cid, hit);
       const d = courseData.get(cid);
       if (d) progress(d);
-      if (d && !d.partial) return p;
-      return p.then((r) => { progress(r); return r; });
+      if (d && !d.partial) return hit.p;
+      return hit.p.then((r) => { progress(r); return r; });
     }
+    if (hit) courseCache.delete(cid);
     const p = (async () => {
       const base = `${BB}/v1/courses/${encodeURIComponent(cid)}`;
       const [meta, top, ann, cols, staff] = await Promise.allSettled([
@@ -734,7 +1116,10 @@
         ultraPaged(`${BB}/v2/courses/${encodeURIComponent(cid)}/gradebook/columns?limit=200`, 3),
         ultra(`${base}/users?role=Instructor&expand=user&limit=50`),
       ]);
-      if (meta.status === 'rejected' && top.status === 'rejected') throw meta.reason;
+      if (meta.status === 'rejected' && top.status === 'rejected') {
+        if (top.reason && top.reason.stale) markStale();
+        throw top.reason || meta.reason;
+      }
       const m = meta.status === 'fulfilled' && meta.value ? meta.value : {};
       const result = {
         course: { id: m.id || cid, courseId: m.courseId || '', name: m.name || '' },
@@ -749,19 +1134,28 @@
           .map((u) => ({ name: [u.name && u.name.given, u.name && u.name.family].filter(Boolean).join(' '), email: (u.contact && u.contact.email) || '' }))
           .filter((x) => x.name),
         partial: true,
+        failedFolders: 0,
       };
+      if (top.status === 'rejected') {
+        const e = top.reason || {};
+        result.contentsError = { status: e.status || 0, auth: !!e.auth, message: String(e.message || e) };
+      }
       if (m.courseId && m.id) rememberCid(m.courseId, m.id);
-      courseData.set(cid, result);
+      remember(courseData, cid, result);
       progress(result);
 
-      await walkTree(cid, result.roots, 6);
+      result.failedFolders = await walkTree(cid, result.roots, 6);
       result.partial = false;
       progress(result);
-      emit('course', { cid, result });
+      if (!result.contentsError && !result.failedFolders) emit('course', { cid, result });
       return result;
     })();
-    courseCache.set(cid, p);
-    p.catch(() => { courseCache.delete(cid); courseData.delete(cid); });
+    const entry = { p, t: Date.now() };
+    remember(courseCache, cid, entry);
+    p.then((r) => {
+      // Incomplete results are not cached: the next call (or ↻) retries.
+      if ((r.contentsError || r.failedFolders) && courseCache.get(cid) === entry) courseCache.delete(cid);
+    }, () => { if (courseCache.get(cid) === entry) courseCache.delete(cid); courseData.delete(cid); });
     return p;
   }
 
@@ -854,8 +1248,8 @@
   }
 
   function rememberCid(luId, cid) {
-    if ((ST().cidMap || {})[luId] === cid || !TP.state || !TP.state.set) return;
-    TP.state.set({ cidMap: { [luId]: cid } }).catch(() => {});
+    if ((ST().cidMap || {})[luId] === cid) return;
+    setState({ cidMap: { [luId]: cid } });
   }
 
   const cidInflight = {};
@@ -874,12 +1268,19 @@
 
   TP.data = {
     KEYS,
-    init, peek, load, refresh, lastUpdated, status: getStatus, on, off,
+    init, peek, load, refresh, maybeRefresh, flush, lastUpdated, status: getStatus, on, off,
+    authExpired: () => authExpired, loginUrl, isStale: () => stale,
     courses, course, feed, kindOf, deadlines, announcements, schedule, link, quickLinks,
-    markRead, markFeedSeen, setFavorite, setPinned, toggleDone, addCustomDeadline, removeCustomDeadline, addRecent, ics,
-    ultraCourse, ultraTree, ultraDownload, ultraOpen, ultraAnnouncement, resolveCourseId, ultraItemUrl: itemLink,
+    markRead, markFeedSeen, setPinned, toggleDone, addCustomDeadline, removeCustomDeadline, addRecent, ics,
+    ultraCourse, ultraTree, ultraDownload, ultraOpen, ultraAnnouncement, resolveCourseId, clearCourseCache, ultraItemUrl: itemLink,
     // exposed for unit tests only
-    _test: { hash, normTitle, parseCalendarName, mapCalendarItem, icsFold, icsText, icsStamp, deadlineKey, trimForStorage,
-      _reset() { mem = {}; courseCache.clear(); courseData.clear(); }, _put(k, v) { mem[k] = { v, t: Date.now() }; } },
+    _test: {
+      hash, normTitle, parseCalendarName, mapCalendarItem, icsFold, icsText, icsStamp, legacyKey, toledoKey, ultraKey,
+      trimEntry, calWindows, migrateDoneKeys, pruneState, flushPendingRead, markStale, cfg,
+      _reset() { mem = {}; courseCache.clear(); courseData.clear(); aliasMap = new Map(); wantDays = 0; lazyAt = 0; lazyDays = 0; authExpired = false; for (const k of Object.keys(status)) delete status[k]; },
+      _put(k, v, extra) { mem[k] = Object.assign({ v, t: Date.now(), rev: 0 }, extra || {}); },
+      _entry(k) { return mem[k]; },
+      courseCacheSize: () => courseCache.size,
+    },
   };
 })();

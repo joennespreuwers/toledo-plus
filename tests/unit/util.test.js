@@ -30,10 +30,10 @@ test('abs makes URLs absolute on the current origin (Ultra <base href> fix)', ()
 
 test('courseName / courseCode', () => {
   const { TP } = boot();
-  assert.equal(TP.util.courseName('Filmtaal 1 [N50265]'), 'Filmtaal 1');
+  assert.equal(TP.util.courseName('Filmtaal 1 [X10265]'), 'Filmtaal 1');
   assert.equal(TP.util.courseName('- infoLUCA@Campus Voorbeeld'), 'infoLUCA@Campus Voorbeeld');
   assert.equal(TP.util.courseName('Studentenvereniging Lichtbak'), 'Studentenvereniging Lichtbak');
-  assert.equal(TP.util.courseCode('Filmtaal 1 [N50265]'), 'N50265');
+  assert.equal(TP.util.courseCode('Filmtaal 1 [X10265]'), 'X10265');
   assert.equal(TP.util.courseCode('Studentenvereniging Lichtbak'), '');
 });
 

@@ -124,9 +124,9 @@ describe('⌘K palette on the portal', () => {
     assert.equal((await palState(page)).active, first);
     // stored compactly in chrome.storage.local 'index'
     const idx = await h.sw.evaluate(async () => (await chrome.storage.local.get('index')).index);
-    const regie = idx && idx._200662_1;
+    const regie = idx && idx._900662_1;
     assert.ok(regie && Array.isArray(regie.items) && Array.isArray(regie.items[0]), 'compact rows');
-    assert.equal(regie.luId, 'ULTRA-B-LUCA-N50300-2627');
+    assert.equal(regie.luId, 'ULTRA-B-LUCA-X10300-2627');
     assert.deepEqual(regie.items.find((r) => r[0] === '_6013_1'), ['_6013_1', 'Draaiboek_sjabloon_Ooievaar.docx', 'file', 'Week 3 — Mise-en-scène › Opdrachten', '_6011_1']);
     await page.keyboard.press('Escape');
   });
@@ -135,7 +135,7 @@ describe('⌘K palette on the portal', () => {
     await openPalette(page);
     await type(page, 'sceneanalyse');
     assert.equal((await palState(page)).active, 'Opdracht Scèneanalyse');
-    await Promise.all([page.waitForURL(/\/ultra\/courses\/_200662_1\/outline/, { timeout: 10000 }), page.keyboard.press('Enter')]);
+    await Promise.all([page.waitForURL(/\/ultra\/courses\/_900662_1\/outline/, { timeout: 10000 }), page.keyboard.press('Enter')]);
     await waitForShell(page);
     await page.waitForFunction(() => {
       const sr = document.querySelector('#tplus-root').shadowRoot;

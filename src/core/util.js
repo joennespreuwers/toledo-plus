@@ -101,8 +101,57 @@
   };
   // Toledo color numbers 1..16 → palette keys (deterministic; graphite reserved for "no course").
   const COLOR_ORDER = ['blue', 'green', 'indigo', 'orange', 'pink', 'purple', 'red', 'teal', 'yellow', 'mint', 'cyan', 'brown'];
-  const colorKeyForIndex = (n) => COLOR_ORDER[(Math.max(1, Math.floor(Number(n) || 1)) - 1) % COLOR_ORDER.length];
+  const staticKey = (n) => COLOR_ORDER[(Math.max(1, Math.floor(Number(n) || 1)) - 1) % COLOR_ORDER.length];
+  // Accent colours: red and pink are reserved for "te laat" (N7) and never offered as accent.
+  const NO_ACCENT = ['red', 'pink'];
+  const ACCENTS = Object.keys(PALETTE).filter((k) => !NO_ACCENT.includes(k));
+  const accentKey = (k) => (PALETTE[k] && !NO_ACCENT.includes(k) ? k : 'blue');
+  // Free colours for duplicates: red/pink last (they read as "overdue").
+  const SPARE = ['blue', 'green', 'indigo', 'orange', 'purple', 'teal', 'yellow', 'mint', 'cyan', 'brown', 'pink', 'red'];
+
+  // Unique default course colours (N7). Toledo colour numbers 1..16 fold onto 12 palette keys, so two current
+  // courses can end up with the same colour (e.g. 4 and 16 → orange). For the current courses we hand out
+  // keys so that no two get the same one: keep the static colour when it is still free, otherwise take the
+  // next unused key. Courses with an own colour (settings) reserve theirs first. Computed lazily from
+  // TP.data / TP.settings at call time (util.js loads first), cached per enrollments array + colour choices.
+  let cmemo = { en: null, sig: '', byIdx: null, byLu: null };
+  function colorMaps() {
+    let en = null;
+    try { en = TP.data && TP.data.peek ? TP.data.peek('enrollments') : null; } catch (_) { en = null; }
+    if (!Array.isArray(en) || !en.length) return null;
+    const own = (lu) => { try { return (TP.settings && TP.settings.course ? TP.settings.course(lu) : null)?.color || null; } catch (_) { return null; } };
+    const courses = en.filter((e) => e && e.learningUnitId && (e.type || 'course') === 'course');
+    const year = Math.max(0, ...courses.map((e) => Number(e.academicYear) || 0));
+    const cur = courses.filter((e) => (Number(e.academicYear) || 0) === year)
+      .sort((a, b) => (Number(a.color) || 0) - (Number(b.color) || 0) || String(a.learningUnitId).localeCompare(String(b.learningUnitId)));
+    const sig = cur.map((e) => `${e.learningUnitId}:${e.color}:${own(e.learningUnitId) || ''}`).join('|');
+    if (cmemo.en === en && cmemo.sig === sig) return cmemo;
+    const used = new Set(cur.map((e) => own(e.learningUnitId)).filter((k) => PALETTE[k]));
+    const byIdx = new Map(); const byLu = new Map();
+    for (const e of cur) {
+      if (own(e.learningUnitId)) continue;
+      const idx = Number(e.color) || 1;
+      let k = staticKey(idx);
+      if (used.has(k) || k === 'red') k = SPARE.find((x) => !used.has(x)) || k;
+      used.add(k);
+      byLu.set(e.learningUnitId, k);
+      if (!byIdx.has(idx)) byIdx.set(idx, k);
+    }
+    cmemo = { en, sig, byIdx, byLu };
+    return cmemo;
+  }
+  /** Palette key for a Toledo colour number (unique among the current courses when TP.data is loaded). */
+  const colorKeyForIndex = (n) => {
+    const m = colorMaps();
+    const k = m && m.byIdx.get(Number(n) || 1);
+    return k || staticKey(n);
+  };
   const colorForIndex = (n) => PALETTE[colorKeyForIndex(n)];
+  /** Per-course default colour key: unique among the current courses even when two share a Toledo colour. */
+  const courseColorKey = (luId, n) => {
+    const m = colorMaps();
+    return (m && m.byLu.get(luId)) || colorKeyForIndex(n);
+  };
 
   // Only allow safe color syntaxes in style attributes.
   const safeColor = (c, fallback = PALETTE.graphite) => {
@@ -140,7 +189,7 @@
 
   TP.util = {
     esc, abs, sanitize, plain, courseName, courseCode, pool, debounce, uid,
-    PALETTE, colorForIndex, colorKeyForIndex, safeColor, contrast, ensureContrast,
+    PALETTE, ACCENTS, accentKey, colorForIndex, colorKeyForIndex, courseColorKey, safeColor, contrast, ensureContrast,
   };
 
   // ---------------- TP.fmt ----------------

@@ -72,7 +72,7 @@
     const html = TP.ui.disclosure({
       id: 'an-' + id,
       open: S.open.has(id),
-      summary: { leading: VA().unreadDot(unread), title: esc(e.title), subtitle: sub },
+      summary: { leading: VA().unreadDot(unread), title: esc(e.title), subtitle: sub, strong: unread }, // B12: dot + 600 for every unread item
       body: `<div class="va-ann-slot">${S.open.has(id) ? bodyHtml(e) : ''}</div>`,
       q,
     });
@@ -89,7 +89,8 @@
         ? [{ id: 'an-readall', label: t('announcements.readAll'), icon: 'check', onClick: readAll }]
         : []);
     } catch { /* ignore */ }
-    try { ctx.setSubtitle && ctx.setSubtitle(esc(unreadN ? t('announcements.unreadCount', { n: unreadN }) : t('announcements.empty.unread'))); } catch { /* ignore */ }
+    const loadedOk = V.state('events') === 'ok';
+    try { ctx.setSubtitle && ctx.setSubtitle(unreadN ? esc(t('announcements.unreadCount', { n: unreadN })) : loadedOk ? esc(t('announcements.empty.unread')) : ''); } catch { /* ignore */ }
 
     S.events.clear();
     const items = list();
@@ -100,13 +101,15 @@
       { value: 'unread', label: t('announcements.filter.unread') },
     ], S.filter, { label: t('announcements.filter.label') });
 
-    let body;
-    if (!items.length && !V.loaded('events') && !V.loadError('events')) body = V.skeleton(5);
-    else if (!items.length) body = TP.ui.group(TP.ui.empty(t('announcements.empty.' + S.filter)));
-    else body = V.addAttrs(TP.ui.group(items.map(rowHtml).join(''), { cls: 'va-ann-list' }), { 'data-va-sec': 'list' });
+    const state = V.state('events');
+    let body = state === 'error' || state === 'stale-error' ? V.errorBlock(t('announcements.error'), 'events') : '';
+    if (!items.length && state === 'loading') body += V.skeleton(5, { lead: 'dot' });
+    else if (!items.length && state === 'error') { /* the error row says it all; no false "Alles gelezen" */ }
+    else if (!items.length) body += TP.ui.group(TP.ui.empty(t('announcements.empty.' + S.filter)));
+    else body += V.addAttrs(TP.ui.group(items.map(rowHtml).join(''), { cls: 'va-ann-list' }), { 'data-va-sec': 'list' });
 
     const note = S.filter !== 'courses' ? `<p class="va-foot">${TP.ui.icon('external', { size: 13 })} ${esc(t('announcements.schoolNote'))}</p>` : '';
-    V.paint(ctx.root, `<div class="va-view va-announcements">
+    V.paint(ctx.root, `<div class="va-view va-announcements tp-narrow">
       <div class="va-filters">${seg}</div>
       ${body}
       <div class="va-noresults" hidden></div>
@@ -162,7 +165,10 @@
     if (!el || !ctx || !ctx.root.contains(el)) return;
     const act = el.getAttribute('data-action');
     const e = S.events.get(el.getAttribute('data-eid'));
-    if (act === 'an-open' && e) {
+    if (act === 'va-retry') {
+      ev.preventDefault();
+      await VA().retry(el);
+    } else if (act === 'an-open' && e) {
       if (!e.read) S.keepRead.add(String(e.id));
       await VA().openEvent(ev, el, e, { recent: false });
     } else if (act === 'an-link' && e) {

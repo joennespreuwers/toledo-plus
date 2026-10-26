@@ -48,7 +48,7 @@ const ultraHtml = (title) => `<!doctype html><html lang="nl"><head><meta charset
 <title>${title}</title>
 <style>html,body{overflow:hidden;height:100%;margin:0}#site-wrap{height:100%;background:#eee}</style></head>
 <body><div id="site-wrap"><h1 id="ultra-classic">ULTRA KLASSIEK</h1>
-<a id="go-item" href="#" onclick="history.pushState({},'',location.origin+'/ultra/courses/_200661_1/outline/file/_5000_1');return false">open item</a>
+<a id="go-item" href="#" onclick="history.pushState({},'',location.origin+'/ultra/courses/_900661_1/outline/file/_5000_1');return false">open item</a>
 <a id="go-stream" href="#" onclick="history.pushState({},'',location.origin+'/ultra/stream');return false">stream</a></div></body></html>`;
 
 const json = (route, data, status = 200) => route.fulfill({ status, contentType: 'application/json; charset=utf-8', body: JSON.stringify(data) });
@@ -161,6 +161,7 @@ async function install(ctx, fx, opts = {}) {
     rec.foreign.push(u); log(route.request());
     return route.abort('blockedbyclient');
   });
+  await require('./kuloket-mock').install(ctx, rec, opts); // KU Loket + TimeEdit (registered last → matched first)
   return rec;
 }
 

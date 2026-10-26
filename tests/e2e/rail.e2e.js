@@ -61,15 +61,15 @@ describe('sidebar icon rail', () => {
     assert.ok(s.width >= 60 && s.width <= 72, `rail width ${s.width}`);
     assert.ok(s.labelWidth <= 1, 'labels visually hidden');
     assert.ok(s.names.every(Boolean), 'labels kept for assistive tech');
-    assert.deepEqual(s.titles, ['Overzicht', 'Vakken', 'Deadlines', 'Planning', 'Mededelingen', 'Instellingen'], 'tooltips');
+    assert.deepEqual(s.titles, ['Overzicht', 'Vakken', 'Deadlines', 'Agenda', 'Mededelingen', 'KU Loket', 'Instellingen'], 'tooltips');
     assert.equal(s.current, 'deadlines', 'aria-current kept');
     assert.equal(s.expanded, 'false');
     assert.ok(s.iconsCentered, 'icons centred');
-    assert.ok(s.initials.includes('F1') || s.initials.length >= 1, `pinned course initials: ${s.initials}`);
+    assert.ok(s.initials.length >= 10, `current courses as initials: ${s.initials}`);
     assert.ok(s.initials.every((x) => x.length === 2), 'two-letter initials');
     // counts become a dot (number hidden, text for screen readers kept)
     const dot = await inShadow(page, (sr) => {
-      const c = sr.querySelector('nav.tp-sidebar a[data-route="overview"] .tp-sb-count');
+      const c = sr.querySelector('nav.tp-sidebar a[data-route="announcements"] .tp-sb-count');
       if (!c) return null;
       const r = c.getBoundingClientRect();
       return { w: Math.round(r.width), sr: c.querySelector('.tp-sr')?.textContent };
@@ -78,7 +78,7 @@ describe('sidebar icon rail', () => {
     await screenshot(page, 'rail-light-desktop');
     const st = await waitFor(async () => (await h.getState())?.ui?.sidebarCollapsed === true);
     assert.ok(st, 'state.ui.sidebarCollapsed persisted');
-    // keyboard focus order: brand, nav items, pinned, settings — all reachable
+    // keyboard focus order: brand, nav items, courses, settings — all reachable
     const order = await inShadow(page, (sr) => [...sr.querySelectorAll('nav.tp-sidebar a')].map((a) => a.tabIndex));
     assert.ok(order.every((x) => x === 0));
   });
@@ -109,9 +109,9 @@ describe('sidebar icon rail', () => {
     await settle(page);
     await assertSticky(page, 'ultra rail');
     // SPA → item page (deep bar, transformed body) → back to the outline
-    await page.evaluate(() => history.pushState({}, '', location.origin + '/ultra/courses/_200661_1/outline/file/_5000_1'));
+    await page.evaluate(() => history.pushState({}, '', location.origin + '/ultra/courses/_900661_1/outline/file/_5000_1'));
     await page.waitForFunction(() => document.documentElement.classList.contains('tplus-deep'), null, { timeout: 5000 });
-    await page.evaluate(() => history.pushState({}, '', location.origin + '/ultra/courses/_200661_1/outline'));
+    await page.evaluate(() => history.pushState({}, '', location.origin + '/ultra/courses/_900661_1/outline'));
     await page.waitForFunction(() => document.documentElement.classList.contains('tplus-on') && !document.documentElement.classList.contains('tplus-deep'), null, { timeout: 5000 });
     await waitForShell(page);
     await inShadow(page, (sr) => sr.querySelectorAll('details.cv-folder').forEach((d) => { d.open = true; }));

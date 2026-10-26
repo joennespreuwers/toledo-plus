@@ -66,8 +66,9 @@ async function launch(o = {}) {
     async newPage() { const p = await ctx.newPage(); watch(p); h.page = p; return p; },
     async setSettings(patch) { return storage(h, 'sync', 'settings', patch); },
     async getSettings() { return storageGet(h, 'sync', 'settings'); },
-    async setState(patch) { return storage(h, 'local', 'state', patch); },
-    async getState() { return storageGet(h, 'local', 'state'); },
+    // TP.state keeps one chrome.storage.local item per key ('state:<key>', v1.2); these helpers hide that.
+    async setState(patch) { return stateSet(h, patch); },
+    async getState() { return stateGet(h); },
     async close() {
       await ctx.close().catch(() => {});
       await files?.close().catch(() => {});
@@ -105,6 +106,30 @@ async function storage(h, area, key, patch) {
     await chrome.storage[area].set({ [key]: next });
     return next;
   }, { area, key, patch });
+}
+async function stateSet(h, patch) {
+  return inExtension(h, async (patch) => {
+    const merge = (a, b) => {
+      if (Array.isArray(b) || b === null || typeof b !== 'object') return b;
+      const out = { ...(a && typeof a === 'object' && !Array.isArray(a) ? a : {}) };
+      for (const [k, v] of Object.entries(b)) out[k] = merge(out[k], v);
+      return out;
+    };
+    const keys = Object.keys(patch).map((k) => 'state:' + k);
+    const cur = await chrome.storage.local.get(keys);
+    const next = {};
+    for (const k of Object.keys(patch)) next['state:' + k] = merge(cur['state:' + k], patch[k]);
+    await chrome.storage.local.set(next);
+    return patch;
+  }, patch);
+}
+async function stateGet(h) {
+  return inExtension(h, async () => {
+    const all = await chrome.storage.local.get(null);
+    const out = { ...(all.state && typeof all.state === 'object' ? all.state : {}) };
+    for (const [k, v] of Object.entries(all)) if (k.startsWith('state:')) out[k.slice(6)] = v;
+    return Object.keys(out).length ? out : null;
+  });
 }
 async function storageGet(h, area, key) {
   return inExtension(h, async ({ area, key }) => (await chrome.storage[area].get(key))[key] || null, { area, key });
@@ -174,5 +199,5 @@ async function waitFor(pred, { timeout = 5000, interval = 50 } = {}) {
 module.exports = { EXT, launch, waitForShell, waitForIdle, waitForQuiet, inShadow, shell, screenshot, waitFor, ROOT, ARTIFACTS, DESKTOP, PHONE,
   PORTAL_HOME: 'https://toledo.kuleuven.be/portal/#/home',
   portalRoute: (r, p) => `https://toledo.kuleuven.be/portal/#/home?tplus=${r}${p ? '&id=' + encodeURIComponent(p) : ''}`,
-  COURSE_URL: 'https://ultra.edu.kuleuven.cloud/ultra/courses/_200661_1/outline',
+  COURSE_URL: 'https://ultra.edu.kuleuven.cloud/ultra/courses/_900661_1/outline',
 };

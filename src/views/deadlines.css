@@ -23,3 +23,7 @@
 @media (max-width: 420px) {
   .va-field-row { grid-template-columns: 1fr; }
 }
+.va-exam-group { box-shadow: inset 3px 0 0 var(--orange-fill); }
+.va-exam .tp-row-sub { white-space: normal; }
+.va-sec-overdue .tp-sec-title { color: var(--red); }
+.va-exam .tp-row-title { white-space: normal; }

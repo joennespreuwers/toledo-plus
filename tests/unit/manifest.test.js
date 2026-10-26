@@ -5,7 +5,8 @@ const assert = require('node:assert/strict');
 const { exists, list, read } = require('../helpers/sandbox');
 
 const manifest = JSON.parse(read('manifest.json'));
-const ORIGINS = ['https://toledo.kuleuven.be/*', 'https://ultra.edu.kuleuven.cloud/*'];
+// Toledo + Ultra, plus (v1.3) KU Loket and the public TimeEdit iCal feed — mirrored by the relay allowlist in background.js.
+const ORIGINS = ['https://toledo.kuleuven.be/*', 'https://ultra.edu.kuleuven.cloud/*', 'https://webwsp.aps.kuleuven.be/*', 'https://cloud.timeedit.net/*'];
 
 test('manifest basics', () => {
   assert.equal(manifest.manifest_version, 3);
@@ -28,6 +29,14 @@ test('privacy: only Toledo origins, minimal permissions', () => {
   assert.ok(!manifest.optional_host_permissions, 'no optional host permissions');
   const csp = JSON.stringify(manifest.content_security_policy || {});
   assert.ok(!/unsafe-eval|https?:/.test(csp), 'CSP must not allow eval or remote sources');
+});
+
+test('the relay allowlist equals the host permissions', () => {
+  const bg = read('background.js');
+  const m = bg.match(/const TP_ALLOWED = \{([\s\S]*?)\};/);
+  assert.ok(m, 'TP_ALLOWED not found in background.js');
+  const origins = [...m[1].matchAll(/'(https:\/\/[^']+)'\s*:/g)].map((x) => x[1] + '/*').sort();
+  assert.deepEqual(origins, [...ORIGINS].sort());
 });
 
 test('content scripts follow the documented load order and exist', () => {

@@ -76,7 +76,10 @@
   let writeTimer = 0;
   function persist() {
     clearTimeout(writeTimer);
-    writeTimer = setTimeout(() => { idx = cap(idx); sset({ index: idx, indexMeta: meta }); }, 300);
+    writeTimer = setTimeout(() => {
+      if (TP.data && TP.data.isStale && TP.data.isStale()) return;
+      idx = cap(idx); sset({ index: idx, indexMeta: meta });
+    }, 300);
   }
 
   // ---------------------------------------------------------------- building
@@ -122,6 +125,7 @@
   function crawl(opts = {}) {
     if (crawling) return crawling;
     if (!enabled() || !TP.data || !TP.data.ultraTree) return Promise.resolve(status());
+    if (TP.data.isStale && TP.data.isStale()) return Promise.resolve(status()); // extension reloaded: stop quietly
     crawling = (async () => {
       await load();
       const now = Date.now();
@@ -142,7 +146,7 @@
       let failed = 0;
       await TP.util.pool(todo, 2, async (c) => {
         try {
-          if (!enabled()) return;
+          if (!enabled() || (TP.data.isStale && TP.data.isStale())) return;
           const cid = await TP.data.resolveCourseId(c.luId);
           const roots = await TP.data.ultraTree(cid, { concurrency: 2 });
           put(cid, { luId: c.luId, name: c.name, roots });

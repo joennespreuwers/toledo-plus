@@ -15,7 +15,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Check tag matches manifest version
         run: |
@@ -24,8 +24,20 @@ jobs:
             echo "::error::Tag ${GITHUB_REF_NAME} does not match manifest.json version $V"; exit 1
           fi
 
-      - name: Pack extension
-        run: npm run pack
+      # Never release untested code: the same suites as CI.
+      - name: Install dev dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: E2E tests (headless Chromium with the extension loaded)
+        run: xvfb-run --auto-servernum npm run test:e2e
+        env:
+          CI: "true"
 
       - name: Release notes from CHANGELOG
         run: |
@@ -35,11 +47,17 @@ jobs:
             f && /^## \[/ {exit}
             f {print}
           ' CHANGELOG.md > RELEASE_NOTES.md
+          if ! grep -q '[^[:space:]]' RELEASE_NOTES.md; then
+            echo "::error::CHANGELOG.md has no (or an empty) section '## [$V]' – write the release notes first"; exit 1
+          fi
           cat >> RELEASE_NOTES.md <<'NOTES'
 
           ---
           **Installeren / Install:** download `toledo-plus-*.zip`, pak uit, ga naar `chrome://extensions` (of `edge://extensions`), zet *Ontwikkelaarsmodus / Developer mode* aan → *Uitgepakte extensie laden / Load unpacked* → kies de uitgepakte map. Zie de README.
           NOTES
+
+      - name: Pack extension (manifest-referenced files only)
+        run: npm run pack
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2

@@ -2,58 +2,77 @@
 // Packs the extension into dist/toledo-plus-<version>.zip (version from manifest.json).
 // Uses the `zip` CLI when available, otherwise a small built-in zip writer (deflate via zlib).
 // Usage: node scripts/pack.mjs [--out dir] [--node]   (--node forces the built-in writer)
+// Only manifest-referenced files (+ LICENSE) are packed — see packFiles().
 import { readFileSync, writeFileSync, readdirSync, statSync, mkdirSync, rmSync, existsSync } from 'node:fs';
-import { join, relative, dirname, sep } from 'node:path';
+import { join, relative, dirname } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { deflateRawSync, crc32 as zlibCrc32 } from 'node:zlib';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const argv = process.argv.slice(2);
-const outDir = argv.includes('--out') ? argv[argv.indexOf('--out') + 1] : join(root, 'dist');
-const forceNode = argv.includes('--node');
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-const EXCLUDE_DIRS = new Set(['tests', 'docs', 'legacy', 'node_modules', '.github', 'scripts', 'dist', '.git', '.vscode', '.idea']);
-const EXCLUDE_FILES = [/^\./, /\.md$/i, /^package(-lock)?\.json$/, /^LICENSE$/, /\.zip$/, /\.log$/, /\.pem$/];
-const KEEP_ROOT_FILES = new Set(['LICENSE']); // ship the license inside the zip
+/** Glob (only '*' within one path segment) → matching files, relative to root. */
+function expand(root, pattern) {
+  if (!pattern.includes('*')) return existsSync(join(root, pattern)) ? [pattern] : [];
+  const dir = pattern.slice(0, pattern.lastIndexOf('/') + 1);
+  const re = new RegExp('^' + pattern.slice(dir.length).replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[^/]*') + '$');
+  const full = join(root, dir);
+  if (!existsSync(full)) return [];
+  return readdirSync(full).filter((f) => re.test(f) && statSync(join(full, f)).isFile()).map((f) => dir + f);
+}
 
-const manifest = JSON.parse(readFileSync(join(root, 'manifest.json'), 'utf8'));
-const version = manifest.version;
-const zipName = `toledo-plus-${version}.zip`;
-
-function collect(dir, out = []) {
-  for (const name of readdirSync(dir).sort()) {
-    const full = join(dir, name);
-    const rel = relative(root, full).split(sep).join('/');
-    const st = statSync(full);
-    const top = rel.split('/')[0];
-    if (st.isDirectory()) {
-      if (EXCLUDE_DIRS.has(top) || name.startsWith('.')) continue;
-      collect(full, out);
-    } else {
-      const isRoot = !rel.includes('/');
-      if (isRoot && KEEP_ROOT_FILES.has(name)) { out.push(rel); continue; }
-      if (EXCLUDE_FILES.some((r) => r.test(name)) && (isRoot || name.startsWith('.'))) continue;
-      out.push(rel);
+/**
+ * The files that go into the zip: manifest.json, every file the manifest references (service worker,
+ * content scripts + css, web_accessible_resources incl. globs, icons, action icons, options/popup pages),
+ * plus LICENSE. Nothing else (no tests, docs, legacy, dotfiles, stray files). Throws when a referenced file is missing.
+ */
+export function packFiles(root = ROOT) {
+  const manifest = JSON.parse(readFileSync(join(root, 'manifest.json'), 'utf8'));
+  const refs = new Set(['manifest.json']);
+  const add = (p) => { if (typeof p === 'string' && p) refs.add(p.replace(/^\.?\//, '')); };
+  add(manifest.background && manifest.background.service_worker);
+  for (const cs of manifest.content_scripts || []) { (cs.js || []).forEach(add); (cs.css || []).forEach(add); }
+  Object.values(manifest.icons || {}).forEach(add);
+  const action = manifest.action || {};
+  Object.values(typeof action.default_icon === 'object' ? action.default_icon : { x: action.default_icon }).forEach(add);
+  add(action.default_popup); add(manifest.options_page); add(manifest.options_ui && manifest.options_ui.page);
+  const out = new Set();
+  for (const r of refs) {
+    if (!existsSync(join(root, r))) throw new Error(`manifest references a missing file: ${r}`);
+    out.add(r);
+  }
+  for (const war of manifest.web_accessible_resources || []) {
+    for (const pat of war.resources || []) {
+      const hits = expand(root, pat.replace(/^\//, ''));
+      if (!hits.length) throw new Error(`web_accessible_resources pattern matches nothing: ${pat}`);
+      hits.forEach((h) => out.add(h));
     }
   }
-  return out;
+  if (existsSync(join(root, 'LICENSE'))) out.add('LICENSE');
+  return [...out].sort();
 }
 
-const files = collect(root);
-if (!files.includes('manifest.json')) throw new Error('manifest.json missing');
-mkdirSync(outDir, { recursive: true });
-const target = join(outDir, zipName);
-if (existsSync(target)) rmSync(target);
-
-const hasZip = !forceNode && spawnSync('zip', ['-v'], { stdio: 'ignore' }).status === 0;
-if (hasZip) {
-  const r = spawnSync('zip', ['-X', '-q', '-9', target, ...files], { cwd: root, stdio: 'inherit' });
-  if (r.status !== 0) process.exit(r.status || 1);
-} else {
-  writeFileSync(target, buildZip(files));
+function main() {
+  const argv = process.argv.slice(2);
+  const outDir = argv.includes('--out') ? argv[argv.indexOf('--out') + 1] : join(ROOT, 'dist');
+  const forceNode = argv.includes('--node');
+  const manifest = JSON.parse(readFileSync(join(ROOT, 'manifest.json'), 'utf8'));
+  const zipName = `toledo-plus-${manifest.version}.zip`;
+  const files = packFiles(ROOT);
+  mkdirSync(outDir, { recursive: true });
+  const target = join(outDir, zipName);
+  if (existsSync(target)) rmSync(target);
+  const hasZip = !forceNode && spawnSync('zip', ['-v'], { stdio: 'ignore' }).status === 0;
+  if (hasZip) {
+    const r = spawnSync('zip', ['-X', '-q', '-9', target, ...files], { cwd: ROOT, stdio: 'inherit' });
+    if (r.status !== 0) process.exit(r.status || 1);
+  } else {
+    writeFileSync(target, buildZip(files));
+  }
+  console.log(`${relative(ROOT, target)}  (${files.length} files, ${(statSync(target).size / 1024).toFixed(1)} kB, ${hasZip ? 'zip' : 'node'})`);
 }
-console.log(`${relative(root, target)}  (${files.length} files, ${(statSync(target).size / 1024).toFixed(1)} kB, ${hasZip ? 'zip' : 'node'})`);
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();
 
 // ---------- minimal zip writer ----------
 function crc32(buf) {
@@ -75,13 +94,13 @@ function dosTime(d) {
 function buildZip(list) {
   const locals = []; const centrals = []; let offset = 0;
   for (const rel of list) {
-    const data = readFileSync(join(root, rel));
+    const data = readFileSync(join(ROOT, rel));
     const comp = deflateRawSync(data, { level: 9 });
     const useDeflate = comp.length < data.length;
     const body = useDeflate ? comp : data;
     const name = Buffer.from(rel, 'utf8');
     const crc = crc32(data);
-    const { time, date } = dosTime(statSync(join(root, rel)).mtime);
+    const { time, date } = dosTime(statSync(join(ROOT, rel)).mtime);
     const lh = Buffer.alloc(30);
     lh.writeUInt32LE(0x04034b50, 0); lh.writeUInt16LE(20, 4); lh.writeUInt16LE(0x0800, 6); lh.writeUInt16LE(useDeflate ? 8 : 0, 8);
     lh.writeUInt16LE(time, 10); lh.writeUInt16LE(date, 12); lh.writeUInt32LE(crc, 14);

@@ -1,0 +1,32 @@
+{
+  "_comment": "Synthetic KU Loket data (fictitious teachers, rooms and groups). 'day' = days relative to today (local, Europe/Brussels); the mock turns it into SAP '/Date(UTC midnight)/' values. Codes match tests/fixtures/portal.json.",
+  "events": [
+    { "day": 0, "start": "PT09H00M00S", "end": "PT11H00M00S", "ola_description": "Filmtaal 1", "ects_code": "X10265", "workFormDesc": "Hoorcollege",
+      "groupinfo_detail": "Filmtaal 1 Groep A1", "teachers": ["Docent A"],
+      "location": { "roomName": "C207 (2.07 - leslokaal)", "roomNumber": "2.07", "buildingName": "Campus Voorbeeld", "street": "Voorbeeldstraat 1", "city": "Leuven", "mnemonic": "C207", "url_location": "https://example.edu/rooms/c207" } },
+    { "day": 0, "start": "PT13H00M00S", "end": "PT16H00M00S", "ola_description": "Regie 1", "ects_code": "X10300", "workFormDesc": "Practicum",
+      "groupinfo_detail": "Regie 1 Groep R2 Locatie: Proefweg 9, Vorst", "teachers": ["Docent B", "Docent C"], "location": null },
+    { "day": 0, "start": "PT14H00M00S", "end": "PT15H30M00S", "ola_description": "Geluid 1", "ects_code": "X10008", "workFormDesc": "Werkcollege",
+      "groupinfo_detail": "Geluid 1 Groep G1", "teachers": ["Docent D"],
+      "location": { "roomName": "S010 (studio)", "roomNumber": "0.10", "buildingName": "Studiohuis", "street": "Klankstraat 3", "city": "Leuven", "mnemonic": "S010", "url_location": "" } },
+    { "day": 1, "start": "PT08H30M00S", "end": "PT10H30M00S", "ola_description": "Storytelling", "ects_code": "X10354", "workFormDesc": "Hoorcollege",
+      "groupinfo_detail": "Storytelling", "teachers": ["Docent A"],
+      "location": { "roomName": "A101 (aula)", "roomNumber": "1.01", "buildingName": "Campus Voorbeeld", "street": "Voorbeeldstraat 1", "city": "Leuven", "mnemonic": "A101", "url_location": "" } },
+    { "day": 2, "start": "PT10H00M00S", "end": "PT12H00M00S", "ola_description": "Workshop Lichtontwerp", "ects_code": "Z99999", "workFormDesc": "Workshop",
+      "groupinfo_detail": "Workshop Lichtontwerp Groep W", "teachers": ["Docent E"],
+      "location": { "roomName": "L300 (lichtlab)", "roomNumber": "3.00", "buildingName": "Labo", "street": "", "city": "Leuven", "mnemonic": "L300", "url_location": "" } },
+    { "day": 7, "start": "PT09H00M00S", "end": "PT12H00M00S", "ola_description": "Camera 1", "ects_code": "X10210", "workFormDesc": "Practicum",
+      "groupinfo_detail": "Camera 1 Groep C3", "teachers": ["Docent F"],
+      "location": { "roomName": "B020 (camerastudio)", "roomNumber": "0.20", "buildingName": "Campus Voorbeeld", "street": "Voorbeeldstraat 1", "city": "Leuven", "mnemonic": "B020", "url_location": "" } },
+    { "day": 8, "start": "PT18H00M00S", "end": "PT21H00M00S", "ola_description": "Beeldtaal 1", "ects_code": "X10167", "workFormDesc": "Avondcollege",
+      "groupinfo_detail": "Beeldtaal 1", "teachers": ["Docent B"],
+      "location": { "roomName": "C207 (2.07 - leslokaal)", "roomNumber": "2.07", "buildingName": "Campus Voorbeeld", "street": "Voorbeeldstraat 1", "city": "Leuven", "mnemonic": "C207", "url_location": "" } }
+  ],
+  "exams": [
+    { "day": 30, "start": "PT09H00M00S", "end": "PT12H00M00S", "moduleCode": "X10120", "moduleTitle": "Filmgeschiedenis 1", "evaluationText": "Schriftelijk examen", "groupInfo": "Groep 1",
+      "location": { "roomName": "A101 (aula)", "buildingName": "Campus Voorbeeld" }, "staff": ["Docent G"] },
+    { "day": 33, "start": "PT14H00M00S", "end": "PT16H00M00S", "moduleCode": "X10265", "moduleTitle": "Filmtaal 1", "evaluationText": "Mondeling examen", "groupInfo": "",
+      "location": { "roomName": "C207 (2.07 - leslokaal)", "buildingName": "Campus Voorbeeld" }, "staff": ["Docent A"] }
+  ],
+  "icsLink": "https://cloud.timeedit.net/be_kuleuven/web/public/s.ics?sid=7&type=student&field=student.schedule.id&value=0000000000mock"
+}

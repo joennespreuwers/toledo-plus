@@ -5,8 +5,10 @@ const assert = require('node:assert/strict');
 const { launch, screenshot } = require('../helpers/launch');
 const { S, strings, openPortal, pick, waitSettings, sectionOrder, mainText } = require('../helpers/app');
 
-const FILMTAAL = 'ULTRA-B-LUCA-N50265-2627';
-const REGIE = 'ULTRA-B-LUCA-N50300-2627';
+const ENR = require('../helpers/fixtures').load().portal.enrollments;
+const lu = (name) => ENR.find((e) => e.title.startsWith(name + ' [')).learningUnitId;
+const FILMTAAL = lu('Filmtaal 1');
+const REGIE = lu('Regie 1');
 const radio = (name, value) => `#tplus-root input[type="radio"][name="${name}"][value="${value}"]`;
 
 /** Open the <details> (course drill-in etc.) that contains the element, if any. */
@@ -24,15 +26,39 @@ describe('settings', () => {
     for (const n of ['s:language', 's:appearance', 's:density']) {
       assert.ok(await page.locator(`#tplus-root input[name="${n}"]`).count() >= 3, `${n} control`);
     }
-    // One "Overzicht" group with start page, sections, and the feed options; no "Bijgewerkt" line here.
+    // One "Overzicht" group with start page, "Secties aanpassen…" and the feed options; no "Bijgewerkt" line here.
     const ov = page.locator('#tplus-root section[data-section="st-overview"]');
     assert.equal(await ov.count(), 1, 'Overzicht group');
-    for (const sel of ['select[name="s:startPage"]', 'input[name="sec__deadlines"]', '[data-action="sec-up"]', 'input[name="s:feed.includeAnnouncements"]', 'select[name="n:feed.maxCourses"]']) {
+    for (const sel of ['select[name="s:startPage"]', '[data-fk="open-sections"]', 'input[name="s:feed.includeAnnouncements"]', 'select[name="n:feed.maxCourses"]']) {
       assert.equal(await ov.locator(sel).count() >= 1, true, `${sel} in Overzicht`);
     }
+    assert.deepEqual(await ov.locator('select[name="s:startPage"] option').evaluateAll((o) => o.map((x) => x.value)), ['overview', 'courses', 'deadlines', 'agenda']);
     assert.equal(await page.locator('#tplus-root .tp-updated:visible').count(), 0, '"Bijgewerkt" hidden on settings');
-    assert.equal(await page.locator('#tplus-root input[name="s:sync.favoritesToToledo"]').count(), 1);
     await screenshot(page, 'settings-light-desktop');
+  });
+
+  it('at most 10 groups; no pin/favourite rows; courses live in Vakken › Bewerk; no red/pink accent', async () => {
+    const nl = strings('nl');
+    const groups = await page.locator('#tplus-root .st-view > section.tp-section').evaluateAll((l) => l.map((x) => x.dataset.section));
+    assert.ok(groups.length <= 10, `≤ 10 groups (${groups.length}: ${groups})`);
+    assert.deepEqual(groups, ['st-lang', 'st-look', 'st-overview', 'st-dl', 'st-courses', 'st-agenda', 'st-search', 'st-sync', 'st-advanced', 'st-about']);
+    const titles = await page.locator('#tplus-root .st-view > section.tp-section .tp-sec-title').allInnerTexts();
+    assert.deepEqual(titles.map((x) => x.trim()), ['settings.lang', 'settings.look', 'settings.overview', 'settings.dl', 'settings.courses', 'settings.agenda', 'settings.search', 'settings.sync', 'settings.advanced', 'settings.about'].map((k) => nl[k]));
+    assert.equal(await page.locator('#tplus-root input[name="s:sync.favoritesToToledo"], #tplus-root [name^="pin__"], #tplus-root [name^="nick__"]').count(), 0, 'no pin/favourite rows, no second place for course settings');
+    const courses = page.locator('#tplus-root section[data-section="st-courses"] a[data-fk="open-courses"]');
+    assert.match(await courses.getAttribute('href'), /#\/home\?tplus=courses&id=edit$/);
+    const accents = await page.locator('#tplus-root input[name="s:accent"]').evaluateAll((l) => l.map((x) => x.value));
+    assert.ok(!accents.includes('red') && !accents.includes('pink'), `accents: ${accents}`);
+    // Geavanceerd: Toledo-page wrappers + data export/import/reset
+    const adv = page.locator('#tplus-root section[data-section="st-advanced"]');
+    for (const sel of ['input[name="s:wrap.portal"]', 'input[name="s:wrap.courses"]', 'input[name="s:wrap.deepBar"]', '[data-action="export"]', 'input[name="st-import"]', '[data-action="reset"]']) {
+      assert.equal(await adv.locator(sel).count(), 1, `${sel} in Geavanceerd`);
+    }
+    // a stored red/pink accent is migrated to blue
+    await h.setSettings({ accent: 'pink' });
+    await page.reload();
+    await openPortal(h, 'settings');
+    assert.equal((await waitSettings(h, (x) => x.accent === 'blue'))?.accent, 'blue', 'pink accent migrated to blue');
   });
 
   it('language → English changes UI text and lang', async () => {
@@ -85,7 +111,13 @@ describe('settings', () => {
     await pick(page.locator(radio('s:density', 'standard')));
   });
 
-  it('overview section toggle hides the section', async () => {
+  it('overview section toggle hides the section ("Secties aanpassen…" subpage)', async () => {
+    await openPortal(h, 'settings');
+    await page.locator('#tplus-root [data-fk="open-sections"]').click();
+    await page.waitForFunction(() => location.hash === '#/home?tplus=settings&id=sections', null, { timeout: 5000 });
+    await page.locator('#tplus-root .st-sec-list').waitFor();
+    assert.equal(await page.locator('#tplus-root .st-sec-row [data-grip]').count() >= 6, true, 'drag handles');
+    await screenshot(page, 'settings-sections');
     const sw = page.locator('#tplus-root input[name="sec__schedule"]');
     assert.equal(await sw.count(), 1, 'switch for section "schedule"');
     await sw.uncheck({ force: true });
@@ -96,7 +128,7 @@ describe('settings', () => {
   });
 
   it('overview section reorder is reflected', async () => {
-    await openPortal(h, 'settings');
+    await openPortal(h, 'settings', 'sections');
     // move "courses" up twice → before "new"
     for (let i = 0; i < 2; i++) {
       await page.locator('#tplus-root [data-action="sec-up"][data-id="courses"]').click();
@@ -117,44 +149,67 @@ describe('settings', () => {
       'courses should now be above new');
   });
 
-  it('course nickname, color and hide are reflected in the app', async () => {
-    await openPortal(h, 'settings');
+  it('course nickname, color and hide (Vakken › Bewerk) are reflected in the app', async () => {
+    await openPortal(h, 'courses', 'edit');
+    assert.equal(await page.locator('#tplus-root .cs-edit-list').count(), 1, 'opens in edit mode from the settings link');
     const nick = page.locator(`#tplus-root input[name="nick__${FILMTAAL}"]`);
     assert.equal(await nick.count(), 1, 'nickname field for Filmtaal 1');
-    await reveal(nick);
     await nick.fill('Taal van film');
     await nick.press('Tab');
     await waitSettings(h, (s) => s.courses?.items?.[FILMTAAL]?.nickname === 'Taal van film');
+    await page.waitForTimeout(200); // the nickname repaint runs after blur
 
-    const pink = page.locator(`#tplus-root input[name="color__${FILMTAAL}"][value="pink"]`);
-    await reveal(pink);
-    await pick(pink);
-    await waitSettings(h, (s) => s.courses?.items?.[FILMTAAL]?.color === 'pink');
+    // colour: a popover of swatches behind the colour dot
+    await page.locator(`#tplus-root [data-fk="color:${FILMTAAL}"]`).click();
+    // the popover re-renders on change, so click (not check) the swatch
+    await page.locator(`#tplus-root input[name="color__${FILMTAAL}"][value="purple"]`).click({ force: true });
+    await waitSettings(h, (s) => s.courses?.items?.[FILMTAAL]?.color === 'purple');
 
     const hide = page.locator(`#tplus-root input[name="hide__${REGIE}"]`);
-    await reveal(hide);
     await hide.check({ force: true });
     await waitSettings(h, (s) => s.courses?.items?.[REGIE]?.hidden === true);
+    await page.locator('#tplus-root [data-shell="view-action"][data-id="edit"]').click();
 
     await openPortal(h, 'courses');
     const txt = await mainText(page);
     assert.ok(txt.includes('Taal van film'), 'nickname shown in courses view');
-    const hasPink = await page.evaluate(() => {
+    const hasColor = await page.evaluate(() => {
       const sr = document.querySelector('#tplus-root').shadowRoot;
       const el = [...sr.querySelectorAll('main *')].find((e) => e.children.length === 0 && e.textContent.trim() === 'Taal van film');
       const row = el && (el.closest('a,button,li,.tp-row,details') || el.parentElement);
       if (!row) return false;
       return [...row.querySelectorAll('*'), row].some((e) => {
         const cs = getComputedStyle(e);
-        return [cs.backgroundColor, cs.color, cs.borderColor, e.getAttribute('style') || ''].some((v) => /255, 45, 85|#FF2D55/i.test(v));
+        return [cs.backgroundColor, cs.color, cs.borderColor, e.getAttribute('style') || ''].some((v) => /175, 82, 222|#AF52DE/i.test(v));
       });
     });
-    assert.ok(hasPink, 'course color (pink #FF2D55) applied to the course row');
+    assert.ok(hasColor, 'course color (purple #AF52DE) applied to the course row');
 
     await openPortal(h, 'overview');
     const coursesSec = await page.locator(S.section('courses')).innerText();
     assert.ok(coursesSec.includes('Taal van film'), 'nickname on overview');
     assert.ok(!coursesSec.includes('Regie 1'), 'hidden course still on overview');
+  });
+
+  it('Agenda group: KU Loket status and a masked iCal link (paste / remove)', async () => {
+    await openPortal(h, 'settings');
+    const ag = page.locator('#tplus-root section[data-section="st-agenda"]');
+    assert.equal(await ag.count(), 1);
+    assert.ok((await ag.innerText()).includes('KU Loket'));
+    const input = ag.locator('input[name="st-ics"]');
+    if (await input.count()) { // TP.kuloket.setIcsUrl available
+      await input.fill('https://example.com/not-ical');
+      await input.press('Enter');
+      await ag.locator('.st-form-error:visible').waitFor({ timeout: 3000 });
+      await input.fill('https://cloud.timeedit.net/be_kuleuven/web/public/s.ics?sid=7&type=student&field=student.schedule.id&value=SECRET123');
+      await input.press('Enter');
+      const masked = ag.locator('[data-ics-masked]');
+      await masked.waitFor({ timeout: 4000 });
+      const shown = await masked.innerText();
+      assert.ok(!shown.includes('SECRET123') && shown.includes('cloud.timeedit.net'), `masked: ${shown}`);
+      await ag.locator('[data-action="ics-remove"]').click();
+      await ag.locator('input[name="st-ics"]').waitFor({ timeout: 4000 });
+    }
   });
 
   it('settings persist across reloads', async () => {

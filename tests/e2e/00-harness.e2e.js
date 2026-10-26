@@ -27,8 +27,8 @@ describe('harness', () => {
   });
 
   it('service-worker requests are intercepted by the mocks (cross-origin relay)', async () => {
-    const r = await h.sw.evaluate(async () => { const res = await fetch('https://ultra.edu.kuleuven.cloud/learn/api/public/v3/courses/_200661_1', { credentials: 'include' }); return res.json(); });
-    assert.equal(r.name, 'Filmtaal 1 [N50265]', 'context.route did not intercept the service worker fetch');
+    const r = await h.sw.evaluate(async () => { const res = await fetch('https://ultra.edu.kuleuven.cloud/learn/api/public/v3/courses/_900661_1', { credentials: 'include' }); return res.json(); });
+    assert.equal(r.name, 'Filmtaal 1 [X10265]', 'context.route did not intercept the service worker fetch');
   });
 
   it('content scripts inject on the portal', async () => {

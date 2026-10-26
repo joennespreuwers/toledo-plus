@@ -16,6 +16,8 @@
   const START_PAGES = ['overview', 'courses', 'deadlines', 'agenda'];
   const NAV = ['overview', 'courses', 'deadlines', 'agenda', 'announcements', 'kuloket'];
   const TABS = ['overview', 'courses', 'deadlines', 'agenda'];
+  const MORE = ['announcements', 'kuloket', 'settings']; // phone "Meer" sheet
+  const canon = (r) => ROUTE_ALIASES[r] || r;
   const OUTLINE = /^\/ultra\/courses\/(_\d+_\d+)\/outline\/?$/;
   const ULTRA_CID = /^\/ultra\/courses\/(_\d+_\d+)(\/|$)/;
   const CSS_FILES = ['ui.css', 'src/views/overview.css', 'src/views/deadlines.css', 'src/views/agenda.css',
@@ -47,6 +49,7 @@
   const LEGACY = /^#\/tplus\/([a-z]+)(?:\/([^?]*))?/;
   const isLegacyHash = (h) => /^#\/tplus(\/|$)/.test(h || '');
   function mkRoute(route, p) {
+    route = canon(route);
     if (!ROUTES.includes(route)) return null;
     const params = {};
     if (p) { if (route === 'course') params.luId = p; else params.id = p; }
@@ -62,7 +65,7 @@
     const route = q && q.get('tplus');
     return route ? mkRoute(route, q.get('id') || '') : null;
   }
-  const startRoute = () => (START_PAGES.includes(settings().startPage) ? settings().startPage : 'overview');
+  const startRoute = () => { const r = canon(settings().startPage); return START_PAGES.includes(r) ? r : 'overview'; };
 
   // Decide what to show for the current URL.
   function resolve() {
@@ -102,6 +105,7 @@
   const hashFor = (route, params) => `#/home?tplus=${encodeURIComponent(route)}${paramOf(params)}`;
 
   function href(route, params = {}) {
+    route = canon(route);
     if (route === 'course') {
       if (params.cid) return `${ULTRA}/ultra/courses/${encodeURIComponent(params.cid)}/outline`;
       if (params.luId) {
@@ -120,6 +124,7 @@
   }
 
   function navigate(route, params = {}) {
+    route = canon(route);
     const inPlace = origin === 'portal' && route !== 'course' && ROUTES.includes(route);
     if (inPlace) {
       const h = hashFor(route, params);
@@ -169,7 +174,7 @@
   function themeVars() {
     const s = settings();
     const P = TP.util.PALETTE;
-    const tint = P[s.accent] || P.blue;
+    const tint = P[TP.util.accentKey ? TP.util.accentKey(s.accent) : s.accent] || P.blue; // red/pink are no accents (N7)
     const U = TP.util;
     // Text-on-background variants: stricter of card and page backgrounds per theme.
     const textL = U.ensureContrast(tint, '#F2F2F7', 4.5, 'dark');
@@ -223,6 +228,7 @@
     shadow.addEventListener('click', onShellClick);
     shadow.addEventListener('input', onShellInput);
     shadow.addEventListener('keydown', onShellKeydown);
+    shadow.addEventListener('close', (ev) => { if (ev.target?.classList?.contains('tp-detail')) onDetailClosed(); }, true);
     document.body.prepend(host);
   }
 
@@ -245,6 +251,7 @@
 <div class="tp-body">
   <header class="tp-toolbar tp-glass">
     <button type="button" class="tp-tb-btn tp-sb-toggle" data-shell="sidebar" aria-controls="tp-sidebar" aria-expanded="${!isRail()}" aria-label="${esc(t('shell.toggleSidebar'))}" title="${esc(t('shell.toggleSidebar'))} (${MOD}\\)">${icon('sidebar', { size: 20 })}</button>
+    <a class="tp-tb-back" href="${esc(href('courses'))}" data-route="courses" hidden>${icon('chevronLeft', { size: 20, strokeWidth: 2.2 })}<span>${esc(t('nav.courses'))}</span></a>
     <div class="tp-tb-title" aria-hidden="true"></div>
     <div class="tp-tb-spacer"></div>
     <div class="tp-search" role="search">
@@ -264,6 +271,7 @@
     </div>
   </header>
   <main id="tp-main" class="tp-main" tabindex="-1">
+    <div class="tp-banners" data-shell-region="banners"></div>
     <div class="tp-head">
       <div class="tp-head-text">
         <h1 class="tp-large-title" tabindex="-1"></h1>
@@ -282,6 +290,11 @@
     <button type="button" class="tp-tb-btn" data-shell="sheet-close" aria-label="${esc(t('shell.close'))}">${icon('xmark', { size: 18 })}</button></div>
   <div class="tp-sheet-body" data-shell-region="sheet"></div>
 </dialog>
+<dialog class="tp-detail" aria-labelledby="tp-detail-title">
+  <div class="tp-detail-head"><h2 id="tp-detail-title"></h2>
+    <button type="button" class="tp-tb-btn" data-shell="detail-close" aria-label="${esc(t('shell.close'))}">${icon('xmark', { size: 18 })}</button></div>
+  <div class="tp-detail-body"></div>
+</dialog>
 <div class="tp-toast" aria-hidden="true"></div>
 <div class="tp-live tp-sr" role="status" aria-live="polite" aria-atomic="true"></div>`;
     const wrap = app.querySelector('.tp-view-wrap');
@@ -293,74 +306,107 @@
     titleObserver.observe(app.querySelector('.tp-large-title'));
     renderNav();
     renderMenu();
+    renderBanners();
     updateSearchUi();
   }
   const $ = (sel) => app?.querySelector(sel);
 
   // ---------------- nav (sidebar, tab bar, sheet) ----------------
+  // Sidebar badges (N3): no count on Overzicht (it duplicated "Nieuw"); Deadlines = open count in label-2,
+  // a red badge only when something is overdue (then it shows the overdue count); KU Loket = exams within 14 days.
   function navCounts() {
-    const c = { overview: '', deadlines: '', overdue: 0, announcements: '' };
+    const c = { deadlines: 0, overdue: 0, announcements: 0, kuloket: 0 };
     safe(() => {
-      const feed = TP.data?.feed?.() || [];
-      const n = feed.reduce((a, g) => a + (g.items?.length || 0), 0);
-      if (n) c.overview = n;
-    });
-    safe(() => {
-      const list = (TP.data?.deadlines?.({}) || []).filter((d) => !d.done);
       const now = Date.now();
-      c.overdue = list.filter((d) => d.due < now).length;
-      if (list.length) c.deadlines = list.length;
+      const list = (TP.data?.deadlines?.({}) || []).filter((d) => !d.done);
+      c.overdue = list.filter((d) => (d.overdue != null ? d.overdue : d.due < now)).length;
+      c.deadlines = list.length;
     });
+    safe(() => { c.announcements = (TP.data?.announcements?.({ filter: 'unread' }) || []).length; });
     safe(() => {
-      const n = (TP.data?.announcements?.({ filter: 'unread' }) || []).length;
-      if (n) c.announcements = n;
+      const now = Date.now();
+      const ex = TP.kuloket?.peekExams?.() || [];
+      c.kuloket = ex.filter((e) => e && e.start >= now - 3600e3 && e.start <= now + 14 * 864e5).length;
     });
     return c;
   }
+  const feedCount = () => safe(() => (TP.data?.feed?.() || []).reduce((a, g) => a + (g.items?.length || 0), 0), 0);
 
   const activeNav = () => {
     const r = current?.route;
     return r === 'course' ? 'courses' : r;
   };
 
+  const countHtml = (n, label) => `<span class="tp-sb-count"><span aria-hidden="true">${esc(n > 99 ? '99+' : n)}</span><span class="tp-sr">${esc(label)}</span></span>`;
+  function navTrail(route, counts) {
+    if (route === 'deadlines') {
+      if (counts.overdue) return TP.ui.badge(counts.overdue, { tone: 'red', label: t('shell.overdue', { n: counts.overdue }) });
+      return counts.deadlines ? countHtml(counts.deadlines, t('shell.open', { n: counts.deadlines })) : '';
+    }
+    if (route === 'announcements' && counts.announcements) return countHtml(counts.announcements, t('shell.unread', { n: counts.announcements }));
+    if (route === 'kuloket' && counts.kuloket) return countHtml(counts.kuloket, t('shell.exams', { n: counts.kuloket }));
+    return '';
+  }
   function navItem(route, counts) {
     const active = activeNav() === route;
-    let trail = '';
-    if (route === 'deadlines' && counts.overdue) {
-      trail = TP.ui.badge(counts.overdue, { tone: 'red', label: t('shell.overdue', { n: counts.overdue }) });
-    } else if (counts[route]) {
-      const label = route === 'deadlines' ? t('shell.open', { n: counts[route] }) : t('shell.unread', { n: counts[route] });
-      trail = `<span class="tp-sb-count"><span aria-hidden="true">${esc(counts[route] > 99 ? '99+' : counts[route])}</span><span class="tp-sr">${esc(label)}</span></span>`;
-    }
     const tip = isRail() ? ` title="${esc(t('nav.' + route))}"` : '';
-    return `<li><a class="tp-sb-item${active ? ' active' : ''}" href="${esc(href(route))}" data-route="${route}"${active ? ' aria-current="page"' : ''}${tip}>${icon(route, { size: 20 })}<span class="tp-sb-label">${esc(t('nav.' + route))}</span>${trail}</a></li>`;
+    return `<li><a class="tp-sb-item${active ? ' active' : ''}" href="${esc(href(route))}" data-route="${route}"${active ? ' aria-current="page"' : ''}${tip}>${icon(route, { size: 20 })}<span class="tp-sb-label">${esc(t('nav.' + route))}</span>${navTrail(route, counts)}</a></li>`;
   }
 
-  // Rail: pinned courses as coloured circles with two initials ("Montage Technieken 1" → "MT").
+  // Rail: courses as coloured circles with two initials ("Montage Technieken 1" → "MT").
   function initials(c) {
-    const w = String(c.name || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').split(/[\s\-_/]+/).filter((x) => /^[a-z]/i.test(x));
+    const w = String(c.name || '').normalize('NFKD').replace(/[̀-ͯ]/g, '').split(/[\s\-_/]+/).filter((x) => /^[a-z]/i.test(x));
     const txt = (w.length > 1 ? w[0][0] + w[1][0] : (w[0] || c.name || '?').slice(0, 2)).toUpperCase();
     const fg = safe(() => (TP.util.contrast('#FFFFFF', c.color) >= 4.5 ? '#FFFFFF' : '#000000'), '#FFFFFF');
     return `<span class="tp-sb-initials" aria-hidden="true" style="--c:${esc(TP.util.safeColor ? TP.util.safeColor(c.color) : c.color)};--fg:${fg}">${esc(txt)}</span>`;
+  }
+
+  /** Courses in the student's order (settings.courses.sort/order) — shared by the sidebar and the overview. */
+  function sortCourses(list) {
+    const cs = settings().courses || {};
+    const loc = safe(() => TP.i18n.locale(), 'nl-BE');
+    const byName = (a, b) => String(a.name).localeCompare(String(b.name), loc, { sensitivity: 'base', numeric: true });
+    let cmp;
+    if (cs.sort === 'manual') {
+      const pos = new Map((Array.isArray(cs.order) ? cs.order : []).map((id, i) => [id, i]));
+      const p = (c) => (pos.has(c.luId) ? pos.get(c.luId) : 1e9);
+      cmp = (a, b) => p(a) - p(b) || byName(a, b);
+    } else if (cs.sort === 'name') cmp = byName;
+    else cmp = (a, b) => (b.latest || 0) - (a.latest || 0) || byName(a, b);
+    return list.slice().sort((a, b) => (a.type === b.type ? 0 : a.type === 'course' ? -1 : 1) || cmp(a, b));
+  }
+
+  // Sidebar group "Vakken" (N1): the current, non-hidden courses in the student's order; compact rows; collapsible.
+  function coursesGroup() {
+    const list = safe(() => sortCourses(TP.data?.courses?.({}) || []), []);
+    if (!list.length) return '';
+    const closed = !!safe(() => TP.state?.get?.()?.ui?.sbCoursesClosed, false);
+    const act = current?.route === 'course' ? current : null;
+    const actLu = act && (act.params?.luId || safe(() => {
+      const m = TP.state?.get?.()?.cidMap || {};
+      return Object.keys(m).find((k) => m[k] === act.params?.cid) || null;
+    }, null));
+    const rows = list.map((c) => {
+      const isAct = !!actLu && c.luId === actLu;
+      const tip = isRail() ? ` title="${esc(c.name)}"` : ` title="${esc(c.title || c.name)}"`;
+      return `<li><a class="tp-sb-item tp-sb-course${c.unread ? ' is-unread' : ''}${isAct ? ' active' : ''}" href="${esc(href('course', { luId: c.luId }))}" data-lu="${esc(c.luId)}"${isAct ? ' aria-current="page"' : ''}${tip}>${TP.ui.dot(c.color)}${initials(c)}<span class="tp-sb-label">${esc(c.name)}</span>${c.unread ? countHtml(c.unread, t('shell.unread', { n: c.unread })) : ''}</a></li>`;
+    }).join('');
+    return `<h2 class="tp-sb-heading-wrap"><button type="button" class="tp-sb-group-btn" data-shell="sb-courses" aria-expanded="${!closed}" aria-controls="tp-sb-courses" id="tp-sb-courses-h"><span>${esc(t('nav.coursesGroup'))}</span>${icon('chevronRight', { size: 13, strokeWidth: 2.4 })}</button></h2>
+<ul class="tp-sb-list tp-sb-courses-list" id="tp-sb-courses" aria-labelledby="tp-sb-courses-h"${closed ? ' hidden' : ''}>${rows}</ul>`;
   }
 
   function renderNav() {
     if (!app) return;
     const counts = navCounts();
     const main = app.querySelector('[data-shell-region="sb-main"]');
-    const pinned = safe(() => (TP.data?.courses?.({}) || []).filter((c) => c.pinned), []);
-    if (main) {
-      main.innerHTML = `<ul class="tp-sb-list">${NAV.map((r) => navItem(r, counts)).join('')}</ul>
-${pinned.length ? `<h2 class="tp-sb-heading" id="tp-sb-pinned">${esc(t('nav.pinned'))}</h2>
-<ul class="tp-sb-list" aria-labelledby="tp-sb-pinned">${pinned.map((c) => `<li><a class="tp-sb-item tp-sb-course" href="${esc(href('course', { luId: c.luId }))}" title="${esc(c.name)}">${TP.ui.dot(c.color)}${initials(c)}<span class="tp-sb-label">${esc(c.name)}</span>${c.unread ? `<span class="tp-sb-count"><span aria-hidden="true">${esc(c.unread)}</span><span class="tp-sr">${esc(t('shell.unread', { n: c.unread }))}</span></span>` : ''}</a></li>`).join('')}</ul>` : ''}`;
-    }
+    if (main) main.innerHTML = `<ul class="tp-sb-list">${NAV.map((r) => navItem(r, counts)).join('')}</ul>${coursesGroup()}`;
     const foot = app.querySelector('[data-shell-region="sb-foot"]');
     if (foot) foot.innerHTML = `<ul class="tp-sb-list">${navItem('settings', counts)}</ul>`;
 
     const tabbar = app.querySelector('[data-shell-region="tabbar"]');
     if (tabbar) {
       const act = activeNav();
-      const moreActive = act === 'announcements' || act === 'settings';
+      const moreActive = MORE.includes(act);
       tabbar.innerHTML = `<ul class="tp-tabs">${TABS.map((r) => {
         const a = act === r;
         const dotHtml = r === 'deadlines' && counts.overdue ? `<span class="tp-tab-dot" aria-hidden="true"></span><span class="tp-sr">${esc(t('shell.overdue', { n: counts.overdue }))}</span>` : '';
@@ -372,12 +418,22 @@ ${pinned.length ? `<h2 class="tp-sb-heading" id="tp-sb-pinned">${esc(t('nav.pinn
       sheet.innerHTML = TP.ui.group(TP.ui.row({
         action: 'palette', attrs: { 'data-shell': 'palette', 'aria-haspopup': 'dialog' },
         leading: `<span class="tp-tile">${icon('search', { size: 17 })}</span>`, title: esc(t('palette.open')),
-      })) + TP.ui.group(['announcements', 'settings'].map((r) => TP.ui.row({
+      })) + TP.ui.group(MORE.map((r) => TP.ui.row({
         href: href(r), attrs: { 'data-route': r, 'aria-current': activeNav() === r ? 'page' : null },
         leading: `<span class="tp-tile">${icon(r, { size: 17 })}</span>`, title: esc(t('nav.' + r)),
-        trailing: r === 'announcements' && counts.announcements ? `<span class="tp-sb-count">${esc(counts.announcements)}</span>` : '', chevron: true,
+        trailing: navTrail(r, counts), chevron: true,
       })).join(''));
     }
+    const back = $('.tp-tb-back');
+    if (back) back.hidden = current?.route !== 'course';
+  }
+
+  function toggleCoursesGroup(btn) {
+    const open = btn.getAttribute('aria-expanded') !== 'true';
+    btn.setAttribute('aria-expanded', String(open));
+    const list = $('#tp-sb-courses');
+    if (list) list.hidden = !open;
+    safe(() => TP.state?.set?.({ ui: { sbCoursesClosed: !open } }));
   }
 
   function mailCount() {
@@ -393,11 +449,11 @@ ${pinned.length ? `<h2 class="tp-sb-heading" id="tp-sb-pinned">${esc(t('nav.pinn
     const notif = safe(() => TP.data?.link?.('NOTIFICATION-SETTINGS-ULTRA'), null);
     const logout = safe(() => TP.data?.link?.('LOGOUT'), null) || PORTAL + '/Shibboleth.sso/Logout';
     const item = (inner, attrs) => `<a class="tp-menu-item" role="menuitem" tabindex="-1"${attrs}>${inner}</a>`;
+    // N9: no second "Instellingen" (it is in the sidebar/More), mail count is neutral gray (not an alarm).
     menu.innerHTML = `
-${item(`${icon('mail')}<span class="tp-menu-label">${esc(t('shell.mail'))}</span>${mail ? TP.ui.badge(mail, { tone: 'red', label: t('shell.mailUnread', { n: mail }) }) : ''}${icon('external', { size: 13, cls: 'tp-menu-ext' })}`,
+${item(`${icon('mail')}<span class="tp-menu-label">${esc(t('shell.mail'))}</span>${mail ? TP.ui.badge(mail, { tone: 'gray', label: t('shell.mailUnread', { n: mail }) }) : ''}${icon('external', { size: 13, cls: 'tp-menu-ext' })}`,
     ` href="https://outlook.office.com/mail/" target="_blank" rel="noopener" aria-description="${esc(t('common.newTab'))}"`)}
-${notif ? item(`${icon('bell')}<span class="tp-menu-label">${esc(t('shell.notifSettings'))}</span>`, ` href="${esc(notif)}"`) : ''}
-${item(`${icon('settings')}<span class="tp-menu-label">${esc(t('nav.settings'))}</span>`, ` href="${esc(href('settings'))}" data-route="settings"`)}
+${notif ? item(`${icon('bell')}<span class="tp-menu-label">${esc(t('shell.notifSettings'))}<small>${esc(t('shell.notifHint'))}</small></span>`, ` href="${esc(notif)}"`) : ''}
 <button type="button" class="tp-menu-item" role="menuitem" tabindex="-1" data-shell="classic">${icon('classic')}<span class="tp-menu-label">${esc(t('shell.classic'))}<small>${esc(t('shell.classicHint'))}</small></span></button>
 <div class="tp-menu-sep" role="separator"></div>
 ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</span>`, ` href="${esc(logout)}"`)}`;
@@ -474,6 +530,64 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     if (open) $('.tp-sidebar .tp-sb-item')?.focus();
   }
   safe(() => mqWide.addEventListener('change', () => { if (app?.classList.contains('sb-open')) setOverlay(false); else syncSidebar(); }));
+
+  // ---------------- banners: session expired / extension updated (F4) ----------------
+  const banners = { auth: false, stale: false };
+  function renderBanners() {
+    const el = $('[data-shell-region="banners"]');
+    if (!el) return;
+    let html = '';
+    if (banners.stale) {
+      html += `<div class="tp-banner" data-banner="stale">${icon('refresh', { size: 17 })}<span class="tp-banner-text"><strong>${esc(t('shell.staleTitle'))}</strong> · ${esc(t('shell.staleText'))}</span>${TP.ui.button(t('shell.reload'), { kind: 'tinted', attrs: { 'data-shell': 'reload' } })}</div>`;
+    }
+    if (banners.auth) {
+      const login = safe(() => TP.data?.loginUrl?.() || TP.data?.link?.('LOGIN'), null) || PORTAL_HOME;
+      html += `<div class="tp-banner" data-banner="auth">${icon('warning', { size: 17 })}<span class="tp-banner-text"><strong>${esc(t('shell.authTitle'))}</strong> · ${esc(t('shell.authText'))}</span>${TP.ui.button(t('shell.login'), { kind: 'tinted', attrs: { href: login, 'data-shell': 'login' } })}</div>`;
+    }
+    if (el.innerHTML !== html) el.innerHTML = html;
+  }
+  function setBanner(kind, on) {
+    if (banners[kind] === !!on) return;
+    banners[kind] = !!on;
+    renderBanners();
+    if (on) announce(t(kind === 'auth' ? 'shell.authTitle' : 'shell.staleTitle'));
+  }
+
+  // ---------------- detail sheet (HIG sheet/popover; F6 deadline detail) ----------------
+  // TP.shell.detail.open({title, html, onAction(action, el, ev), opener}) → the views build the content;
+  // clicks on [data-detail-action] inside are routed to onAction. Esc / backdrop / close button close it
+  // and return focus to the opener.
+  let detail = null; // { onAction, opener }
+  function openDetail(o = {}) {
+    const d = $('.tp-detail');
+    if (!d) return null;
+    const opener = o.opener || safe(() => shadow.activeElement, null);
+    // The view may re-render while the sheet is open (e.g. "klaar"): remember how to find the opener again.
+    const sel = safe(() => ['data-action', 'data-key', 'data-id', 'data-eid'].map((k) => (opener.getAttribute(k) != null ? `[${k}="${CSS.escape(opener.getAttribute(k))}"]` : '')).join(''), '');
+    detail = { onAction: o.onAction || null, opener, sel };
+    d.querySelector('#tp-detail-title').textContent = o.title || '';
+    d.querySelector('.tp-detail-body').innerHTML = o.html || '';
+    if (!d.open) d.showModal();
+    d.querySelector('.tp-detail-body [data-detail-action], .tp-detail-body a, .tp-detail-body button')?.focus();
+    return d;
+  }
+  function updateDetail(html) {
+    const d = $('.tp-detail');
+    if (d?.open) d.querySelector('.tp-detail-body').innerHTML = html;
+  }
+  function closeDetail() {
+    const d = $('.tp-detail');
+    if (!d?.open) return false;
+    d.close();
+    return true;
+  }
+  function onDetailClosed() {
+    let op = detail?.opener;
+    const sel = detail?.sel;
+    detail = null;
+    if ((!op || !op.isConnected) && sel) op = safe(() => app.querySelector(sel), null);
+    if (op && op.isConnected) safe(() => op.focus({ preventScroll: true }));
+  }
 
   // ---------------- toast + live region ----------------
   let toastTimer = null;
@@ -680,7 +794,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
       if (!burst.warned) { console.warn('[Toledo+] rerender loop detected; throttling'); burst.warned = true; }
       return;
     }
-    renderNav(); renderMenu(); updateHead(); renderView();
+    renderNav(); renderMenu(); renderBanners(); updateHead(); renderView();
   }, 60);
 
   function switchView(route, params) {
@@ -700,6 +814,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     if (app.classList.contains('sb-open')) setOverlay(false);
     closeMenu(false);
     closeSheet();
+    closeDetail();
     updateSearchUi();
     renderNav();
     updateHead();
@@ -822,6 +937,13 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
 
   function onShellClick(ev) {
     if (ev.target === $('.tp-sheet')) { closeSheet(); return; } // backdrop click
+    if (ev.target === $('.tp-detail')) { closeDetail(); return; }
+    const da = ev.target.closest?.('.tp-detail [data-detail-action]');
+    if (da && detail?.onAction) {
+      const r = safe(() => detail.onAction(da.dataset.detailAction, da, ev));
+      Promise.resolve(r).catch((e) => console.warn('[Toledo+] detail action', e));
+      return;
+    }
     if (ev.target.closest?.('[data-action="tp-retry-view"]')) { renderView(); return; } // render-error row
     const el = ev.target.closest?.('[data-shell], a[data-route], a[href]');
     if (!el) return;
@@ -842,6 +964,9 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
           return;
         case 'more': openSheet(); return;
         case 'sheet-close': closeSheet(); return;
+        case 'detail-close': closeDetail(); return;
+        case 'sb-courses': toggleCoursesGroup(el); return;
+        case 'reload': location.reload(); return;
         case 'view-action': {
           const a = current?.actions?.[Number(el.dataset.index)];
           if (a?.onClick) Promise.resolve().then(() => a.onClick(ev, current.ctx)).catch((e) => console.warn('[Toledo+] action', e));
@@ -854,7 +979,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     if (el.tagName === 'A' && !ev.defaultPrevented && plainClick(ev) && !el.target) {
       if (el.dataset.route && origin === 'portal' && el.dataset.route !== 'course') {
         ev.preventDefault();
-        closeMenu(false); closeSheet();
+        closeMenu(false); closeSheet(); closeDetail();
         navigate(el.dataset.route);
         return;
       }
@@ -862,10 +987,10 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
       if (u && origin === 'portal' && u.origin === location.origin && u.pathname === location.pathname && parseHash(u.hash)) {
         ev.preventDefault();
         const p = parseHash(u.hash);
-        closeMenu(false); closeSheet();
+        closeMenu(false); closeSheet(); closeDetail();
         navigate(p.route, p.params);
-      } else if (el.closest('.tp-menu, .tp-sheet')) {
-        closeMenu(false); closeSheet();
+      } else if (el.closest('.tp-menu, .tp-sheet, .tp-detail')) {
+        closeMenu(false); closeSheet(); closeDetail();
       }
     }
   }
@@ -947,10 +1072,10 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     btn?.classList.add('spinning');
     btn?.setAttribute('aria-busy', 'true');
     announce(t('shell.refreshing'));
-    const before = navCounts().overview || 0;
+    const before = feedCount();
     try {
       await TP.data.refresh();
-      const after = navCounts().overview || 0;
+      const after = feedCount();
       const diff = Math.max(0, after - before);
       toast(diff ? t('shell.refreshedNew', { n: diff }) : `${t('shell.refreshed')} ${TP.fmt.time(Date.now())}`);
     } catch (e) {
@@ -990,6 +1115,20 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
       if (mode === 'shell' && keys.some((k) => !['ui', 'cache', 'visits', 'openFolders', 'recent', 'focus'].includes(k))) rerender();
     }));
     safe(() => TP.data?.on?.('change', () => { if (mode === 'shell') rerender(); }));
+    // F4: session expired → non-blocking "Log opnieuw in"; extension updated → "Herlaad".
+    // TP.data emits 'auth' {expired} on every change of the session state (true → banner, false → gone).
+    safe(() => TP.data?.on?.('auth', (e) => setBanner('auth', e && typeof e === 'object' && 'expired' in e ? !!e.expired : true)));
+    safe(() => TP.data?.on?.('stale', () => setBanner('stale', true)));
+    if (safe(() => TP.data?.authExpired?.(), false)) banners.auth = true;
+    if (safe(() => TP.data?.isStale?.(), false)) banners.stale = true;
+    // KU Loket (Agent B's module may not exist): nav badges + current view follow its cache.
+    safe(() => TP.kuloket?.on?.('change', () => { if (mode === 'shell') rerender(); }));
+    // Coming back to the tab: TP.data refreshes itself (maybeRefresh on visibilitychange); older data layers → our throttle.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && mode === 'shell' && typeof TP.data?.maybeRefresh !== 'function') backgroundRefresh();
+    });
+    // N7: red/pink are no longer accent colours → migrate a stored one to blue.
+    safe(() => { const a = settings().accent; if (a && TP.util.accentKey && TP.util.accentKey(a) !== a) TP.settings.set({ accent: 'blue' }); });
     let lastErrToast = 0;
     safe(() => TP.data?.on?.('error', () => {
       if (mode !== 'shell') return;
@@ -1015,7 +1154,8 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
 
   TP.shell = {
     CSS: CSS_FILES, ROUTES,
-    register, navigate, href, toast, announce,
+    register, navigate, href, toast, announce, sortCourses,
+    detail: { open: openDetail, update: updateDetail, close: closeDetail, isOpen: () => !!$('.tp-detail')?.open },
     rerender: () => rerender(),
     start, preflight,
     get route() { return current ? { route: current.route, params: current.params } : null; },
