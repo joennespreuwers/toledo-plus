@@ -22,6 +22,7 @@
     deadlines: { horizonDays: 42, urgentDays: 3, reminder: '1d' },
     courses: { sort: 'activity', showCommunities: false, items: {} },
     sync: { markReadInToledo: true, favoritesToToledo: true },
+    search: { indexAll: true },
     custom: [],
   };
   // pinned: null = no explicit choice (a Toledo favourite then counts as pinned while

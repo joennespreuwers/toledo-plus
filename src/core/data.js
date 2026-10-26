@@ -691,6 +691,31 @@
   const courseCache = new Map();   // cid → Promise<result>
   const courseData = new Map();    // cid → latest (possibly partial) result
 
+  /** Breadth-first walk of a course's content tree (in place: folders get .kids). One TP.util.pool per
+   *  level keeps total concurrency at `n`; depth ≤ 6; unavailable items dropped; a broken folder → kids []. */
+  async function walkTree(cid, roots, n) {
+    const base = `${BB}/v1/courses/${encodeURIComponent(cid)}`;
+    let level = (roots || []).filter(isFolder);
+    for (let depth = 1; level.length && depth <= 6; depth++) {
+      const next = [];
+      await pool(level, n, async (node) => {
+        try {
+          node.kids = (await ultraPaged(`${base}/contents/${encodeURIComponent(node.id)}/children?limit=200`, 5)).filter(visible);
+        } catch (_) { node.kids = []; }
+        for (const k of node.kids) if (isFolder(k)) next.push(k);
+      });
+      level = next;
+    }
+    return roots;
+  }
+
+  /** Content tree only (no announcements/columns/staff), for the search index crawl. Default concurrency 2.
+   *  Rejects when the top level can't be loaded (e.g. no Ultra session behind the relay). */
+  async function ultraTree(cid, opts = {}) {
+    const top = (await ultraPaged(`${BB}/v1/courses/${encodeURIComponent(cid)}/contents?limit=200`, 5)).filter(visible);
+    return walkTree(cid, top, opts.concurrency || 2);
+  }
+
   function ultraCourse(cid, onProgress) {
     const progress = (r) => { if (onProgress) { try { onProgress(r); } catch (e) { log('onProgress error', e); } } };
     if (courseCache.has(cid)) {
@@ -729,20 +754,10 @@
       courseData.set(cid, result);
       progress(result);
 
-      // Breadth-first walk: one TP.util.pool per level keeps total concurrency at 6.
-      let level = result.roots.filter(isFolder);
-      for (let depth = 1; level.length && depth <= 6; depth++) {
-        const next = [];
-        await pool(level, 6, async (node) => {
-          try {
-            node.kids = (await ultraPaged(`${base}/contents/${encodeURIComponent(node.id)}/children?limit=200`, 5)).filter(visible);
-          } catch (_) { node.kids = []; }
-          for (const k of node.kids) if (isFolder(k)) next.push(k);
-        });
-        level = next;
-      }
+      await walkTree(cid, result.roots, 6);
       result.partial = false;
       progress(result);
+      emit('course', { cid, result });
       return result;
     })();
     courseCache.set(cid, p);
@@ -862,7 +877,7 @@
     init, peek, load, refresh, lastUpdated, status: getStatus, on, off,
     courses, course, feed, kindOf, deadlines, announcements, schedule, link, quickLinks,
     markRead, markFeedSeen, setFavorite, setPinned, toggleDone, addCustomDeadline, removeCustomDeadline, addRecent, ics,
-    ultraCourse, ultraDownload, ultraOpen, ultraAnnouncement, resolveCourseId, ultraItemUrl: itemLink,
+    ultraCourse, ultraTree, ultraDownload, ultraOpen, ultraAnnouncement, resolveCourseId, ultraItemUrl: itemLink,
     // exposed for unit tests only
     _test: { hash, normTitle, parseCalendarName, mapCalendarItem, icsFold, icsText, icsStamp, deadlineKey, trimForStorage,
       _reset() { mem = {}; courseCache.clear(); courseData.clear(); }, _put(k, v) { mem[k] = { v, t: Date.now() }; } },

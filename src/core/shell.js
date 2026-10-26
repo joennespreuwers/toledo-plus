@@ -20,6 +20,9 @@
   const CSS_FILES = ['ui.css', 'src/views/overview.css', 'src/views/deadlines.css', 'src/views/planning.css',
     'src/views/announcements.css', 'src/views/courses.css', 'src/views/course.css', 'src/views/settings.css'];
 
+  const IS_MAC = (() => { try { return /Mac|iPhone|iPad|iPod/.test(navigator.userAgentData?.platform || navigator.platform || ''); } catch (_) { return false; } })();
+  const MOD = IS_MAC ? '⌘' : 'Ctrl ';
+
   const views = {};
   let origin = 'portal';
   let host = null, shadow = null, app = null;
@@ -227,19 +230,20 @@
     const keepRoot = current?.root || null;
     const collapsed = !!TP.state?.get?.()?.ui?.sidebarCollapsed;
     app.classList.toggle('sb-collapsed', collapsed);
+    app.classList.toggle('sb-rail', isRail());
     app.innerHTML = `
 <a class="tp-skip" href="#tp-main" data-shell="skip">${esc(t('shell.skip'))}</a>
 <div class="tp-scrim" data-shell="scrim" hidden></div>
-<nav class="tp-sidebar tp-glass" aria-label="${esc(t('nav.label'))}">
+<nav class="tp-sidebar tp-glass" id="tp-sidebar" aria-label="${esc(t('nav.label'))}">
   <div class="tp-sb-brand">
-    <a class="tp-brand" href="${esc(href('overview'))}" data-route="overview"><span class="tp-mark" aria-hidden="true">T+</span><span>Toledo+</span></a>
+    <a class="tp-brand" href="${esc(href('overview'))}" data-route="overview" title="Toledo+"><span class="tp-mark" aria-hidden="true">T+</span><span class="tp-brand-name">Toledo+</span></a>
   </div>
   <div class="tp-sb-scroll" data-shell-region="sb-main"></div>
   <div class="tp-sb-foot" data-shell-region="sb-foot"></div>
 </nav>
 <div class="tp-body">
   <header class="tp-toolbar tp-glass">
-    <button type="button" class="tp-tb-btn tp-sb-toggle" data-shell="sidebar" aria-label="${esc(t('shell.toggleSidebar'))}" title="${esc(t('shell.toggleSidebar'))} (⌘\\)">${icon('sidebar', { size: 20 })}</button>
+    <button type="button" class="tp-tb-btn tp-sb-toggle" data-shell="sidebar" aria-controls="tp-sidebar" aria-expanded="${!isRail()}" aria-label="${esc(t('shell.toggleSidebar'))}" title="${esc(t('shell.toggleSidebar'))} (${MOD}\\)">${icon('sidebar', { size: 20 })}</button>
     <div class="tp-tb-title" aria-hidden="true"></div>
     <div class="tp-tb-spacer"></div>
     <div class="tp-search" role="search">
@@ -247,8 +251,8 @@
         ${icon('search', { size: 15, strokeWidth: 2.2 })}
         <span class="tp-sr">${esc(t('shell.searchLabel'))}</span>
         <input type="search" data-shell="search" autocomplete="off" spellcheck="false" enterkeyhint="search" value="${esc(searchQ)}">
-        <kbd class="tp-kbd" aria-hidden="true">⌘K</kbd>
       </label>
+      <button type="button" class="tp-kbd" data-shell="palette" aria-haspopup="dialog" aria-label="${esc(t('palette.open'))} (${MOD}K)" title="${esc(t('palette.open'))} (${MOD}K)"><kbd>${MOD}K</kbd></button>
       <button type="button" class="tp-search-clear" data-shell="search-clear" aria-label="${esc(t('shell.searchClear'))}" hidden>${icon('xmark', { size: 13, strokeWidth: 2.4 })}</button>
     </div>
     <button type="button" class="tp-tb-btn tp-search-open" data-shell="search-open" aria-label="${esc(t('shell.searchOpen'))}">${icon('search', { size: 20 })}</button>
@@ -327,7 +331,16 @@
       const label = route === 'deadlines' ? t('shell.open', { n: counts[route] }) : t('shell.unread', { n: counts[route] });
       trail = `<span class="tp-sb-count"><span aria-hidden="true">${esc(counts[route] > 99 ? '99+' : counts[route])}</span><span class="tp-sr">${esc(label)}</span></span>`;
     }
-    return `<li><a class="tp-sb-item${active ? ' active' : ''}" href="${esc(href(route))}" data-route="${route}"${active ? ' aria-current="page"' : ''}>${icon(route, { size: 20 })}<span class="tp-sb-label">${esc(t('nav.' + route))}</span>${trail}</a></li>`;
+    const tip = isRail() ? ` title="${esc(t('nav.' + route))}"` : '';
+    return `<li><a class="tp-sb-item${active ? ' active' : ''}" href="${esc(href(route))}" data-route="${route}"${active ? ' aria-current="page"' : ''}${tip}>${icon(route, { size: 20 })}<span class="tp-sb-label">${esc(t('nav.' + route))}</span>${trail}</a></li>`;
+  }
+
+  // Rail: pinned courses as coloured circles with two initials ("Montage Technieken 1" → "MT").
+  function initials(c) {
+    const w = String(c.name || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').split(/[\s\-_/]+/).filter((x) => /^[a-z]/i.test(x));
+    const txt = (w.length > 1 ? w[0][0] + w[1][0] : (w[0] || c.name || '?').slice(0, 2)).toUpperCase();
+    const fg = safe(() => (TP.util.contrast('#FFFFFF', c.color) >= 4.5 ? '#FFFFFF' : '#000000'), '#FFFFFF');
+    return `<span class="tp-sb-initials" aria-hidden="true" style="--c:${esc(TP.util.safeColor ? TP.util.safeColor(c.color) : c.color)};--fg:${fg}">${esc(txt)}</span>`;
   }
 
   function renderNav() {
@@ -338,7 +351,7 @@
     if (main) {
       main.innerHTML = `<ul class="tp-sb-list">${NAV.map((r) => navItem(r, counts)).join('')}</ul>
 ${pinned.length ? `<h2 class="tp-sb-heading" id="tp-sb-pinned">${esc(t('nav.pinned'))}</h2>
-<ul class="tp-sb-list" aria-labelledby="tp-sb-pinned">${pinned.map((c) => `<li><a class="tp-sb-item tp-sb-course" href="${esc(href('course', { luId: c.luId }))}" title="${esc(c.name)}">${TP.ui.dot(c.color)}<span class="tp-sb-label">${esc(c.name)}</span>${c.unread ? `<span class="tp-sb-count"><span aria-hidden="true">${esc(c.unread)}</span><span class="tp-sr">${esc(t('shell.unread', { n: c.unread }))}</span></span>` : ''}</a></li>`).join('')}</ul>` : ''}`;
+<ul class="tp-sb-list" aria-labelledby="tp-sb-pinned">${pinned.map((c) => `<li><a class="tp-sb-item tp-sb-course" href="${esc(href('course', { luId: c.luId }))}" title="${esc(c.name)}">${TP.ui.dot(c.color)}${initials(c)}<span class="tp-sb-label">${esc(c.name)}</span>${c.unread ? `<span class="tp-sb-count"><span aria-hidden="true">${esc(c.unread)}</span><span class="tp-sr">${esc(t('shell.unread', { n: c.unread }))}</span></span>` : ''}</a></li>`).join('')}</ul>` : ''}`;
     }
     const foot = app.querySelector('[data-shell-region="sb-foot"]');
     if (foot) foot.innerHTML = `<ul class="tp-sb-list">${navItem('settings', counts)}</ul>`;
@@ -355,7 +368,10 @@ ${pinned.length ? `<h2 class="tp-sb-heading" id="tp-sb-pinned">${esc(t('nav.pinn
     }
     const sheet = app.querySelector('[data-shell-region="sheet"]');
     if (sheet) {
-      sheet.innerHTML = TP.ui.group(['announcements', 'settings'].map((r) => TP.ui.row({
+      sheet.innerHTML = TP.ui.group(TP.ui.row({
+        action: 'palette', attrs: { 'data-shell': 'palette', 'aria-haspopup': 'dialog' },
+        leading: `<span class="tp-tile">${icon('search', { size: 17 })}</span>`, title: esc(t('palette.open')),
+      })) + TP.ui.group(['announcements', 'settings'].map((r) => TP.ui.row({
         href: href(r), attrs: { 'data-route': r, 'aria-current': activeNav() === r ? 'page' : null },
         leading: `<span class="tp-tile">${icon(r, { size: 17 })}</span>`, title: esc(t('nav.' + r)),
         trailing: r === 'announcements' && counts.announcements ? `<span class="tp-sb-count">${esc(counts.announcements)}</span>` : '', chevron: true,
@@ -419,13 +435,32 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
   }
   function closeSheet() { const d = $('.tp-sheet'); if (d?.open) { d.close(); return true; } return false; }
 
-  const wide = () => window.matchMedia('(min-width: 900px)').matches;
+  // Sidebar modes (≥700px): expanded (240px) or an icon-only rail (~64px).
+  //  ≥900px: the student's choice (state.ui.sidebarCollapsed), toggled with ⌘\ or the toolbar button.
+  //  700–899px: the rail by default; toggling expands the full sidebar as an overlay (scrim, Esc closes).
+  //  <700px: tab bar (sidebar hidden by CSS).
+  const mqWide = window.matchMedia('(min-width: 900px)');
+  const wide = () => mqWide.matches;
+  function isRail() {
+    if (!app) return false;
+    return wide() ? app.classList.contains('sb-collapsed') : !app.classList.contains('sb-open');
+  }
+  function syncSidebar() {
+    if (!app) return;
+    const rail = isRail();
+    const changed = app.classList.contains('sb-rail') !== rail;
+    app.classList.toggle('sb-rail', rail);
+    $('.tp-sb-toggle')?.setAttribute('aria-expanded', String(!rail));
+    if (changed) renderNav();
+  }
   function toggleSidebar() {
     if (!app) return;
     if (wide()) {
       const c = !app.classList.contains('sb-collapsed');
       app.classList.toggle('sb-collapsed', c);
       safe(() => TP.state?.set?.({ ui: { sidebarCollapsed: c } }));
+      syncSidebar();
+      announce(t(c ? 'shell.sidebarRail' : 'shell.sidebarExpanded'));
     } else {
       setOverlay(!app.classList.contains('sb-open'));
     }
@@ -434,8 +469,10 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     app.classList.toggle('sb-open', open);
     const scrim = $('.tp-scrim');
     if (scrim) scrim.hidden = !open;
+    syncSidebar();
     if (open) $('.tp-sidebar .tp-sb-item')?.focus();
   }
+  safe(() => mqWide.addEventListener('change', () => { if (app?.classList.contains('sb-open')) setOverlay(false); else syncSidebar(); }));
 
   // ---------------- toast + live region ----------------
   let toastTimer = null;
@@ -794,6 +831,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
         case 'scrim': setOverlay(false); return;
         case 'sidebar': toggleSidebar(); return;
         case 'search-open': focusSearch(); return;
+        case 'palette': closeSheet(); openPalette(el); return;
         case 'search-clear': setSearch('', true); $('[data-shell="search"]')?.focus(); return;
         case 'refresh': doRefresh(); return;
         case 'menu': { const m = $('.tp-menu'); if (m?.hidden) openMenu(ev.detail === 0); else closeMenu(false); return; }
@@ -859,6 +897,12 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     }
   }
 
+  // ⌘K palette (src/core/palette.js); falls back to the in-view search field.
+  function openPalette(opener) {
+    if (TP.palette?.open) { closeMenu(false); TP.palette.open({ opener: opener || shadow?.activeElement || null }); }
+    else focusSearch();
+  }
+
   function isEditable(el) {
     if (!el) return false;
     const tag = el.tagName;
@@ -870,9 +914,10 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     if (mode !== 'shell' || !app) return;
     const target = ev.composedPath?.()[0] || ev.target;
     const mod = ev.metaKey || ev.ctrlKey;
-    if (mod && !ev.altKey && (ev.key === 'k' || ev.key === 'K')) { ev.preventDefault(); ev.stopPropagation(); focusSearch(); return; }
+    if (mod && !ev.altKey && (ev.key === 'k' || ev.key === 'K')) { ev.preventDefault(); ev.stopPropagation(); openPalette(); return; }
+    if (safe(() => TP.palette?.isOpen?.(), false)) return; // the palette handles its own keys
     if (mod && ev.key === '\\') { ev.preventDefault(); toggleSidebar(); return; }
-    if (ev.key === '/' && !mod && !ev.altKey && !isEditable(target)) { ev.preventDefault(); focusSearch(); return; }
+    if (ev.key === '/' && !mod && !ev.altKey && !isEditable(target)) { ev.preventDefault(); openPalette(); return; }
     if (ev.key === 'Escape') {
       if (closeMenu(true)) { ev.preventDefault(); return; }
       if (app.classList.contains('sb-open')) { ev.preventDefault(); setOverlay(false); $('.tp-sb-toggle')?.focus(); }
@@ -941,7 +986,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     }));
     safe(() => TP.state?.subscribe?.((st, keys = []) => {
       // These keys are written during renders/interaction inside a view; reacting to them would loop or reset UI.
-      if (mode === 'shell' && keys.some((k) => !['ui', 'cache', 'visits', 'openFolders', 'recent'].includes(k))) rerender();
+      if (mode === 'shell' && keys.some((k) => !['ui', 'cache', 'visits', 'openFolders', 'recent', 'focus'].includes(k))) rerender();
     }));
     safe(() => TP.data?.on?.('change', () => { if (mode === 'shell') rerender(); }));
     let lastErrToast = 0;
@@ -974,6 +1019,9 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     start, preflight,
     get route() { return current ? { route: current.route, params: current.params } : null; },
     get origin() { return origin; },
+    get app() { return mode === 'shell' ? app : null; },
+    get mod() { return MOD; },
+    isRail: () => isRail(),
     _views: views,
   };
 })();
