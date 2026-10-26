@@ -1,12 +1,15 @@
-/* Toledo+ — TP.settings (chrome.storage.sync 'settings') and TP.state (chrome.storage.local 'state').
+/* Toledo+ — TP.settings (chrome.storage.sync 'settings' + 'custom') and TP.state (chrome.storage.local 'state').
    Settings deep-merge over DEFAULTS; writes are applied in memory + notified immediately,
-   then persisted (debounced, to stay under storage.sync write quotas). */
+   then persisted (debounced, to stay under storage.sync write quotas). Custom deadlines live in
+   settings.custom in memory but are stored under their own sync key 'custom', so they never push
+   the 'settings' item over the 8 KB per-item quota. Each item falls back to storage.local
+   ('settingsLocal' / 'customLocal') when storage.sync refuses it. */
 (() => {
   'use strict';
   const TP = (globalThis.TP ||= {});
 
   const DEFAULTS = {
-    v: 1,
+    v: 2,
     language: 'system',
     appearance: 'system',
     accent: 'blue',
@@ -21,7 +24,9 @@
     sync: { markReadInToledo: true, favoritesToToledo: true },
     custom: [],
   };
-  const COURSE_DEFAULTS = { nickname: '', color: null, hidden: false, pinned: false };
+  // pinned: null = no explicit choice (a Toledo favourite then counts as pinned while
+// sync.favoritesToToledo is on); true/false = the student's own choice.
+  const COURSE_DEFAULTS = { nickname: '', color: null, hidden: false, pinned: null };
   const STATE_DEFAULTS = { visits: {}, feedSeenAt: 0, done: {}, recent: [], cache: {} };
 
   const isObj = (x) => x !== null && typeof x === 'object' && !Array.isArray(x);
@@ -74,6 +79,7 @@
   // merges them back) and course entries left empty, so many courses still fit. If it still fails,
   // persist() falls back to storage.local.
   function compact(s) {
+    if (s) delete s.custom; // stored under its own key
     const items = s && s.courses && s.courses.items;
     if (isObj(items)) {
       for (const [lu, it] of Object.entries(items)) {
@@ -99,8 +105,18 @@
   }
 
   // Throttled persist (leading edge, then at most once per second) to respect storage.sync
-  // write quotas while keeping the first write immediate. Falls back to storage.local when sync fails.
+  // write quotas while keeping the first write immediate. Each item falls back to storage.local
+  // when sync refuses it (quota); only items that changed since the last write are written.
   let pending = null, timer = null, lastWriteAt = 0;
+  let lastCustom = '[]';
+  async function writeItem(syncKey, localKey, data, savedAt) {
+    try {
+      await sset('sync', { [syncKey]: data, [syncKey + 'SavedAt']: savedAt });
+    } catch (e) {
+      console.warn(`[Toledo+] storage.sync failed for '${syncKey}', using local:`, e.message);
+      try { await sset('local', { [localKey]: data, [syncKey + 'SavedAt']: savedAt }); } catch (_) { /* nothing else to try */ }
+    }
+  }
   function persist() {
     if (!pending) {
       let resolve;
@@ -112,39 +128,74 @@
       timer = null;
       lastWriteAt = Date.now();
       const p = pending; pending = null;
+      const custom = clone(settings.custom || []);
       const data = compact(clone(settings));
       const savedAt = Date.now();
-      lastWritten = JSON.stringify(data);
-      try {
-        await sset('sync', { settings: data, settingsSavedAt: savedAt });
-      } catch (e) {
-        console.warn('[Toledo+] storage.sync failed, using local:', e.message);
-        try { await sset('local', { settingsLocal: data, settingsSavedAt: savedAt }); } catch (_) { /* nothing else to try */ }
-      }
+      const json = JSON.stringify(data), cjson = JSON.stringify(custom);
+      const writes = [];
+      if (json !== lastWritten) { lastWritten = json; writes.push(writeItem('settings', 'settingsLocal', data, savedAt)); }
+      if (cjson !== lastCustom) { lastCustom = cjson; writes.push(writeItem('custom', 'customLocal', custom, savedAt)); }
+      await Promise.all(writes);
       p.resolve();
     }, wait);
     return pending.promise;
   }
 
+  // Newest of the sync item and its local fallback.
+  function pick(syn, loc, syncKey, localKey) {
+    const at = (o) => o[syncKey + 'SavedAt'] || 0;
+    if (loc[localKey] !== undefined && (syn[syncKey] === undefined || at(loc) > at(syn))) return loc[localKey];
+    return syn[syncKey];
+  }
+
+  // A change from another tab/browser: storage.sync 'settings'/'custom' or their local fallbacks.
+  function settingsChangedElsewhere(changes, name) {
+    const sk = name === 'sync' ? 'settings' : 'settingsLocal';
+    const ck = name === 'sync' ? 'custom' : 'customLocal';
+    const sv = changes[sk] && changes[sk].newValue;
+    const cv = changes[ck] && changes[ck].newValue;
+    let next = null;
+    if (isObj(sv) && JSON.stringify(sv) !== lastWritten) {
+      lastWritten = JSON.stringify(sv);
+      next = merge(clone(DEFAULTS), sv);
+      next.custom = clone(settings.custom);
+    }
+    if (Array.isArray(cv) && JSON.stringify(cv) !== lastCustom) {
+      lastCustom = JSON.stringify(cv);
+      next = next || clone(settings);
+      next.custom = clone(cv);
+    }
+    if (!next) return;
+    const before = settings;
+    next = normalize(next);
+    const keys = Object.keys(next).filter((k) => JSON.stringify(next[k]) !== JSON.stringify(before[k]));
+    if (keys.length) apply(next, keys);
+  }
+
   async function load() {
     if (!hasChrome()) return settings;
-    const [syn, loc] = await Promise.all([sget('sync', ['settings', 'settingsSavedAt']), sget('local', ['settingsLocal', 'settingsSavedAt'])]);
-    let stored = syn.settings;
-    if (loc.settingsLocal && (!stored || (loc.settingsSavedAt || 0) > (syn.settingsSavedAt || 0))) stored = loc.settingsLocal;
-    settings = freeze(normalize(merge(clone(DEFAULTS), isObj(stored) ? stored : {})));
+    const [syn, loc] = await Promise.all([
+      sget('sync', ['settings', 'settingsSavedAt', 'custom', 'customSavedAt']),
+      sget('local', ['settingsLocal', 'settingsSavedAt', 'customLocal', 'customSavedAt']),
+    ]);
+    const stored = pick(syn, loc, 'settings', 'settingsLocal');
+    const storedCustom = pick(syn, loc, 'custom', 'customLocal');
+    const next = merge(clone(DEFAULTS), isObj(stored) ? stored : {});
+    let migrate = false;
+    if (Array.isArray(storedCustom)) next.custom = clone(storedCustom);
+    else if (isObj(stored) && Array.isArray(stored.custom) && stored.custom.length) migrate = true; // v1: inside 'settings'
+    if (isObj(stored) && (stored.v || 1) < DEFAULTS.v) migrate = true;
+    next.v = DEFAULTS.v;
+    settings = freeze(normalize(next));
+    lastWritten = isObj(stored) && !migrate ? JSON.stringify(stored) : '';
+    lastCustom = Array.isArray(storedCustom) ? JSON.stringify(storedCustom) : (migrate ? '' : '[]');
     try {
       chrome.storage.onChanged.addListener((changes, name) => {
-        if (name === 'sync' && changes.settings?.newValue) {
-          const nv = changes.settings.newValue;
-          if (JSON.stringify(nv) === lastWritten) return; // our own write echoing back
-          const before = settings;
-          const next = normalize(merge(clone(DEFAULTS), nv));
-          const keys = Object.keys(next).filter((k) => JSON.stringify(next[k]) !== JSON.stringify(before[k]));
-          if (keys.length) apply(next, keys);
-        }
+        if (name === 'sync' || name === 'local') settingsChangedElsewhere(changes, name);
         if (name === 'local' && changes.state?.newValue) stateChangedElsewhere(changes.state.newValue);
       });
     } catch (_) { /* not in an extension context */ }
+    if (migrate) persist().catch(() => {}); // move v1 custom deadlines to their own key, drop them from 'settings'
     await loadState();
     return settings;
   }
