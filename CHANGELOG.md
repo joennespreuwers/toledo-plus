@@ -6,6 +6,9 @@ Het formaat volgt [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) en he
 
 ## [Unreleased]
 
+### Added
+- `npm run dev`: opens Chrome with the extension and reloads it on every save (web-ext, dev only; persistent profile in `.dev-profile/`).
+
 ## [1.5.0] - 2026-10-26
 
 ### Added

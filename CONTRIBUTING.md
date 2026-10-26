@@ -27,7 +27,7 @@ npm run pack                        # dist/toledo-plus-<version>.zip
 ```
 
 Load the folder itself via `chrome://extensions` → Developer mode → *Load unpacked* to try it on the real Toledo.
-After editing, press ↻ on the extension card and reload the Toledo tab.
+After editing, press ↻ on the extension card and reload the Toledo tab — or run `npm run dev` to get a Chrome that reloads the extension on every save.
 
 Read first: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (contract: modules, data API, view API) and [`docs/DESIGN.md`](docs/DESIGN.md) (design system, accessibility).
 
