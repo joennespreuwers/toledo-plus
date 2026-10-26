@@ -10,16 +10,28 @@ Het formaat volgt [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) en he
 - **"Zet in zijbalk"**: choose which courses appear in the sidebar's "Vakken" group (and the icon rail) — from the course page header ("Zet in zijbalk" / "Uit zijbalk"), the small toggle on each course card, or the "In zijbalk" switch in Vakken › Bewerk. Purely local, nothing changes in Toledo. ⌘K still searches every course.
 - **Mail button** back in the toolbar: envelope with a small grey unread count, opens Outlook web in a new tab. On phones it sits in the "Meer" sheet; the account menu keeps it too.
 - **Greeting with your first name** ("Goedenavond, Alex"), read from Ultra (`users/me`) and kept only in local storage — never synced, never sent anywhere. Without a name the plain greeting stays.
+- **Motion system** (`TP.motion`, native Web Animations + CSS, no library): views slide/fade in the direction you navigate (deeper from the right, back from the left, sidebar jumps fade), lists glide when you filter, search or reorder (FLIP — also across re-renders), new rows fade up, removed rows fade out while the rest closes the gap, first paint has a short staggered fade-up. Sheets, ⌘K, the detail sheet, menus and agenda popovers animate **in and out**; toasts slide in and stack; banners grow in; the segmented controls have a sliding pill, switches a spring thumb, the phone tab bar a sliding selection; buttons give a subtle press. Everything ≤ 350 ms, interruptible, never blocks input; **reduced motion** = short fades only.
+- Agenda works like Google Calendar (Apple look): Dag / Week (optional Mon–Fri) / Maand / Lijst, "Vandaag", ‹ ›, go to date; the view you pick is remembered on this device.
+- Week and day grid: 24 hours scrolling inside the calendar (08:00–19:00 visible, opens just before your first lesson), current-time line, deadlines as chips plus a marker at their time, overlapping lessons side by side.
+- Month view with "+n meer", shaded weekends and optional week numbers; list view with day chips; mini month and filters in a side column on wide screens.
+- Filters: lessons / exams / deadlines and per course (with colour dots).
+- Lesson details: room, address and map link, teachers, group, "Open vak", "Zet in agenda" (.ics for one lesson); deadlines open the deadline sheet.
+- Keyboard shortcuts in the Agenda (t, d, w, m, a/l, j/k, n/p, ←/→, g, ?; arrow keys between events). Swipe left/right in the phone day view. Periods slide in the direction you move.
 
 ### Changed
 - The sidebar "Vakken" group lists only the courses you added and is hidden when there are none (settings v4: existing installs start with an empty group).
 - **Layout on wide screens**: one centred content column (max 1240 px: main + side column) right of the sidebar instead of a strip next to an empty area; list views (Deadlines, Mededelingen, KU Loket, Instellingen) use a centred 760 px column. The toolbar's controls line up with the content edge at every width.
 - Spacing pass along the design scale: welcome card padding and button spacing, side column width (280–340 px), day headers aligned with section titles, settings section gap.
+- **Feels faster**: the course page shows its name, code and semester right away from cache (Ultra), "loading" is announced to screen readers (`aria-busy`), resting on a course link resolves the course so a click goes straight to the Ultra outline (no journey redirect), and going back restores where you had scrolled.
+- Content-tree folders open with a fade instead of a height animation (smooth on slow laptops); small disclosures (Nieuw groups, documents, announcements, "Ouder dan een week") animate their height.
+- KU Loket signed out: the timetable switches to your iCal feed on its own, keeps room, address and teachers for weeks seen earlier in KU Loket, and says so in one quiet line. The iCal link is re-read from KU Loket every 7 days.
 
 ### Fixed
 - The sidebar (and icon rail / tab bar) could scroll horizontally; long course names now ellipsize and badges no longer push the width.
 - Dutch greetings are spelled "Goedemorgen / Goedemiddag / Goedenavond" (was "Goeie…").
 - Segmented controls (e.g. Mededelingen filter) no longer overflow at 320 px.
+- The "sign in to KU Loket" state no longer sticks after you sign in again; "Nothing planned" only shows after the timetable actually loaded.
+- Dialogs and menus no longer just vanish: they close with a short fade while focus returns immediately.
 
 ## [1.4.0] - 2026-10-26
 

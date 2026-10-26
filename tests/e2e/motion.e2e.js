@@ -102,6 +102,9 @@ describe('motion on (desktop)', () => {
     await settle(page);
     const x1 = await pos();
     assert.ok(x1 > x0 + 10, `pill moved right: ${x0} → ${x1}`);
+    await page.locator('#tplus-root .cs-bar .tp-seg:nth-child(1)').click(); // back to "current" for the next tests
+    await settle(page);
+    assert.ok(Math.abs((await pos()) - x0) <= 1, 'and back');
   });
 
   it('filtering keeps every row reachable and leaves no ghosts behind', async () => {

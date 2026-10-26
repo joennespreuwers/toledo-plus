@@ -400,10 +400,14 @@
   /** ::details-content + interpolate-size (Chrome 131+) animate <details> in CSS; older browsers get this
       WAAPI fallback on open (the shell calls it from a 'toggle' listener). */
   const cssDetails = (() => { try { return !!(globalThis.CSS && CSS.supports('selector(::details-content)') && CSS.supports('interpolate-size', 'allow-keywords')); } catch (_) { return false; } })();
+  // Large disclosures (the course content tree: .cv-folder / [data-motion-fade]) never animate their height (a layout
+  // per frame for the whole column); their content fades and rises 4px instead — opacity/transform only.
   function detailsToggled(d) {
-    if (cssDetails || !d || !d.open || off()) return;
+    if (!d || !d.open || off()) return;
     const body = [...d.children].find((c) => c.tagName !== 'SUMMARY');
-    if (body) expand(body);
+    if (!body) return;
+    if (d.matches('.cv-folder, [data-motion-fade]')) { enter(body, { from: 'up', duration: DUR[2] }); return; }
+    if (!cssDetails) expand(body);
   }
 
   TP.motion = {

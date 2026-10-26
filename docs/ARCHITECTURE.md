@@ -52,6 +52,7 @@ src/core/util.js         core   – TP.util, TP.fmt
 src/core/i18n.js         core   – TP.i18n, TP.t
 src/core/settings.js     core   – TP.settings, TP.state
 src/core/ui.js           core   – TP.ui component helpers (HTML strings)
+src/core/motion.js       core   – TP.motion: motion system (WAAPI + CSS; tokens mirror ui.css) — see addendum v1.5 › Motion
 src/core/shell.js        core   – TP.shell: mount, layout (sidebar/rail), router, search, theme, deep bar, live region
 src/core/palette.js      core   – TP.palette: the ⌘K command palette (dialog inside the shell's shadow root)
 src/core/net.js          data   – TP.net (same-origin fetch or relay)
@@ -71,7 +72,7 @@ src/boot.js              core   – starts everything on both origins
 tests/**, package.json, .github/**, README*, CONTRIBUTING.md, AGENTS.md, scripts/**   tests+repo
 legacy/                  read-only reference of the v0.2 prototype (has working tree-walk, sanitize, download code)
 ```
-Content-script load order (both origins): `src/core/util.js, src/core/i18n.js, src/i18n/*.js, src/core/settings.js, src/core/net.js, src/core/data.js, src/core/index.js, src/core/ui.js, src/core/shell.js, src/core/palette.js, src/views/*.js, src/boot.js` (guarded by `tests/unit/manifest.test.js`).
+Content-script load order (both origins): `src/core/util.js, src/core/i18n.js, src/i18n/*.js, src/core/settings.js, src/core/net.js, src/core/data.js, src/core/index.js, src/core/ui.js, src/core/motion.js, src/core/shell.js, src/core/palette.js, src/views/*.js, src/boot.js` (guarded by `tests/unit/manifest.test.js`).
 Each file is an IIFE that attaches to `globalThis.TP` (`const TP = (globalThis.TP ||= {});`). No ES modules, no imports, no network except Toledo/Ultra.
 CSS loaded into the shadow root by the shell, in this order: `ui.css`, then every `src/views/*.css` (list is `TP.shell.CSS` in shell.js; all must exist even if empty; all are web_accessible_resources).
 
@@ -330,6 +331,8 @@ TP.shell.register('overview', {
   render(ctx) { … },                      // may be async; must be idempotent (called again on data/settings change)
   onSearch(ctx, q) { … },                 // optional; q lowercase trimmed; default behaviour: hide [data-q] not matching and empty sections,
                                           // then show TP.ui.noResults(q) once; custom handlers render TP.ui.noResults(q) in their own single slot
+  onKey(ctx, ev) { … },                   // optional (v1.5): view shortcuts — the shell forwards window keydowns that are not typing, have no
+                                          // ⌘/Ctrl/Alt, weren't handled (defaultPrevented) and with no detail sheet open (agenda: t/d/w/m/a/j/k/g/?…)
   destroy(ctx) { … }                      // optional
 });
 ctx = { root: HTMLElement (view container in shadow root), params, route, origin:'portal'|'ultra', setActions([{id,label,icon,onClick}]), setTitle(text), setSubtitle(html) }
@@ -355,7 +358,7 @@ WCAG 2.2 AA; keyboard reachable; works at 390px and 1440px; light + dark; NL/EN/
 - **`TP.feedback`** (`src/core/feedback.js`, after `palette.js`): `open({ page, opener })` — accessible sheet; works with telemetry off.
 - **Relay:** `https://api.toledoplus.be` is allowed for exactly `POST /v1/ping`, `POST /v1/forget`, `POST /v1/feedback`, `GET /v1/latest`, without query/hash and with `credentials: 'omit'`.
 - **Server:** `worker/` (Cloudflare Worker + D1); see `worker/README.md`.
-- Load order (both origins): util, i18n, i18n/{core, overview, deadlines, announcements, courses, course, settings, agenda, kuloket, palette, feedback}, core/{settings, net, data, kuloket, telemetry, index, ui, shell, palette, feedback}, views/{overview, deadlines, announcements, courses, course, settings, agenda, kuloket}, boot.
+- Load order (both origins): util, i18n, i18n/{core, overview, deadlines, announcements, courses, course, settings, agenda, kuloket, palette, feedback}, core/{settings, net, data, kuloket, telemetry, index, ui, motion (v1.5), shell, palette, feedback}, views/{overview, deadlines, announcements, courses, course, settings, agenda, kuloket}, boot.
 
 ## Addendum v1.5 (unreleased) — layout, sidebar subset, name, mail
 
@@ -365,3 +368,65 @@ WCAG 2.2 AA; keyboard reachable; works at 390px and 1440px; light + dark; NL/EN/
 - **Mail:** toolbar `a.tp-mail` (envelope, 36px, title/aria-label "Mail, n ongelezen mails (nieuw tabblad)", grey count badge) → `https://outlook.office.com/mail/` in a new tab. Hidden < 700px, where the More sheet has a Mail row; the account menu keeps its item. The avatar's unread dot only shows < 700px.
 - **Content width:** `.tp-main` is one centred column in the area right of the sidebar: `--content-max` = `--content-wide` (1240px; main + side column `clamp(280px, 30%, 340px)`) or `--content-narrow` (760px + margins) when the view root contains `.tp-narrow` (shell sets `.tp-app[data-width="narrow"|"wide"]` after each render). Narrow views: deadlines, announcements, KU Loket, settings. The toolbar's trailing controls end at the content's right edge at every width.
 - **No horizontal scroll in the navigation:** `.tp-sb-scroll` has `overflow-x: hidden`, lists are `minmax(0,1fr)` grids, labels ellipsize, counts/badges are `flex: none`; tab bar uses `minmax(0,1fr)` columns. Guarded by `tests/e2e/layout.e2e.js` (long fixture names, 320–2560, rail and expanded).
+
+### Agenda (v1.5, Agent F)
+- Per-device preferences in **state** `ui.agenda = { mode:'day'|'week'|'month'|'list', workweek, weekNums, show:{lesson, exam, deadline}, hidden:[courseKey] }`
+  (`chrome.storage.local`, not synced).
+- `TP.kuloket.peekRange({from, to})` → lessons + exams in a range from cache (sync); `TP.kuloket.status().lessons.needsLogin` = KU Loket
+  session gone (the iCal feed is used automatically when a link is known). Storage key `kuloket:icsUrlT` = when the iCal link was last read
+  from KU Loket (re-read every 7 days).
+- `TP.agenda = { layout, rangeFor, stepAnchor, scrollHour, icsFor, courseKey, isoWeekNo, MODES, VISIBLE_HOURS }` — pure helpers exported for unit tests.
+- View hook `onKey(ctx, ev)` (see the view contract above) carries the agenda's keyboard shortcuts.
+
+### Motion — `TP.motion` (`src/core/motion.js`, loaded right after `ui.js`)
+Native Web Animations + CSS only (decision and sources: DESIGN.md › Motion). Tokens: `TP.motion.DUR = {1:120, 2:200, 3:280, 4:350}` ms and
+`TP.motion.EASE = {standard, out, in, spring, smooth}` mirror `--dur-1…4` / `--ease*` in `ui.css` (guarded by `tests/unit/motion.test.js`).
+```
+TP.motion.disabled                     // get/set; default follows <html data-tp-motion="off"> (the e2e harness sets it) → everything instant
+TP.motion.reduced()                    // prefers-reduced-motion → helpers keep only opacity, ≤ 120 ms, no stagger/FLIP moves/VT
+TP.motion.sync(themeRoot)              // sets data-motion="on|off" (CSS turns its own transitions off with it); the shell does this
+TP.motion.animate(el, keyframes, {duration, delay, easing, fill, pseudoElement, keep}) → Animation|null   // the base; cancels el's running one
+TP.motion.enter(el, {from:'up'|'down'|'left'|'right'|'scale'|'none', duration, delay}) → Animation|null
+TP.motion.leave(el, {to, duration, onDone}) → Promise<finished>   // onDone (e.g. el.hidden = true) at the end; motion off → synchronously;
+                                                                  // enter(el)/cancel(el) before the end aborts it (onDone not called)
+TP.motion.leaving(el) → bool ; TP.motion.cancel(el) ; TP.motion.fade(el) ; TP.motion.highlight(el)   // tint pulse
+TP.motion.transition(root, update, {direction:'forward'|'back'|'none', viewTransition}) → Promise
+     // update() runs first (sync), then root slides 8 px / fades in. viewTransition:true → element-scoped VT where supported
+     // (bounded boxes only: it snapshots the scope and blocks clicks inside it while running)
+TP.motion.stagger(elements, {step=20, max=8}) → Animation[]        // first paint only; rows in the viewport
+TP.motion.flip(container, mutate, {selector, highlight}) → mutate()'s result (awaits a returned promise)
+     // FLIP across any DOM change, incl. innerHTML re-renders: elements matched by key — data-flip > data-banner > data-section >
+     // .cv-sec[data-sec] > details[data-id] > data-q > data-lq (+ .tp-seg-pill by its input name). Moved → glide (relative to a moved
+     // keyed ancestor), new → fade up (staggered), removed/hidden → inert ghost fades out. Viewport only, ≤ 600 keys, ≤ 12 ghosts.
+     // Nested calls (a view painting inside the shell's flip) just run mutate. Mid-transition switches continue their thumb.
+TP.motion.expand(el) / collapse(el, {onDone}) → height + opacity (small blocks only: banners)
+TP.motion.detailsToggled(details)     // called by the shell's 'toggle' listener: .cv-folder/[data-motion-fade] fade their body in;
+                                      // others rely on ::details-content (CSS) or get expand() on browsers without it
+```
+**What the shell already does for every view** (views need no code for this): route enter (`transition` with the navigation direction),
+first-paint `stagger`, `flip` around every `renderView()` (data/settings re-renders) and around `onSearch`/the default filter,
+`aria-busy` on the view root while it shows `.tp-skeleton` (views that paint asynchronously set `root.dataset.busyOwn = '1'` and manage
+`aria-busy` themselves, like the course view), refresh highlight, menu/sheet/toast/banner/tab-bar/sidebar motion, scroll memory per route.
+Dialogs (`.tp-sheet`, `.tp-palette`, `.tp-detail`, agenda `.ag-pop`) animate in and out in CSS (`@starting-style`, `allow-discrete`).
+
+**What a view adds**: wrap re-renders it triggers itself (not via the shell) in `TP.motion.flip(root, () => render(ctx))`; give list rows
+a stable key (`data-q`/`data-flip`); use `enter()` for content it swaps in place; never wait for an animation before changing the DOM.
+Snippet (as used in the agenda — period navigation slides, the mode pill glides, popovers fade out before removal):
+```js
+function go(dir = 0) {                       // dir: 1 = next period, -1 = previous, 0 = mode change / today
+  const view = ctx.root.querySelector(':scope > .ag-view');
+  if (TP.motion && view && view.firstElementChild) TP.motion.flip(view, paint); else paint();   // pill + keyed rows glide
+  const cal = ctx.root.querySelector('.ag-calwrap');
+  if (TP.motion && cal) TP.motion.enter(cal, { from: dir > 0 ? 'right' : dir < 0 ? 'left' : 'none', duration: TP.motion.DUR[2] });
+}
+dialog.addEventListener('close', () => {    // CSS fades it out; remove the node afterwards (focus already returned)
+  if (TP.motion && !TP.motion.disabled && !TP.motion.reduced()) setTimeout(() => dialog.remove(), TP.motion.DUR[2]); else dialog.remove();
+});
+```
+- `TP.shell.toast(text)` stacks (max 3, newest at the bottom, same text = one toast); the container is `.tp-toasts` (shell + deep bar).
+- `TP.ui.segmented()` renders a `.tp-seg-pill` as the last child (`--n` options; the checked index is derived in CSS).
+- The phone tab bar has one `.tp-tab-ind` (`data-flip="tab-ind"`, `--i` = active index).
+- `TP.shell.href('course', {luId})` returns the Ultra outline directly once the course id was resolved on hover (`onPrefetchHint`).
+- Tests: `tests/helpers/launch.js` turns motion off unless `launch({motion:true})`; `reducedMotion:'reduce'` emulates the preference;
+  `recordVideo` is passed through. The shared mock answers `POST /v1/ping`, `POST /v1/forget` and `GET /v1/latest` (current version, no
+  update banner), recorded in `rec.api`, so `rec.foreign` must be empty everywhere.

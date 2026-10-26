@@ -440,13 +440,12 @@ a.tp-mail { color: var(--tint-text); text-decoration: none; }
 .tp-tabbar, .tp-tabs { overflow: hidden; }
 .tp-tabs { position: relative; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
 /* selection indicator: one pill that slides between tabs (index --i; TP.motion continues it across re-renders) */
-.tp-tab-ind {
+.tp-tabs > .tp-tab-ind {
   position: absolute; top: 0; bottom: 0; left: 0; width: 20%; border-radius: var(--r-pill); pointer-events: none;
   background: color-mix(in srgb, var(--tint) 7%, var(--bg-2)); transform: translateX(calc(var(--i, 0) * 100%));
   transition: transform var(--dur-3) var(--ease-spring);
 }
-.tp-tab-ind[hidden] { display: none; }
-.tp-tabs > li { position: relative; }
+.tp-tabs > .tp-tab-ind[hidden] { display: none; }
 .tp-tab {
   position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
   min-height: 50px; width: 100%; padding: 4px 2px; border: 0; border-radius: var(--r-pill); background: none;
@@ -929,13 +928,15 @@ a.tp-row:active, button.tp-row:active, summary.tp-row:active { background: var(-
 
 /* Disclosures (feed groups, content tree, documents, announcements, "Ouder dan een week", hidden courses):
    height animates to auto (::details-content + interpolate-size, Chrome 131+; TP.motion.detailsToggled
-   covers older browsers on open). The chevron rotates (see .tp-disc / .cv-chev). */
+   covers older browsers on open). The chevron rotates (see .tp-disc / .cv-chev). Content-tree folders are excluded:
+   a height animation re-lays out the whole (long) course column every frame — measured +3 janky frames at 4× CPU
+   throttling — so their rows fade/rise in instead (compositor only, TP.motion.detailsToggled). */
 @supports selector(::details-content) {
-  :is(.tp-disclosure, .cv-doc, .cv-ann, .cs-hidden)::details-content {
+  :is(.tp-disclosure:not(.cv-folder), .cv-doc, .cv-ann, .cs-hidden)::details-content {
     block-size: 0; overflow: clip; overflow-clip-margin: 4px;
     transition: block-size var(--dur-2) var(--ease-smooth), content-visibility var(--dur-2) allow-discrete;
   }
-  :is(.tp-disclosure, .cv-doc, .cv-ann, .cs-hidden)[open]::details-content { block-size: auto; }
+  :is(.tp-disclosure:not(.cv-folder), .cv-doc, .cv-ann, .cs-hidden)[open]::details-content { block-size: auto; }
 }
 
 /* ghost of a removed row while the list closes the gap (TP.motion.flip) */
@@ -971,7 +972,7 @@ a.tp-row:active, button.tp-row:active, summary.tp-row:active { background: var(-
 }
 @supports selector(::details-content) {
   @media (prefers-reduced-motion: reduce) {
-    :is(.tp-disclosure, .cv-doc, .cv-ann, .cs-hidden)::details-content { transition: none !important; }
+    :is(.tp-disclosure:not(.cv-folder), .cv-doc, .cv-ann, .cs-hidden)::details-content { transition: none !important; }
   }
 }
 @media print {

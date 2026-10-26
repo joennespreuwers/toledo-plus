@@ -446,7 +446,7 @@
         return `<li><a class="tp-tab${a ? ' active' : ''}" href="${esc(href(r))}" data-route="${r}"${a ? ' aria-current="page"' : ''}>${icon(r, { size: 22 })}<span class="tp-tab-label">${esc(t('nav.' + r))}</span>${dotHtml}</a></li>`;
       }).join('')}<li><button type="button" class="tp-tab${moreActive ? ' active' : ''}" data-shell="more" aria-haspopup="dialog"${moreActive ? ' aria-current="page"' : ''}>${icon('ellipsis', { size: 22 })}<span class="tp-tab-label">${esc(t('nav.more'))}</span></button></li></ul>`; };
       // The selection pill slides to the new tab (FLIP across the re-render); only when the tab bar is shown.
-      if (M() && tabbar.offsetParent && tabbar.querySelector('.tp-tab-ind:not([hidden])')) TP.motion.flip(tabbar, paint, { selector: '.tp-tab-ind' });
+      if (M() && tabbar.getClientRects().length && tabbar.querySelector('.tp-tab-ind:not([hidden])')) TP.motion.flip(tabbar, paint, { selector: '.tp-tab-ind' });
       else paint();
     }
     const sheet = app.querySelector('[data-shell-region="sheet"]');
@@ -520,6 +520,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     if (!menu) return;
     renderMenu();
     menu.hidden = false;
+    menu.style.pointerEvents = ''; // a pending close (leave) is aborted by enter() below
     btn.setAttribute('aria-expanded', 'true');
     motion('enter', menu, { from: 'scale', scale: 0.95, duration: TP.motion?.DUR?.[2] });
     if (focusFirst) menu.querySelector('.tp-menu-item')?.focus();

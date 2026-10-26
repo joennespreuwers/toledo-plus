@@ -60,9 +60,9 @@ Over-engineering to avoid: drag-and-drop widget builders, themes beyond light/da
 - **Large title** at top of content (largeTitle), optional subtitle line (label-2), e.g. date + "Last updated 14:02".
 - **Inset grouped list** with optional section header (Title 2 + trailing plain action) and footer (footnote, label-2).
 - **Row**: leading 28px icon tile (radius 7, --fill) or color dot; title (body, 1 line ellipsis, full name in `title` attr); secondary (subhead, label-2); trailing value/badge/chevron (label-3). Hover = --fill. Whole row is the hit target.
-- **Disclosure** (content tree, feed groups, announcements): chevron trailing (rotates 90°, 200ms ease-out; none under reduced motion), `<details>/<summary>` acceptable (native disclosure semantics). Indent 20px per level, max ~3 levels visible.
+- **Disclosure** (content tree, feed groups, announcements): chevron trailing (rotates 90°, `--dur-2` `--ease-out`; none under reduced motion), `<details>/<summary>` acceptable (native disclosure semantics); opening animates per **Motion** below. Indent 20px per level, max ~3 levels visible.
 - **Badge**: min 18px tall, padding 0 6, 12px 600, pill; tint for new, red for overdue, gray neutral; "99+"; `aria-label="3 nieuw"`.
-- **Segmented control**: track --fill, selected segment --bg-3 with shadow, 28/32px tall, ≤5 segments; radio inputs.
+- **Segmented control**: track --fill, selected segment = one sliding pill (--bg-3 with shadow, `--ease-spring`), 28/32px tall, ≤5 segments; radio inputs.
 - **Switch**: 38×22 desktop (51×31 comfortable), on = --tint; native checkbox with role=switch.
 - **Settings**: inset grouped; label leading, control trailing; changes apply instantly; no "Bijgewerkt" line; group headers: Taal, Weergave, Overzicht (start page, sections with switch + ↑/↓, announcements in Nieuw, courses in Nieuw), Deadlines, Vakken (drill-in per course: nickname, color swatches, pin, hide), Synchronisatie met Toledo (incl. "Vastgezette vakken als favoriet in Toledo"), Toledo-pagina's (portal/vakken/diepere pagina's), Gegevens (export/import/reset), Over (version, GitHub, report issue).
 - *(historical, removed in v1.2 — v1.5 "Zet in zijbalk" is a local sidebar choice, not a favourite)* **Pin = favourite**: one pin control ("Vastzetten", icon pin/pinFill), no separate star. Pinned courses sit in the sidebar "Vastgezet" group and first in lists; with favourite sync on they are the Toledo favourites.
@@ -81,6 +81,54 @@ Over-engineering to avoid: drag-and-drop widget builders, themes beyond light/da
 - Spacing: content margin 16 / 24 / 32 (<700 / ≥700 / ≥1100); section gap 28 (compact 22); section titles inset 4px, day headers likewise; group footers and row text inset 16; cards (welcome card) padding 16/20 with 12 between blocks and 16 above the button.
 - Greeting: "Goedemorgen / Goedemiddag / Goedenavond, <voornaam>" (first name from Ultra, kept locally; plain greeting when unknown).
 - Zoom to 200% without horizontal scroll; reflow at 320px.
+
+## Motion (v1.5)
+Motion explains where things come from and go; it never makes the student wait. Budget: **≤ 350 ms, opacity/transform only
+where possible, interruptible, never blocks input, no layout shift; reduced motion = fades only (≤ 120 ms)**.
+
+**Decision (research Oct 2026): native APIs, no library.**
+| Option | Verdict |
+|---|---|
+| Framer Motion | React-only → not applicable (vanilla IIFEs, no build step). |
+| Motion (motion.dev) vanilla `animate()` | MIT, ~2.6–3.2 kB "mini" (WAAPI under the hood) / ~18–22 kB full. Adds springs, stagger, sequencing — all of which we get from WAAPI + CSS `linear()` in ~200 lines. Not worth a vendored dependency (would have to live in `src/vendor/`, never loaded remotely: MV3 forbids remote code). |
+| **Web Animations API** (`el.animate`) | ✔ Everything JS starts: route enter, FLIP, stagger, menus, toasts, ghosts. Interruptible (`cancel`, start from the current visual position), animates individual `translate`/`scale` so it never fights a component's own `transform`. |
+| **CSS `linear()` easing** (Chrome 113+) | ✔ Spring curves without JS: a damped spring sampled into `linear()` (ζ≈0.72 ≈ 4 % overshoot for controls; ζ≈0.9 for moves/sheets); cubic-bezier fallback. |
+| **`@starting-style` + `transition-behavior: allow-discrete` on `display`/`overlay`** (Chrome 117+) | ✔ Dialog **entry and exit** in pure CSS; `close()` stays synchronous so focus returns at once while the dialog fades in the top layer. |
+| **`interpolate-size: allow-keywords` + `::details-content`** (Chrome 129 / 131) | ✔ `<details>` animate to `height:auto` — for small disclosures only (see below); a JS fallback opens them on older browsers. |
+| **View Transitions** | Same-document `document.startViewTransition` snapshots the whole page (our shadow root included) and its pseudo-tree swallows hit-testing while it runs; **element-scoped** `el.startViewTransition` (Chrome 147+, works inside our shadow root — verified in Chromium 153) is bounded but still freezes and snapshots the scope, which is costly for long views. → available as an opt-in (`TP.motion.transition(…, {viewTransition:true})`) for small bounded swaps; route changes use WAAPI. Cross-document VTs don't apply (portal ↔ Ultra are different sites). |
+
+**Tokens** (`ui.css`, mirrored by `TP.motion.DUR` / `TP.motion.EASE`): `--dur-1` 120 ms (hover, press, small fades, reduced motion) ·
+`--dur-2` 200 ms (menus, disclosures, fades, toasts) · `--dur-3` 280 ms (route slide, sheets, FLIP moves) · `--dur-4` 350 ms (max) ·
+`--ease` standard · `--ease-out` entering · `--ease-in` leaving · `--ease-spring` controls · `--ease-smooth` moves/sheets.
+
+**What moves where**
+- Route change: the new view is in the DOM at once and fades in with an 8 px slide — deeper (list → detail, courses → course)
+  from the right, back from the left, sidebar/tab jumps plain fade. Browser back restores the scroll position.
+- First paint: rows fade up in a 20 ms stagger (max 8 steps). Skeleton → content: the new rows fade up (no pop).
+- Lists (filter, search, sort, reorder, data refresh): FLIP — rows matched by key across re-renders glide to their new place,
+  new rows fade up, removed rows fade out as inert ghosts while the rest closes the gap. Only rows near the viewport animate.
+  After ↻, new rows get a brief tint.
+- Disclosures: Nieuw groups, documents, announcements, "Ouder dan een week", hidden courses animate their height; **content-tree
+  folders fade/rise their rows instead** (a height animation re-lays out the long course column every frame — measured
+  +3 janky frames at 4× CPU throttling). Chevrons rotate.
+- Dialogs: ⌘K and the detail sheet scale+fade (phones: slide up), the More sheet slides up, backdrops fade — in and out.
+  Account menu scales from its corner; agenda popovers scale in from their anchor; toasts slide up and stack (max 3).
+- Controls: segmented controls have one sliding pill; switches a spring thumb that stretches while pressed; the phone tab bar
+  a sliding selection pill; buttons/tabs press to 0.97; hovers 120 ms. The sidebar column animates between rail and expanded,
+  labels fade in behind it.
+- Perceived speed: cached content renders first; the course page header comes from cache; `aria-busy` while loading;
+  resting on a course link resolves its Ultra id so the click skips the journey redirect.
+
+**Rules for new UI**: use the tokens; animate `opacity`/`translate`/`scale` (never `top/left/width`, avoid `height` on big
+blocks); don't delay a DOM change for an animation; keep focus where the student expects it; `will-change` only on what
+animates right now. Tests run with motion off (`<html data-tp-motion="off">`); `tests/e2e/motion.e2e.js` covers the motion
+path, `tests/perf/motion-capture.js` records videos and 4×-throttled frame/long-task numbers.
+
+Sources: Chrome for Developers — [element-scoped view transitions](https://developer.chrome.com/docs/css-ui/view-transitions/element-scoped-view-transitions),
+[`linear()` easing](https://developer.chrome.com/docs/css-ui/css-linear-easing-function),
+[entry/exit animations (`@starting-style`, `allow-discrete`)](https://developer.chrome.com/blog/entry-exit-animations),
+[animate to `height: auto`](https://developer.chrome.com/docs/css-ui/animate-to-height-auto);
+Motion — [feature comparison / bundle sizes](https://motion.dev/docs/feature-comparison); Apple HIG — Motion.
 
 ## Accessibility checklist
 Contrast ≥4.5:1 text, ≥3:1 UI boundaries/large text · visible `:focus-visible` (2px --tint outline, 2px offset) never hidden under sticky bars (scroll-padding) · targets ≥24×24 (44 for touch rows) · skip link · landmarks (nav/main/aside) · `aria-current` · disclosure semantics · live region for "Bijgewerkt, 4 nieuwe items" · `lang` attribute per UI language · never color alone · all icons decorative unless icon-only control (then aria-label).
