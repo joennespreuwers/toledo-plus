@@ -1201,6 +1201,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     if (ev.target.closest?.('[data-action="tp-retry-view"]')) { renderView(); return; } // render-error row
     const el = ev.target.closest?.('[data-shell], a[data-route], a[href]');
     if (!el) return;
+    if (TP.kuloket?.HOST && el.href?.startsWith?.(TP.kuloket.HOST + '/')) safe(() => TP.kuloket.openedKuloket());
     const act = el.dataset?.shell;
     if (act) {
       switch (act) {

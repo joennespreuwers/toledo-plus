@@ -375,7 +375,10 @@ WCAG 2.2 AA; keyboard reachable; works at 390px and 1440px; light + dark; NL/EN/
   (`chrome.storage.local`, not synced).
 - `TP.kuloket.peekRange({from, to})` → lessons + exams in a range from cache (sync); `TP.kuloket.status().lessons.needsLogin` = KU Loket
   session gone (the iCal feed is used automatically when a link is known). Storage key `kuloket:icsUrlT` = when the iCal link was last read
-  from KU Loket (re-read every 7 days).
+  from KU Loket (re-read every 7 days). Signed out → all KU Loket requests pause for 30 min (`kuloket:authAt`, shared by tabs):
+  every signed-out request leaves an SSO cookie on webwsp and too many make KU Loket answer 400 to everything. The pause ends on
+  `refresh()` ("Try again"), on any successful answer, or when the student opened a KU Loket link (shell calls
+  `TP.kuloket.openedKuloket()`) and comes back to the tab.
 - `TP.agenda = { layout, rangeFor, stepAnchor, scrollHour, icsFor, courseKey, isoWeekNo, MODES, VISIBLE_HOURS }` — pure helpers exported for unit tests.
 - View hook `onKey(ctx, ev)` (see the view contract above) carries the agenda's keyboard shortcuts.
 

@@ -254,6 +254,37 @@ test('not logged in (HTML login page) → status auth, no throw; with an iCal li
   assert.equal(store['kuloket:icsUrl'], undefined);
 });
 
+test('signed out: one KU Loket request, then a shared 30-min pause (no SSO cookie pile-up); "Try again" resumes', async () => {
+  const st = { loggedOut: true };
+  const { K, T, store, calls } = await make({ net: responder(st), courses: COURSES });
+  const kl = () => calls.filter((u) => u.startsWith('https://webwsp.aps.kuleuven.be/')).length;
+  const day0 = new Date(); day0.setHours(0, 0, 0, 0);
+  const wk = (n) => ({ from: day0.getTime() + n * 7 * DAY, to: day0.getTime() + (n + 1) * 7 * DAY });
+  await K.lessons(wk(0));
+  const first = kl();
+  assert.equal(first, 1, 'one request finds out we are signed out');
+  assert.equal(K.status().lessons.error, 'auth');
+  // agenda browsing, neighbour prefetch, exams, overview: none of it may hit KU Loket while paused
+  for (let n = 1; n <= 10; n++) await K.lessons(wk(n));
+  await K.exams(); K.peekExams(); K.peekLessons(wk(20));
+  T.lastTry.clear(); // even after the per-week retry window
+  await K.lessons(wk(0)); await K.exams();
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(kl(), first, 'no new requests while paused');
+  assert.ok(store['kuloket:authAt'] > 0, 'pause is shared via chrome.storage.local');
+  // another tab / a reload honours the same pause
+  const other = await make({ net: responder(st), courses: COURSES, store });
+  await other.K.lessons(wk(3)); await other.K.exams();
+  assert.equal(other.calls.filter((u) => u.startsWith('https://webwsp.aps.kuleuven.be/')).length, 0);
+  // the student signs in and presses "Try again"
+  st.loggedOut = false;
+  await K.refresh(wk(0));
+  assert.ok(kl() > first, 'asks KU Loket again');
+  assert.equal(K.status().lessons.ok, true);
+  assert.equal(store['kuloket:authAt'], 0, 'pause cleared');
+  assert.equal(T.paused(), false);
+});
+
 test('network failure keeps cached data and reports offline', async () => {
   const st = {};
   let down = false;

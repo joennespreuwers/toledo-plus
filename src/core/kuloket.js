@@ -30,7 +30,11 @@
   const P = 'kuloket:';
   const LINK_TTL = 7 * DAY;     // re-read the iCal link from KU Loket this often (it changes per academic year)
   const ICS_MEMO = 15 * 60e3;   // reuse a downloaded feed for this long (signed out: every new week would refetch it)
-  const AUTH_SKIP = 2 * 60e3;   // right after a 'not signed in' answer, go straight to the feed
+  // Signed out: pause all KU Loket requests this long (shared by tabs, survives reloads). Every signed-out request
+  // is redirected to SSO and leaves a cookie on webwsp; a few dozen make the Cookie header too big and KU Loket
+  // answers every request (also the student's own sign-in) with 400. Resumes earlier on "Try again" or after
+  // the student opened a KU Loket link and came back to the tab.
+  const AUTH_PAUSE = 30 * 60e3;
 
   // ------------------------------------------------------------------ Europe/Brussels time (EU DST rule)
   const lastSunday = (y, m) => { const d = new Date(Date.UTC(y, m + 1, 0)); return d.getUTCDate() - d.getUTCDay(); };
@@ -364,7 +368,8 @@
   let loaded = false;
   const ready = (async () => {
     try {
-      const a = await sget([P + 'meta', P + 'exams', P + 'icsUrl', P + 'icsUrlT']);
+      const a = await sget([P + 'meta', P + 'exams', P + 'icsUrl', P + 'icsUrlT', P + 'authAt']);
+      mem.authAt = Number(a[P + 'authAt']) || 0;
       const meta = a[P + 'meta'] || {};
       if (meta.lessons && typeof meta.lessons === 'object') Object.assign(status.lessons, meta.lessons);
       if (meta.exams && typeof meta.exams === 'object') Object.assign(status.exams, meta.exams);
@@ -399,6 +404,8 @@
             if (nv && Array.isArray(nv.items) && (!cur || (nv.t || 0) > (cur.t || 0))) { mem.weeks.set(wk, nv); changed = true; }
           } else if (k === P + 'exams') {
             if (nv && Array.isArray(nv.items) && (!mem.exams || (nv.t || 0) > (mem.exams.t || 0))) { mem.exams = nv; changed = true; }
+          } else if (k === P + 'authAt') {
+            mem.authAt = Number(nv) || 0;
           } else if (k === P + 'icsUrl') {
             const u = typeof nv === 'string' && isIcsUrl(nv) ? nv : '';
             if (u !== mem.icsUrl) { mem.icsUrl = u; mem.ics = null; changed = true; }
@@ -418,22 +425,32 @@
   // ------------------------------------------------------------------ network
   function kerr(kind, st) { const e = new Error('kuloket: ' + kind); e.kind = kind; e.status = st || 0; return e; }
 
-  /** GET an OData path; 'auth' error when KU Loket answers with a login page / redirect / 401. */
+  const paused = () => mem.authAt > 0 && Date.now() - mem.authAt < AUTH_PAUSE;
+  function setAuthAt(t) {
+    if (mem.authAt === t) return;
+    mem.authAt = t;
+    sset({ [P + 'authAt']: t });
+  }
+  const signedOut = (s) => { setAuthAt(Date.now()); return kerr('auth', s); };
+
+  /** GET an OData path; 'auth' error when KU Loket answers with a login page / redirect / 401 (or while paused). */
   async function odata(path) {
     if (!TP.net || !TP.net.text) throw kerr('network');
+    if (paused()) throw kerr('auth', 0);
     let txt;
     try {
       txt = await TP.net.text(BASE + path, { headers: { Accept: 'application/json' } });
     } catch (e) {
       const s = (e && e.status) || 0;
       // The relay reports ok:false with a 2xx/3xx status when it was redirected off-origin (SSO login).
-      if (s === 401 || s === 403 || (s >= 200 && s < 400)) throw kerr('auth', s);
+      if (s === 401 || s === 403 || (s >= 200 && s < 400)) throw signedOut(s);
       throw kerr(s ? 'http' : 'network', s);
     }
     const t = str(txt);
-    if (!t || t[0] === '<') throw kerr('auth', 200);
+    if (!t || t[0] === '<') throw signedOut(200);
     let j;
-    try { j = JSON.parse(t); } catch (_) { throw kerr('auth', 200); }
+    try { j = JSON.parse(t); } catch (_) { throw signedOut(200); }
+    setAuthAt(0);
     if (j && j.error) throw kerr('http', 400);
     const d = j && j.d !== undefined ? j.d : j;
     return Array.isArray(d) ? d : (d && Array.isArray(d.results) ? d.results : (d && Array.isArray(d.value) ? d.value : (j && Array.isArray(j.value) ? j.value : d)));
@@ -464,7 +481,7 @@
     const p = (async () => {
       let authFail = false, netFail = null;
       // Just told "not signed in": don't ask KU Loket again for every week, use the feed straight away.
-      if (mem.icsUrl && Date.now() - mem.authAt < AUTH_SKIP) { authFail = true; chunks.length = 0; }
+      if (paused()) { authFail = true; chunks.length = 0; }
       for (const c of chunks) {
         c.forEach((w) => lastTry.set(w.key, Date.now()));
         const filter = `(date ge datetime'${c[0].mon}T00:00:00' and date le datetime'${c[c.length - 1].sun}T00:00:00')`;
@@ -480,10 +497,9 @@
             if (byWeek.has(k)) byWeek.get(k).push(l);
           }
           for (const [k, items] of byWeek) await putWeek(k, { t: now, source: 'kuloket', items: items.sort((a, b) => a.start - b.start) });
-          mem.authAt = 0;
           setLessonStatus({ ok: true, error: null, t: now, source: 'kuloket', needsLogin: false });
         } catch (e) {
-          if (e.kind === 'auth') { authFail = true; mem.authAt = Date.now(); break; }
+          if (e.kind === 'auth') { authFail = true; break; }
           netFail = e.kind || 'network';
         }
       }
@@ -753,16 +769,29 @@
   /** Force-refresh everything for a range (toolbar/refresh). */
   async function refresh(o = {}) {
     const r = range(o);
-    mem.authAt = 0; mem.ics = null; // ask KU Loket again (the student may just have signed in)
+    setAuthAt(0); mem.ics = null; // ask KU Loket again (the student may just have signed in)
     await Promise.all([r ? lessons({ ...r, force: true }) : null, exams({ force: true })]);
   }
+
+  /** The student opened a KU Loket link (to sign in): when they come back to this tab, ask KU Loket again. */
+  let resumeOnReturn = false;
+  function openedKuloket() { if (paused()) resumeOnReturn = true; }
+  try {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible' || !resumeOnReturn) return;
+      resumeOnReturn = false;
+      setAuthAt(0);
+      for (const k of [...lastTry.keys()]) if (k !== 'ics') lastTry.delete(k);
+      emit('change', 'resume');
+    });
+  } catch (_) { /* no document */ }
 
   TP.kuloket = {
     lessons, peekLessons, peekRange, exams, peekExams, refresh,
     status: getStatus, on, off,
     links, GROUPS, appUrl, scheduleUrl: () => appUrl('zr_0367'), icalAppUrl: () => appUrl('zr_1014'), loginUrl: () => appUrl('zr_0367'),
-    setIcsUrl, getIcsUrlMasked,
+    setIcsUrl, getIcsUrlMasked, openedKuloket, HOST,
     ready: () => ready,
-    _test: { bxl, parts, isDst, sapDate, sapDay, duration, sapDateTime, isoWeek, weekKeyOf, weeksFor, mapEvent, mapExam, parseIcs, mapIcs, matchCourse, isIcsUrl, enrich, mem, lastTry, status },
+    _test: { bxl, parts, isDst, sapDate, sapDay, duration, sapDateTime, isoWeek, weekKeyOf, weeksFor, mapEvent, mapExam, parseIcs, mapIcs, matchCourse, isIcsUrl, enrich, mem, lastTry, status, paused, AUTH_PAUSE },
   };
 })();
