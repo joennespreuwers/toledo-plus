@@ -47,6 +47,8 @@ Read first: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (contract: modules, d
 - `tests/unit/*.test.js` – `node:test`, loads `src/**` scripts in a `vm` sandbox.
 - `tests/e2e/*.e2e.js` – `node:test` + Playwright: Chromium with the unpacked extension and a fully mocked Toledo (`tests/helpers/mock.js`, fixtures in `tests/fixtures/*.json` with relative dates like `"@ms:+1d@23:59"`). Screenshots land in `tests/artifacts/` (git-ignored, uploaded by CI).
 - Requests made by the extension's background worker are intercepted too (context-level routing).
+- Playwright does not route the follow-up of a mocked 3xx, so signed download URLs are served by a throwaway local HTTPS server (`tests/helpers/files-server.js`, needs `openssl`).
+- `EXT_DIR=path/to/unpacked npm run test:e2e` runs the suite against another build (e.g. an extracted release zip).
 
 ### Pull requests
 

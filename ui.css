@@ -35,7 +35,7 @@
   --tint-text: var(--tint-text-l);
   --tint-soft: color-mix(in srgb, var(--tint) 15%, transparent);
   --glass: rgba(255, 255, 255, .72); --glass-border: rgba(0, 0, 0, .08);
-  --glass-pop: rgba(250, 250, 252, .9); /* popovers/sheets float over content: more opaque for legibility */
+  --glass-pop: rgba(250, 250, 252, .96); /* popovers/sheets float over content: more opaque for legibility */
   --glass-filter: blur(20px) saturate(180%);
   --shadow-pop: 0 10px 30px rgba(0, 0, 0, .14), 0 1px 3px rgba(0, 0, 0, .08);
   --shadow-seg: 0 1px 3px rgba(0, 0, 0, .14), 0 0 0 .5px rgba(0, 0, 0, .04);
@@ -63,7 +63,7 @@
   --tint-text: var(--tint-text-d);
   --tint-soft: color-mix(in srgb, var(--tint) 24%, transparent);
   --glass: rgba(30, 30, 30, .62); --glass-border: rgba(255, 255, 255, .10);
-    --glass-pop: rgba(36, 36, 38, .9);
+    --glass-pop: rgba(36, 36, 38, .96);
   --shadow-pop: 0 10px 30px rgba(0, 0, 0, .5), 0 0 0 .5px rgba(255, 255, 255, .08);
   --shadow-seg: 0 1px 3px rgba(0, 0, 0, .4);
   --scrim: rgba(0, 0, 0, .5);
@@ -79,7 +79,7 @@
     --tint-text: var(--tint-text-d);
     --tint-soft: color-mix(in srgb, var(--tint) 24%, transparent);
     --glass: rgba(30, 30, 30, .62); --glass-border: rgba(255, 255, 255, .10);
-    --glass-pop: rgba(36, 36, 38, .9);
+    --glass-pop: rgba(36, 36, 38, .96);
     --shadow-pop: 0 10px 30px rgba(0, 0, 0, .5), 0 0 0 .5px rgba(255, 255, 255, .08);
     --shadow-seg: 0 1px 3px rgba(0, 0, 0, .4);
     --scrim: rgba(0, 0, 0, .5);
