@@ -16,8 +16,17 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # Official Playwright image: Chromium + all its system libraries preinstalled, so no 10-minute apt install.
+    # Keep the tag in sync with the "playwright" version in package.json.
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      options: --ipc=host
     timeout-minutes: 20
     steps:
+      # The Playwright image may not ship git (needed by checkout + the change/tag checks); installing it takes seconds.
+      - name: Ensure git
+        run: command -v git >/dev/null || (apt-get update -qq && apt-get install -y -qq --no-install-recommends git ca-certificates >/dev/null)
+
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
@@ -45,17 +54,6 @@ jobs:
         if: steps.scope.outputs.full == 'true'
         run: npm install --no-audit --no-fund
 
-      # Cache the Chromium download (the apt system deps are still installed each run).
-      - name: Cache Playwright browsers
-        if: steps.scope.outputs.full == 'true'
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: pw-${{ runner.os }}-${{ hashFiles('package.json') }}
-
-      - name: Install Chromium
-        if: steps.scope.outputs.full == 'true'
-        run: npx playwright install --with-deps chromium
 
       - name: Manifest is valid JSON
         run: node -e "JSON.parse(require('fs').readFileSync('manifest.json','utf8'))"

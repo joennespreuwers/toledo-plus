@@ -19,9 +19,18 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    # Official Playwright image: Chromium + all its system libraries preinstalled, so no 10-minute apt install.
+    # Keep the tag in sync with the "playwright" version in package.json.
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      options: --ipc=host
     outputs:
       go: ${{ steps.v.outputs.go }}
     steps:
+      # The Playwright image may not ship git (needed by checkout + the change/tag checks); installing it takes seconds.
+      - name: Ensure git
+        run: command -v git >/dev/null || (apt-get update -qq && apt-get install -y -qq --no-install-recommends git ca-certificates >/dev/null)
+
       - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v7
@@ -49,9 +58,6 @@ jobs:
         if: steps.v.outputs.go == 'true'
         run: npm install --no-audit --no-fund
 
-      - name: Install Chromium
-        if: steps.v.outputs.go == 'true'
-        run: npx playwright install --with-deps chromium
 
       - name: Unit tests
         if: steps.v.outputs.go == 'true'
