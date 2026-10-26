@@ -1,0 +1,71 @@
+/* Toledo+ — Settings view (views-B). Inset grouped, label leading / control trailing. */
+.st-view { display: flex; flex-direction: column; gap: 28px; max-width: 720px; min-width: 0; }
+.st-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.st-row {
+  position: relative; display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap;
+  min-height: var(--row-min, 44px); padding: 6px 16px; box-sizing: border-box; color: var(--label); text-decoration: none;
+}
+.st-group > * + *::before, .st-group > details + *::before {
+  content: ''; position: absolute; top: 0; left: 16px; right: 0; border-top: var(--hairline, .5px) solid var(--separator); pointer-events: none;
+}
+.st-group > * { position: relative; }
+.st-label { flex: 1 1 auto; min-width: 0; font-size: var(--fs-body, .9375rem); }
+.st-ctl { flex: 0 1 auto; min-width: 0; max-width: 100%; display: flex; justify-content: flex-end; }
+.st-row-stack { flex-direction: column; align-items: stretch; padding-top: 10px; padding-bottom: 12px; }
+.st-row-stack .st-ctl { justify-content: flex-start; }
+.st-ctl .tp-segmented { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.st-ctl .tp-segmented::-webkit-scrollbar { display: none; }
+.st-value, .st-muted { color: var(--label-2); font-size: var(--fs-body, .9375rem); }
+
+.st-row-toggle { padding-top: 0; padding-bottom: 0; }
+.st-row-toggle > .tp-toggle { flex: 1 1 auto; min-width: 0; min-height: var(--row-min, 44px); }
+.st-row-order > .tp-toggle { flex: 1 1 0; }
+.st-move { display: inline-flex; gap: 4px; flex: 0 0 auto; }
+.st-view .st-icon-btn {
+  display: inline-grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 8px;
+  background: var(--fill); color: var(--tint-text, var(--tint)); cursor: pointer;
+}
+.st-view .st-icon-btn:disabled { color: var(--label-3); cursor: default; }
+
+.st-link-row:hover { background: var(--fill); }
+.st-trail { display: inline-flex; color: var(--label-3); }
+
+.st-row-actions { justify-content: flex-start; }
+.st-view .st-action {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 4px 0; border: 0; background: none;
+  color: var(--tint-text, var(--tint)); font: inherit; font-size: var(--fs-body, .9375rem); cursor: pointer;
+}
+.st-view .st-action.st-danger { color: var(--red); }
+.st-view .st-action.st-danger.is-armed { font-weight: 600; }
+.st-file { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+.st-file:focus-visible + label { outline: 2px solid var(--tint); outline-offset: 2px; border-radius: 6px; }
+
+/* course drill-ins */
+.st-course-disc > summary { padding-left: 16px; }
+.st-course { display: flex; flex-direction: column; gap: 12px; padding: 4px 16px 16px 40px; }
+.st-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.st-field > label, .st-field-label { font-size: var(--fs-subhead, .8125rem); color: var(--label-2); }
+.st-input {
+  font: inherit; font-size: var(--fs-body, .9375rem); color: var(--label); background: var(--fill); border: 0; border-radius: 8px;
+  padding: 8px 10px; min-height: 36px; width: 100%; max-width: 420px; box-sizing: border-box;
+}
+.st-input::placeholder { color: var(--label-3); }
+.st-swatch-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.st-course-toggles { display: flex; flex-direction: column; }
+.st-course-toggles > .tp-toggle { min-height: var(--row-min, 44px); }
+.st-view .st-link-btn {
+  border: 0; background: none; padding: 4px 6px; min-height: 28px; border-radius: 6px;
+  color: var(--tint-text, var(--tint)); font: inherit; font-size: var(--fs-subhead, .875rem); cursor: pointer;
+}
+.st-view .st-link-btn:hover { background: var(--fill); }
+
+.st-view :is(a, button, summary, .st-input, .st-view .st-icon-btn):focus-visible { outline: 2px solid var(--tint); outline-offset: 2px; border-radius: 8px; }
+
+@media (max-width: 480px) {
+  .st-course { padding-left: 16px; }
+  .st-row:not(.st-row-toggle):not(.st-row-actions):not(.st-link-row) { flex-direction: column; align-items: stretch; padding-top: 10px; padding-bottom: 10px; }
+  .st-row:not(.st-row-toggle) .st-ctl { justify-content: flex-start; }
+}
+.st-view .st-row-toggle { padding-left: 0; padding-right: 0; }
+.st-view .st-row-order { padding-right: 12px; }

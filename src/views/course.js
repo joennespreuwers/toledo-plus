@@ -39,18 +39,11 @@
   }
   const countLeaves = (n) => (isFolder(n) ? (n.kids || []).reduce((s, k) => s + countLeaves(k), 0) : 1);
   const newest = (n) => (isFolder(n) ? Math.max(ms(n.modified), ...(n.kids || []).map(newest)) : created(n));
-  function findNode(id, nodes = st.data && st.data.roots) {
-    for (const n of nodes || []) {
+  function findNode(id, nodes) {
+    for (const n of (nodes === undefined ? st.data && st.data.roots : nodes) || []) {
       if (n.id === id) return { node: n };
-      const k = findNode(id, n.kids);
+      const k = n.kids ? findNode(id, n.kids) : null;
       if (k) return k;
-    }
-    return null;
-  }
-  function pathOf(id, nodes = st.data && st.data.roots, path = []) {
-    for (const n of nodes || []) {
-      if (n.id === id) return path;
-      if (n.kids) { const p = pathOf(id, n.kids, path.concat(n.title || '')); if (p) return p; }
     }
     return null;
   }
@@ -354,10 +347,12 @@
     return sec('teachers', t('course.teachers'), TP.ui.group(rows, { cls: 'cv-group' }));
   }
 
-  function paint() {
+  function paint(force) {
     const ctx = cur;
     if (!ctx) return;
     const root = ctx.root;
+    // Async callers (progress, downloads) must not paint over another view after navigation.
+    if (!force && !root.querySelector(':scope > .cv-view')) return;
     const focus = snapFocus(root);
     // Keep folders the user opened during a progressive load (before openIds existed).
     if (!st.openIds && !st.q) {
@@ -409,7 +404,7 @@
       if (key !== st.key) { st.q = ''; ctx.root.__cvTouched = false; }
       start(ctx);
     }
-    paint();
+    paint(true);
   }
 
   // ---------- search ----------
@@ -534,7 +529,7 @@
           ev.preventDefault();
           const c = courseModel();
           const lu = st.luId || (c && c.luId);
-          if (lu) Promise.resolve(TP.settings.setCourse(lu, { pinned: !(c && c.pinned) })).then(() => paint()).catch(() => {});
+          if (lu) { Promise.resolve(TP.settings.setCourse(lu, { pinned: !(c && c.pinned) })).catch(() => {}); paint(); }
           return;
         }
       }

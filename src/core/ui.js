@@ -173,7 +173,9 @@
       const href = at.href; delete at.href;
       return `<a class="${cls}" href="${esc(href)}"${act}${attrs(at)}>${inner}</a>`;
     }
-    return `<button type="button" class="${cls}"${act}${attrs(at)}>${inner}</button>`;
+    const type = at.type || 'button'; // attrs.type may override (e.g. 'submit')
+    delete at.type;
+    return `<button type="${esc(type)}" class="${cls}"${act}${attrs(at)}>${inner}</button>`;
   }
 
   // ---------------- form controls ----------------

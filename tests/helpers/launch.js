@@ -13,6 +13,8 @@ const fixtures = require('./fixtures');
 const mock = require('./mock');
 
 const ROOT = path.resolve(__dirname, '..', '..');
+// EXT_DIR lets you run the suite against another unpacked build (e.g. an extracted release zip).
+const EXT = process.env.EXT_DIR ? path.resolve(process.env.EXT_DIR) : ROOT;
 const ARTIFACTS = path.join(ROOT, 'tests', 'artifacts');
 const HEADLESS = process.env.HEADED ? false : true;
 const DESKTOP = { width: 1440, height: 900 };
@@ -36,7 +38,7 @@ async function launch(o = {}) {
   const ctx = await chromium.launchPersistentContext(userDataDir, {
     channel: 'chromium', // "new" headless – required for extensions
     headless: HEADLESS,
-    args: [`--disable-extensions-except=${ROOT}`, `--load-extension=${ROOT}`, '--no-first-run', '--no-default-browser-check'],
+    args: [`--disable-extensions-except=${EXT}`, `--load-extension=${EXT}`, '--no-first-run', '--no-default-browser-check'],
     viewport: o.viewport || DESKTOP,
     colorScheme: o.colorScheme || 'light',
     locale: o.locale || 'nl-BE',
@@ -152,7 +154,7 @@ async function waitFor(pred, { timeout = 5000, interval = 50 } = {}) {
   return pred();
 }
 
-module.exports = { launch, waitForShell, waitForIdle, inShadow, shell, screenshot, waitFor, ROOT, ARTIFACTS, DESKTOP, PHONE,
+module.exports = { EXT, launch, waitForShell, waitForIdle, inShadow, shell, screenshot, waitFor, ROOT, ARTIFACTS, DESKTOP, PHONE,
   PORTAL_HOME: 'https://toledo.kuleuven.be/portal/#/home',
   portalRoute: (r, p) => `https://toledo.kuleuven.be/portal/#/tplus/${r}${p ? '/' + encodeURIComponent(p) : ''}`,
   COURSE_URL: 'https://ultra.edu.kuleuven.cloud/ultra/courses/_200661_1/outline',

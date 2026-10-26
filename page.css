@@ -1,22 +1,55 @@
-/* Injected in the Toledo page itself: hide the original portal while Toledo+ is shown. */
+/* Toledo+ — injected into the host page (light DOM). Everything else lives in shadow roots (ui.css). */
+
+/* ---- Wrapped: hide the original page, let the document scroll normally ---- */
 html.tplus-on body > *:not(#tplus-root) { display: none !important; }
-html.tplus-on body { padding: 0 !important; margin: 0 !important; background: #F2F2F7 !important; }
-html.tplus-on, html.tplus-on body { overflow: auto !important; height: auto !important; min-height: 100% !important; position: static !important; }
-@media (prefers-color-scheme: dark) { html.tplus-on body { background: #000 !important; } }
-#tplus-root { display: block; }
+html.tplus-on {
+  font-size: 100% !important;               /* rem inside the shadow root = 16px (Ultra shrinks the root size) */
+  scroll-padding-top: 64px;                 /* focus never hides under the sticky toolbar */
+  scroll-padding-bottom: 104px;             /* …or under the mobile tab bar */
+  background: #F2F2F7 !important;
+  color-scheme: light;
+}
+html.tplus-on, html.tplus-on body {
+  overflow: auto !important; overflow-x: hidden !important;
+  height: auto !important; min-height: 100% !important; max-height: none !important;
+  position: static !important;
+}
+html.tplus-on body { padding: 0 !important; margin: 0 !important; background: transparent !important; transform: none !important; }
+html.tplus-on.tplus-dark { background: #000 !important; color-scheme: dark; }
+@media (prefers-color-scheme: dark) { html.tplus-on:not(.tplus-light) { background: #000 !important; color-scheme: dark; } }
+
+#tplus-root { display: block !important; position: relative; z-index: 1; }
 html:not(.tplus-on) #tplus-root { display: none !important; }
 
-/* Pill shown on the classic portal to switch back */
+/* ---- Deep bar (non-wrapped pages): slim fixed bar + push the page down ---- */
+#tplus-deep { position: fixed !important; top: 0; left: 0; right: 0; height: 44px; z-index: 2147483000; display: block; }
+html:not(.tplus-deep) #tplus-deep { display: none !important; }
+html.tplus-deep { scroll-padding-top: 52px; }
+/* margin pushes the body down; transform makes the page's own fixed bars position relative to the body, below our bar */
+html.tplus-deep body {
+  margin-top: 44px !important;
+  height: calc(100% - 44px) !important;
+  min-height: calc(100% - 44px) !important;
+  transform: translateZ(0);
+}
+
+/* ---- Classic mode: pill to switch Toledo+ back on ---- */
 #tplus-switch {
   position: fixed; right: 20px; bottom: 20px; z-index: 2147483000;
   font: 600 15px/1 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
-  height: 44px; padding: 0 18px; border-radius: 22px; border: 0.5px solid rgba(0,0,0,0.12);
-  background: rgba(255,255,255,0.72); color: #007AFF; cursor: pointer;
+  height: 44px; padding: 0 18px; border-radius: 22px; border: 0.5px solid rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.78); color: #0062CC; cursor: pointer;
   -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+  margin: 0; text-transform: none; letter-spacing: normal; min-width: 0; width: auto;
 }
-html.tplus-on #tplus-switch { display: none; }
 #tplus-switch.left { right: auto; left: 20px; }
-@media (prefers-color-scheme: dark) {
-  #tplus-switch { background: rgba(30,30,30,0.72); color: #0A84FF; border-color: rgba(255,255,255,0.12); }
+#tplus-switch:focus-visible { outline: 2px solid #0062CC; outline-offset: 2px; }
+#tplus-switch.dark { background: rgba(30, 30, 30, 0.78); color: #409CFF; border-color: rgba(255, 255, 255, 0.14); }
+#tplus-switch.dark:focus-visible { outline-color: #409CFF; }
+html.tplus-on #tplus-switch { display: none; }
+@media (prefers-reduced-transparency: reduce) {
+  #tplus-switch { background: #fff; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  #tplus-switch.dark { background: #2C2C2E; }
 }
+@media print { #tplus-switch, #tplus-deep { display: none !important; } }

@@ -15,6 +15,8 @@
   let cur = null;                 // latest ctx
 
   // ---------- helpers ----------
+  // Settings apply in memory immediately; don't wait for the (debounced) storage write to repaint.
+  const save = (p) => { Promise.resolve(p).catch(() => {}); };
   const cssEsc = (s) => (globalThis.CSS && CSS.escape ? CSS.escape(String(s)) : String(s).replace(/["\\]/g, '\\$&'));
 
   function snapFocus(root) {
@@ -209,9 +211,11 @@
     if (ui.q) applySearch(root, ui.q);
   }
 
+  const live = () => !!(cur && cur.root.querySelector(':scope > .cs-view'));
+
   function toggleEdit() {
     ui.edit = !ui.edit;
-    if (cur) render(cur);
+    if (live()) render(cur);
     TP.shell.announce?.(t(ui.edit ? 'courses.edit' : 'courses.done'));
   }
 
@@ -250,8 +254,8 @@
     const other = visible[j];
     const a = global.indexOf(luId), b = global.indexOf(other);
     global[a] = other; global[b] = luId;
-    await TP.settings.set({ courses: { order: global } });
-    if (cur) render(cur);
+    save(TP.settings.set({ courses: { order: global } }));
+    if (live()) render(cur);
   }
 
   function bind(root) {
@@ -266,8 +270,8 @@
       switch (b.dataset.action) {
         case 'move-up': return move(lu, -1);
         case 'move-down': return move(lu, 1);
-        case 'color-reset': await TP.settings.setCourse(lu, { color: null }); break;
-        case 'unhide': await TP.settings.setCourse(lu, { hidden: false }); break;
+        case 'color-reset': save(TP.settings.setCourse(lu, { color: null })); break;
+        case 'unhide': save(TP.settings.setCourse(lu, { hidden: false })); break;
         case 'fav': {
           const c = TP.data.course(lu);
           b.disabled = true;
@@ -279,23 +283,25 @@
         }
         default: return;
       }
-      if (cur) render(cur);
+      if (live()) render(cur);
     });
 
     root.addEventListener('change', async (ev) => {
       const el = ev.target;
       if (!el.closest('.cs-view') || !el.name) return;
       if (el.name === 'cs-filter') { ui.filter = el.value; if (cur) render(cur); return; }
-      if (el.name === 'cs-sort') { await TP.settings.set({ courses: { sort: el.value } }); if (cur) render(cur); return; }
+      if (el.name === 'cs-sort') { save(TP.settings.set({ courses: { sort: el.value } })); if (live()) render(cur); return; }
       const k = el.name.indexOf(SEP);
       if (k < 0) return;
       const kind = el.name.slice(0, k), lu = el.name.slice(k + SEP.length);
-      if (kind === 'nick') await TP.settings.setCourse(lu, { nickname: el.value.trim() });
-      else if (kind === 'color') await TP.settings.setCourse(lu, { color: el.value });
-      else if (kind === 'pin') await TP.settings.setCourse(lu, { pinned: el.checked });
-      else if (kind === 'hide') await TP.settings.setCourse(lu, { hidden: el.checked });
+      if (kind === 'nick') save(TP.settings.setCourse(lu, { nickname: el.value.trim() }));
+      else if (kind === 'color') save(TP.settings.setCourse(lu, { color: el.value }));
+      else if (kind === 'pin') save(TP.settings.setCourse(lu, { pinned: el.checked }));
+      else if (kind === 'hide') save(TP.settings.setCourse(lu, { hidden: el.checked }));
       else return;
-      if (cur) render(cur);
+      // A nickname commits on blur: repaint after focus has moved on, so it lands on the next control.
+      if (kind === 'nick') setTimeout(() => { if (live()) render(cur); }, 0);
+      else if (live()) render(cur);
     });
 
     root.addEventListener('keydown', (ev) => {

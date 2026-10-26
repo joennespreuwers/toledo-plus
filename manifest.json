@@ -2,31 +2,105 @@
   "manifest_version": 3,
   "name": "Toledo+",
   "short_name": "Toledo+",
-  "version": "0.2.1",
-  "description": "Een rustigere, duidelijkere Toledo: startpagina met deadlines en nieuwe items, en een overzichtelijke vakpagina.",
+  "version": "1.0.0",
+  "description": "Een rustige, overzichtelijke Toledo: deadlines, nieuwe items, vakken en planning in één app, volgens Apple's ontwerprichtlijnen.",
+  "minimum_chrome_version": "114",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "permissions": ["storage"],
-  "host_permissions": ["https://toledo.kuleuven.be/*", "https://ultra.edu.kuleuven.cloud/*"],
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://toledo.kuleuven.be/*",
+    "https://ultra.edu.kuleuven.cloud/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "content_scripts": [
     {
-      "matches": ["https://toledo.kuleuven.be/portal/*"],
-      "js": ["content.js"],
-      "css": ["page.css"],
+      "matches": [
+        "https://toledo.kuleuven.be/portal/*"
+      ],
+      "js": [
+        "src/core/util.js",
+        "src/core/i18n.js",
+        "src/i18n/core.js",
+        "src/i18n/overview.js",
+        "src/i18n/deadlines.js",
+        "src/i18n/planning.js",
+        "src/i18n/announcements.js",
+        "src/i18n/courses.js",
+        "src/i18n/course.js",
+        "src/i18n/settings.js",
+        "src/core/settings.js",
+        "src/core/net.js",
+        "src/core/data.js",
+        "src/core/ui.js",
+        "src/core/shell.js",
+        "src/views/overview.js",
+        "src/views/deadlines.js",
+        "src/views/planning.js",
+        "src/views/announcements.js",
+        "src/views/courses.js",
+        "src/views/course.js",
+        "src/views/settings.js",
+        "src/boot.js"
+      ],
+      "css": [
+        "page.css"
+      ],
       "run_at": "document_start"
     },
     {
-      "matches": ["https://ultra.edu.kuleuven.cloud/ultra/*"],
-      "js": ["course.js"],
-      "css": ["page.css"],
+      "matches": [
+        "https://ultra.edu.kuleuven.cloud/ultra/*"
+      ],
+      "js": [
+        "src/core/util.js",
+        "src/core/i18n.js",
+        "src/i18n/core.js",
+        "src/i18n/overview.js",
+        "src/i18n/deadlines.js",
+        "src/i18n/planning.js",
+        "src/i18n/announcements.js",
+        "src/i18n/courses.js",
+        "src/i18n/course.js",
+        "src/i18n/settings.js",
+        "src/core/settings.js",
+        "src/core/net.js",
+        "src/core/data.js",
+        "src/core/ui.js",
+        "src/core/shell.js",
+        "src/views/overview.js",
+        "src/views/deadlines.js",
+        "src/views/planning.js",
+        "src/views/announcements.js",
+        "src/views/courses.js",
+        "src/views/course.js",
+        "src/views/settings.js",
+        "src/boot.js"
+      ],
+      "css": [
+        "page.css"
+      ],
       "run_at": "document_start"
     }
   ],
   "web_accessible_resources": [
-    { "resources": ["ui.css"], "matches": ["https://toledo.kuleuven.be/*", "https://ultra.edu.kuleuven.cloud/*"] }
+    {
+      "resources": [
+        "ui.css",
+        "src/views/*.css"
+      ],
+      "matches": [
+        "https://toledo.kuleuven.be/*",
+        "https://ultra.edu.kuleuven.cloud/*"
+      ]
+    }
   ]
 }

@@ -212,7 +212,6 @@
   // Static chrome (rebuilt on language change). The current view root is preserved.
   function buildChrome() {
     const keepRoot = current?.root || null;
-    const s = settings();
     const collapsed = !!TP.state?.get?.()?.ui?.sidebarCollapsed;
     app.classList.toggle('sb-collapsed', collapsed);
     app.innerHTML = `
@@ -267,7 +266,6 @@
 </dialog>
 <div class="tp-toast" aria-hidden="true"></div>
 <div class="tp-live tp-sr" role="status" aria-live="polite" aria-atomic="true"></div>`;
-    void s;
     const wrap = app.querySelector('.tp-view-wrap');
     if (keepRoot) wrap.appendChild(keepRoot);
     if (titleObserver) titleObserver.disconnect();
@@ -462,7 +460,15 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     if (sub) { sub.innerHTML = current.subtitle || ''; sub.hidden = !current.subtitle; }
     const up = $('.tp-updated');
     const ms = safe(() => TP.data?.lastUpdated?.(), null);
-    if (up) { up.textContent = ms ? t('common.updated', { time: TP.fmt.time(ms) }) : ''; up.hidden = !ms; }
+    if (up) {
+      // Non-blocking error state: keep cached data visible, offer a retry.
+      const failed = ['enrollments', 'events'].some((k) => safe(() => TP.data?.status?.(k)?.error, null));
+      const stamp = ms ? esc(t('common.updated', { time: TP.fmt.time(ms) })) : '';
+      up.innerHTML = failed
+        ? `${stamp ? stamp + ' · ' : ''}<span class="tp-updated-err">${icon('warning', { size: 13 })}${esc(t('shell.loadError'))}</span> · <button type="button" class="tp-link-btn" data-shell="refresh">${esc(t('common.retry'))}</button>`
+        : stamp;
+      up.hidden = !failed && !ms;
+    }
     const acts = $('.tp-head-actions');
     if (acts) {
       acts.innerHTML = (current.actions || []).map((a, i) =>
@@ -608,7 +614,17 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     restoreFocus(focus);
     if (searchQ) applySearch();
   }
-  const rerender = TP.util.debounce(() => { renderNav(); renderMenu(); updateHead(); renderView(); }, 60);
+  // Debounced full refresh of nav + current view, with a guard against render→change→render loops.
+  let burst = { at: 0, n: 0, warned: false };
+  const rerender = TP.util.debounce(() => {
+    const now = Date.now();
+    if (now - burst.at > 2000) burst = { at: now, n: 0, warned: burst.warned };
+    if (++burst.n > 12) {
+      if (!burst.warned) { console.warn('[Toledo+] rerender loop detected; throttling'); burst.warned = true; }
+      return;
+    }
+    renderNav(); renderMenu(); updateHead(); renderView();
+  }, 60);
 
   function switchView(route, params) {
     if (current?.view?.destroy) safe(() => current.view.destroy(current.ctx));
@@ -731,7 +747,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
 
   function onHashChange() {
     // The portal's own router may bounce our '#/tplus/…' hash to '#/home'; put ours back silently.
-    if (isHomeHash(location.hash) && ownNav.hash && Date.now() - ownNav.at < 2000) {
+    if (isHomeHash(location.hash) && ownNav.hash && Date.now() - ownNav.at < 1500) {
       history.replaceState(history.state, '', location.pathname + location.search + ownNav.hash);
       return;
     }
@@ -743,6 +759,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
   const plainClick = (ev) => ev.button === 0 && !ev.metaKey && !ev.ctrlKey && !ev.shiftKey && !ev.altKey;
 
   function onShellClick(ev) {
+    if (ev.target === $('.tp-sheet')) { closeSheet(); return; } // backdrop click
     const el = ev.target.closest?.('[data-shell], a[data-route], a[href]');
     if (!el) return;
     const act = el.dataset?.shell;
@@ -787,12 +804,6 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
         closeMenu(false); closeSheet();
       }
     }
-  }
-
-  // Close the sheet when its backdrop is clicked.
-  function onSheetBackdrop(ev) {
-    const d = $('.tp-sheet');
-    if (d && ev.target === d) closeSheet();
   }
 
   function onShellInput(ev) {
@@ -872,12 +883,10 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
   function start() {
     if (started) return;
     started = true;
-    if (!origin) preflight();
     origin = /ultra\.edu\.kuleuven\.cloud$/.test(location.hostname) ? 'ultra' : 'portal';
     if (origin === 'portal' && parseHash(location.hash)) ownNav = { hash: location.hash, at: Date.now() };
 
     window.addEventListener('keydown', onWindowKey, true);
-    document.addEventListener('click', (ev) => { if (ev.composedPath().includes($('.tp-sheet'))) onSheetBackdrop(ev); }, true);
 
     // Settings → theme, chrome, current view.
     safe(() => TP.settings.subscribe((s, keys = []) => {
@@ -891,9 +900,16 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
       if (mode === 'shell') rerender();
     }));
     safe(() => TP.state?.subscribe?.((st, keys = []) => {
-      if (mode === 'shell' && keys.some((k) => k !== 'ui' && k !== 'cache')) rerender();
+      // visits/cache/ui are written during renders; reacting to them would loop.
+      if (mode === 'shell' && keys.some((k) => !['ui', 'cache', 'visits'].includes(k))) rerender();
     }));
     safe(() => TP.data?.on?.('change', () => { if (mode === 'shell') rerender(); }));
+    let lastErrToast = 0;
+    safe(() => TP.data?.on?.('error', () => {
+      if (mode !== 'shell') return;
+      rerender();
+      if (!refreshing && Date.now() - lastErrToast > 60000) { lastErrToast = Date.now(); toast(t('shell.loadError')); }
+    }));
 
     if (origin === 'portal') {
       window.addEventListener('hashchange', onHashChange);
