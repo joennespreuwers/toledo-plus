@@ -50,7 +50,7 @@
 <div class="tp-pal-list" id="tp-pal-list" role="listbox" aria-label="${esc(t('palette.results'))}"></div>
 <div class="tp-pal-foot">
   <p class="tp-pal-status" id="tp-pal-status"></p>
-  <p class="tp-pal-hints" aria-hidden="true"><span><kbd>↑</kbd><kbd>↓</kbd> ${esc(t('palette.hint.move'))}</span><span><kbd>↵</kbd> ${esc(t('palette.hint.open'))}</span><span><kbd>${esc(TP.shell.mod.trim())}↵</kbd> ${esc(t('palette.hint.download'))}</span></p>
+  <p class="tp-pal-hints" aria-hidden="true"><span><kbd>↑</kbd><kbd>↓</kbd> ${esc(t('palette.hint.move'))}</span><span><kbd>↵</kbd> ${esc(t('palette.hint.open'))}</span><span><kbd>${esc(TP.shell.mod)}↵</kbd> ${esc(t('palette.hint.download'))}</span></p>
 </div>`;
     app.appendChild(dlg);
     const input = dlg.querySelector('.tp-pal-input');
@@ -163,7 +163,7 @@
     const snip = it.type === 'ft' && it.snip ? `<span class="tp-pal-sub tp-pal-snip">${it.snip}</span>` : ''; // segments escaped by TP.fulltext.snippetHtml
     return `<div class="tp-pal-opt${it.type === 'ft' ? ' tp-pal-opt-ft' : ''}" role="option" id="tp-pal-o${i}" data-i="${i}" aria-selected="false"${isFile ? ' data-file="1"' : ''}>
   ${lead}<span class="tp-pal-main"><span class="tp-pal-name">${esc(it.title)}</span>${it.sub ? `<span class="tp-pal-sub">${esc(it.sub)}</span>` : ''}${snip}</span>
-  <span class="tp-pal-enter" aria-hidden="true">${isFile ? `<kbd>${esc(TP.shell.mod.trim())}↵</kbd> ${icon('download', { size: 13 })}` : '<kbd>↵</kbd>'}</span>
+  <span class="tp-pal-enter" aria-hidden="true">${isFile ? `<kbd>${esc(TP.shell.mod)}↵</kbd> ${icon('download', { size: 13 })}` : '<kbd>↵</kbd>'}</span>
 </div>`;
   }
 

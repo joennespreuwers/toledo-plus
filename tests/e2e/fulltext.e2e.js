@@ -72,9 +72,9 @@ describe('full-text search of course files', () => {
     assert.ok(await waitFor(async () => (await inShadow(page, (sr) => sr.activeElement?.dataset?.action)) === 'ft-cancel' || /doorzoekbaar/.test((await ftBox(page)).text)), 'focus moves to Stop');
     const s = await waitFor(async () => (await h.getSettings())?.search?.fullText === true);
     assert.ok(s, 'setting turned on');
-    const done = await waitFor(async () => { const b = await ftBox(page); return b && /doorzoekbaar in ⌘K/.test(b.text) && b; }, { timeout: 30000 });
+    const done = await waitFor(async () => { const b = await ftBox(page); return b && /doorzoekbaar in (⌘|Ctrl\+)K/.test(b.text) && b; }, { timeout: 30000 });
     assert.ok(done, `finished: ${JSON.stringify(await ftBox(page))}`);
-    assert.match(done.text, /1 bestand doorzoekbaar in ⌘K · 4 overgeslagen/, 'the placeholder files are skipped, the real PDF indexed');
+    assert.match(done.text, /1 bestand doorzoekbaar in (⌘|Ctrl\+)K · 4 overgeslagen/, 'the placeholder files are skipped, the real PDF indexed');
     assert.deepEqual(done.buttons, ['ft-run']);
     await screenshot(page, 'fulltext-done-light-desktop');
     // one at a time, only supported files, absolute URLs, nothing foreign

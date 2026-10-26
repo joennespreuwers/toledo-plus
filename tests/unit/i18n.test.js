@@ -72,3 +72,17 @@ test('every literal TP.t("key") used in src/ is registered', () => {
   }
   assert.deepEqual([...new Set(missing)], [], `Unregistered keys:\n${[...new Set(missing)].join('\n')}`);
 });
+
+test('keyboard modifier follows the platform: ⌘ on macOS (userAgentData "macOS" or platform "MacIntel"), Ctrl+ elsewhere', () => {
+  const load = (navigator) => { const s = sandbox({ globals: { navigator: { language: 'nl-BE', languages: ['nl-BE'], ...navigator } } }); s.load('src/core/util.js'); s.load('src/core/i18n.js'); for (const f of list('src/i18n', /\.js$/)) s.load(f); return s.TP; };
+  const mac1 = load({ userAgentData: { platform: 'macOS' } });
+  const mac2 = load({ platform: 'MacIntel' });
+  const win = load({ userAgentData: { platform: 'Windows' }, platform: 'Win32' });
+  const lin = load({ platform: 'Linux x86_64' });
+  for (const T of [mac1, mac2]) { assert.equal(T.i18n.isMac, true); assert.equal(T.i18n.mod, '⌘'); assert.match(T.t('settings.search.indexDesc'), /⌘K/); }
+  for (const T of [win, lin]) {
+    assert.equal(T.i18n.isMac, false); assert.equal(T.i18n.mod, 'Ctrl+');
+    assert.match(T.t('settings.search.indexDesc'), /Ctrl\+K/); assert.doesNotMatch(T.t('settings.search.indexDesc'), /⌘/);
+    assert.equal(T.t('fulltext.course.done', { n: 2 }).includes('Ctrl+K'), true);
+  }
+});

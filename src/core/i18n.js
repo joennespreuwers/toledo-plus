@@ -47,14 +47,20 @@
     return key;
   }
 
+  // Keyboard modifier per platform: strings are written with "⌘" (macOS); elsewhere they read "Ctrl+".
+  // navigator.userAgentData.platform is "macOS" (Chromium), navigator.platform "MacIntel" — match case-insensitively.
+  const IS_MAC = (() => { try { return /mac|iphone|ipad|ipod/i.test((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || navigator.userAgent || ''); } catch (_) { return false; } })();
+  const MOD = IS_MAC ? '⌘' : 'Ctrl+';
+  const platformKeys = (s) => (IS_MAC || typeof s !== 'string' || s.indexOf('⌘') < 0 ? s : s.replace(/⌘\s?/g, 'Ctrl+'));
+
   function tr(key, vars) {
-    const s = lookup(key, vars);
+    const s = platformKeys(lookup(key, vars));
     if (!vars) return s;
     return String(s).replace(/\{(\w+)\}/g, (m, k) => (vars[k] != null ? String(vars[k]) : m));
   }
 
   const has = (key) => LANGS.some((l) => table[l][key] != null);
 
-  TP.i18n = { add, lang, locale, apiLang, has, LANGS, _table: table };
+  TP.i18n = { add, lang, locale, apiLang, has, LANGS, _table: table, isMac: IS_MAC, mod: MOD, keys: platformKeys };
   TP.t = tr;
 })();
