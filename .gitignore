@@ -16,3 +16,4 @@ website/.screens/
 .dev.vars
 .dev-profile/
 package-lock.json
+_metadata/
