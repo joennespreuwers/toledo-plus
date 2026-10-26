@@ -330,7 +330,7 @@
         <span class="tp-sr">${esc(t('shell.searchLabel'))}</span>
         <input type="search" data-shell="search" autocomplete="off" spellcheck="false" enterkeyhint="search" value="${esc(searchQ)}">
       </label>
-      <button type="button" class="tp-kbd" data-shell="palette" aria-haspopup="dialog" aria-label="${esc(t('palette.open'))} (${MOD}K)" title="${esc(t('palette.open'))} (${MOD}K)"><kbd>${MOD}K</kbd></button>
+      <button type="button" class="tp-kbd" data-shell="palette" aria-haspopup="dialog" title="${esc(t('palette.open'))} (${MOD}K)"><kbd>${MOD}K</kbd><span class="tp-sr">, ${esc(t('palette.open'))}</span></button>
       <button type="button" class="tp-search-clear" data-shell="search-clear" aria-label="${esc(t('shell.searchClear'))}" hidden>${icon('xmark', { size: 13, strokeWidth: 2.4 })}</button>
     </div>
     <button type="button" class="tp-tb-btn tp-search-open" data-shell="search-open" aria-label="${esc(t('shell.searchOpen'))}">${icon('search', { size: 20 })}</button>

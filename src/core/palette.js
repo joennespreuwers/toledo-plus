@@ -1,5 +1,5 @@
 /* Toledo+ — TP.palette: the ⌘K command palette. Searches navigation, courses, documents in all
-   course trees (TP.index), deadlines and announcements. Opened by the shell (⌘K / Ctrl+K, '/', the ⌘K
+   course trees (TP.index), the contents of indexed files (TP.fulltext, opt-in), deadlines and announcements. Opened by the shell (⌘K / Ctrl+K, '/', the ⌘K
    button in the toolbar field, "Zoek overal" in the phone More sheet). A modal <dialog> inside the shell's
    shadow root: combobox input + listbox (aria-activedescendant), ↑/↓ move, ↵ open, ⌘↵ download a file,
    Esc closes and returns focus. The toolbar search field keeps filtering the current view. */
@@ -21,6 +21,9 @@
   let active = -1;
   let q = '';
   let unsubIndex = null;
+  let unsubFt = null;
+  let ft = { q: null, items: [] };   // full-text results for query ft.q (async: they arrive after the sync groups)
+  let ftWant = null;                 // query whose full-text search is in flight
   let announceTimer = 0;
 
   const safe = (fn, fb) => { try { return fn(); } catch (_) { return fb; } };
@@ -101,6 +104,9 @@
     }));
     if (docs.length) groups.push({ id: 'docs', title: t('palette.group.docs'), items: docs });
 
+    const files = ftItems(words);
+    if (files.length) groups.push({ id: 'files', title: t('palette.group.files'), items: files });
+
     const dls = scored(safe(() => TP.data.deadlines({}), []), words, (d) => [d.title, [d.courseName]]).map(({ x: d }) => ({
       type: 'deadline', url: d.url, title: d.title,
       sub: [d.courseName, `${TP.fmt.date(d.due, { weekday: 'short', day: 'numeric', month: 'short' })} ${TP.fmt.time(d.due)}`, d.due < Date.now() && !d.done ? t('palette.overdue') : ''].filter(Boolean).join(' · '),
@@ -117,6 +123,29 @@
     return groups;
   }
 
+  /** "In bestanden": full-text hits for `words` (cached per query; a search is started when missing and the list
+   *  re-renders when it arrives — typing is never blocked). */
+  function ftItems(words) {
+    const F = TP.fulltext;
+    if (!F || !F.enabled()) return [];
+    if (ft.q !== words) {
+      if (ftWant !== words) {
+        ftWant = words;
+        F.search(words, { limit: PER_GROUP }).then((hits) => {
+          if (ftWant !== words) return;
+          ftWant = null;
+          ft = { q: words, items: hits || [] };
+          if (isOpen() && q.trim() === words) render(collect(q));
+        });
+      }
+      return [];
+    }
+    return ft.items.map((h) => ({
+      type: 'ft', hit: h, cid: h.cid, luId: h.luId, id: h.id, kind: 'file', title: h.title, course: h.course, page: h.page,
+      sub: [h.course, F.where(h)].filter(Boolean).join(' · '), snip: F.snippetHtml(h.snippet), icon: 'doc',
+    }));
+  }
+
   function kindLabel(d) {
     if (d.kind === 'file') {
       const ext = String(d.title || '').split('.').pop();
@@ -130,9 +159,10 @@
     const lead = it.type === 'course'
       ? `<span class="tp-pal-tile tp-pal-tile-dot">${TP.ui.dot(it.color)}</span>`
       : `<span class="tp-pal-tile">${icon(it.icon || 'doc', { size: 16 })}</span>`;
-    const isFile = it.type === 'doc' && FILE_KINDS.has(it.kind);
-    return `<div class="tp-pal-opt" role="option" id="tp-pal-o${i}" data-i="${i}" aria-selected="false"${isFile ? ' data-file="1"' : ''}>
-  ${lead}<span class="tp-pal-main"><span class="tp-pal-name">${esc(it.title)}</span>${it.sub ? `<span class="tp-pal-sub">${esc(it.sub)}</span>` : ''}</span>
+    const isFile = (it.type === 'doc' && FILE_KINDS.has(it.kind)) || it.type === 'ft';
+    const snip = it.type === 'ft' && it.snip ? `<span class="tp-pal-sub tp-pal-snip">${it.snip}</span>` : ''; // segments escaped by TP.fulltext.snippetHtml
+    return `<div class="tp-pal-opt${it.type === 'ft' ? ' tp-pal-opt-ft' : ''}" role="option" id="tp-pal-o${i}" data-i="${i}" aria-selected="false"${isFile ? ' data-file="1"' : ''}>
+  ${lead}<span class="tp-pal-main"><span class="tp-pal-name">${esc(it.title)}</span>${it.sub ? `<span class="tp-pal-sub">${esc(it.sub)}</span>` : ''}${snip}</span>
   <span class="tp-pal-enter" aria-hidden="true">${isFile ? `<kbd>${esc(TP.shell.mod.trim())}↵</kbd> ${icon('download', { size: 13 })}` : '<kbd>↵</kbd>'}</span>
 </div>`;
   }
@@ -155,7 +185,7 @@
     setActive(keep >= 0 ? keep : (items.length ? 0 : -1), false);
     status();
   }
-  const keyOf = (it) => [it.type, it.route, it.luId, it.cid, it.id, it.url, it.title].join('|');
+  const keyOf = (it) => [it.type, it.route, it.luId, it.cid, it.id, it.url, it.title, it.page].join('|');
 
   function setActive(i, scroll = true) {
     active = i;
@@ -171,7 +201,15 @@
 
   function status() {
     const el = dlg && dlg.querySelector('.tp-pal-status');
-    if (el) el.textContent = safe(() => TP.index.statusText(), '');
+    if (!el) return;
+    el.textContent = safe(() => TP.index.statusText(), '');
+    const ftTxt = safe(() => (TP.fulltext ? TP.fulltext.statusText() : ''), '');
+    if (ftTxt) {
+      const s = document.createElement('span');
+      s.className = 'tp-pal-ftstatus';
+      s.textContent = (el.textContent ? ' · ' : '') + ftTxt;
+      el.appendChild(s);
+    }
   }
 
   const update = TP.util.debounce(() => {
@@ -205,6 +243,14 @@
       }
       close(false);
       await openInCourse(it);
+      return;
+    }
+    if (it.type === 'ft') {
+      safe(() => Promise.resolve(TP.data.addRecent({ title: it.title, url: TP.data.ultraItemUrl(it.cid, it.id), courseName: it.course || '', courseLuId: it.luId || '', kind: 'file' })).catch(() => {}));
+      close(false);
+      // Both keep the key press' user activation (window.open / the download).
+      if (mod) Promise.resolve(TP.data.ultraDownload(it.cid, it.id)).catch(() => S.toast(t('course.downloadFailed')));
+      else TP.fulltext.open(it.hit);
       return;
     }
     if (it.type === 'announcement' && it.ev) safe(() => Promise.resolve(TP.data.markRead([it.ev])).catch(() => {}));
@@ -281,6 +327,12 @@
       render(collect(q));
       unsubIndex = safe(() => TP.index.on('change', () => { if (isOpen()) { status(); if (q.trim()) update(); } }), null);
       safe(() => TP.index.crawlIfStale().catch(() => {}));
+      ft = { q: null, items: [] };
+      if (TP.fulltext) {
+        // new files indexed (here or in another tab) → refresh the footer and the "In bestanden" results
+        unsubFt = safe(() => TP.fulltext.on('change', () => { if (isOpen()) { status(); ft = { q: null, items: [] }; if (q.trim()) update(); } }), null);
+        safe(() => TP.fulltext.warm());
+      }
     }
     input.focus();
     input.select();
@@ -291,6 +343,7 @@
     if (!dlg || !dlg.open) return false;
     try { dlg.close(); } catch (_) { dlg.removeAttribute('open'); }
     if (unsubIndex) { unsubIndex(); unsubIndex = null; }
+    if (unsubFt) { unsubFt(); unsubFt = null; }
     clearTimeout(announceTimer);
     if (returnFocus && opener && opener.isConnected && typeof opener.focus === 'function') opener.focus();
     opener = null;

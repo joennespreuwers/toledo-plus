@@ -40,7 +40,7 @@
   --separator: rgba(31, 36, 48, .13); --separator-strong: rgba(31, 36, 48, .28);
   --fill: rgba(118, 114, 110, .13); --fill-2: rgba(118, 114, 110, .07);
   /* status: red = "te laat" (always icon + word), amber = "binnenkort" (clock + date), green = done */
-  --red: #D70015; --red-fill: #FF3B30;
+  --red: #D70015; --red-fill: #FF3B30; --red-tile: #B0000F;
   --amber: #8A5300; --amber-fill: #F5B000;
   --orange: var(--amber); --orange-fill: var(--amber-fill); /* legacy names: "urgent" is amber since the brand made orange the accent */
   --green: #1E7B36; --green-fill: #34C759;
@@ -104,7 +104,7 @@
   --label: #F4F5F7; --label-2: rgba(235, 237, 245, .68); /* 6.1:1 on --bg-3 */ --label-3: rgba(235, 237, 245, .30);
   --separator: rgba(235, 237, 245, .12); --separator-strong: rgba(235, 237, 245, .26);
   --fill: rgba(150, 160, 185, .20); --fill-2: rgba(150, 160, 185, .11);
-  --red: #FF6B61; --red-fill: #FF453A; --amber: #FFC542; --amber-fill: #FFB800; --green: #30D158; --green-fill: #30D158;
+  --red: #FF6B61; --red-fill: #FF453A; --red-tile: #FF6B61; --amber: #FFC542; --amber-fill: #FFB800; --green: #30D158; --green-fill: #30D158;
   --tint-text: var(--tint-text-d);
   --tint-soft: color-mix(in srgb, var(--tint) 22%, transparent);
   --tint-tile: color-mix(in srgb, var(--tint) 18%, var(--bg-2));
@@ -126,7 +126,7 @@
     --label: #F4F5F7; --label-2: rgba(235, 237, 245, .68); /* 6.1:1 on --bg-3 */ --label-3: rgba(235, 237, 245, .30);
     --separator: rgba(235, 237, 245, .12); --separator-strong: rgba(235, 237, 245, .26);
     --fill: rgba(150, 160, 185, .20); --fill-2: rgba(150, 160, 185, .11);
-    --red: #FF6B61; --red-fill: #FF453A; --amber: #FFC542; --amber-fill: #FFB800; --green: #30D158; --green-fill: #30D158;
+    --red: #FF6B61; --red-fill: #FF453A; --red-tile: #FF6B61; --amber: #FFC542; --amber-fill: #FFB800; --green: #30D158; --green-fill: #30D158;
     --tint-text: var(--tint-text-d);
     --tint-soft: color-mix(in srgb, var(--tint) 22%, transparent);
     --tint-tile: color-mix(in srgb, var(--tint) 18%, var(--bg-2));
@@ -324,7 +324,7 @@
 /* rail: icons centred, labels kept for assistive tech, counts → dot, overdue → small red badge */
 .sb-rail .tp-sb-brand { display: flex; justify-content: center; padding: 14px 0 8px; }
 .sb-rail .tp-brand { padding: 4px; }
-.sb-rail .tp-brand { padding: 4px; }
+.sb-rail .tp-sb-brand .tp-brand-name { display: none; } /* the link has an aria-label; a clipped wordmark would still overflow the rail */
 .sb-rail .tp-brand-name, .sb-rail .tp-sb-label {
   position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
 }
@@ -388,7 +388,7 @@
 .tp-tb-btn { transition: background-color var(--dur-1) var(--ease), scale var(--dur-1) var(--ease); }
 .tp-tb-btn:hover { background: var(--fill); }
 .tp-tb-btn:active { scale: .94; }
-.tp-refresh.spinning .tp-ic { animation: tp-spin .8s linear infinite; }
+.tp-refresh.spinning .tp-ic { animation: tp-spin .8s linear 12; } /* ≤ ~10 s; aria-busy keeps saying it's busy */
 @keyframes tp-spin { to { transform: rotate(360deg); } }
 
 /* search */
@@ -764,7 +764,7 @@ a.tp-row:active, button.tp-row:active, summary.tp-row:active { background: var(-
 .tp-dt-urgent { background: color-mix(in srgb, var(--amber-fill) 20%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--amber-fill) 45%, transparent); }
 .tp-dt-urgent .tp-dt-m, .tp-dt-urgent .tp-dt-d { color: var(--amber); }
 .tp-dt-overdue { background: color-mix(in srgb, var(--red-fill) 16%, transparent); }
-.tp-dt-overdue .tp-dt-m, .tp-dt-overdue .tp-dt-d { color: var(--red); }
+.tp-dt-overdue .tp-dt-m, .tp-dt-overdue .tp-dt-d { color: var(--red-tile, var(--red)); } /* light #B0000F: 5.9:1 on the tile (11px month) */
 .tp-dt-muted { opacity: .55; }
 
 /* empty / skeleton / error */
@@ -787,7 +787,9 @@ a.tp-row:active, button.tp-row:active, summary.tp-row:active { background: var(-
 .tp-skeleton > .tp-skel-row + .tp-skel-row { box-shadow: inset 0 var(--hairline) 0 var(--separator); }
 .tp-skel-lead, .tp-skel-line {
   background: linear-gradient(90deg, var(--fill) 0%, var(--fill-2) 50%, var(--fill) 100%);
-  background-size: 200% 100%; animation: tp-shimmer 1.4s ease-in-out infinite;
+  /* a few sweeps, then still: a placeholder that is still there after ~6 s is not "loading" any more, and an endless
+     shimmer keeps the viewport repainting (Lighthouse Speed Index, battery) */
+  background-size: 200% 100%; animation: tp-shimmer 1.4s ease-in-out 4;
 }
 @keyframes tp-fade-in { to { opacity: 1; } }
 @keyframes tp-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }

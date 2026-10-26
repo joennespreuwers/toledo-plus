@@ -430,3 +430,70 @@ dialog.addEventListener('close', () => {    // CSS fades it out; remove the node
 - Tests: `tests/helpers/launch.js` turns motion off unless `launch({motion:true})`; `reducedMotion:'reduce'` emulates the preference;
   `recordVideo` is passed through. The shared mock answers `POST /v1/ping`, `POST /v1/forget` and `GET /v1/latest` (current version, no
   update banner), recorded in `rec.api`, so `rec.foreign` must be empty everywhere.
+
+## Addendum v1.5 — Full-text search of course files (`TP.fulltext`, Agent J)
+
+Opt-in (`settings.search.fullText === true`; **not** in DEFAULTS, so it is off unless written). ⌘K gets a group **"In bestanden"**
+(below Documenten): file title · course · "p. 14" / "dia 6" + a ± 80-character snippet with `<mark>`ed matches; ↵ opens the file
+(PDF: `…/download#page=14` — the fragment survives the 302 to storage, so the browser viewer opens at that page), ⌘↵ downloads it.
+
+**Execution contexts (why):**
+```
+content script (both origins)            hidden extension frame (chrome-extension://…)        module Worker (of the frame)
+src/core/fulltext-engine.js  ─┐          src/core/fulltext-host.html → fulltext-host.mjs     src/core/fulltext-worker.mjs
+src/core/fulltext.js  ────────┴─ port ─→  IndexedDB 'tplus-fulltext' + in-memory index  ─→   pdf.js (src/vendor/pdfjs) + zip/OOXML
+  fetch (Ultra only), queue, budget        search, snippets, LRU cap, BroadcastChannel          text extraction, page by page
+```
+- **Fetching stays in the content script on the Ultra origin**: the download endpoint needs Ultra's session cookie and then 302s to a
+  signed storage URL that rejects credentialed CORS (fact 3) — exactly the existing `TP.net.blob` path. On the portal nothing is fetched.
+- **Extraction, storage and search run in a hidden `<iframe>` of a web-accessible extension page** (`src/core/fulltext-host.html`), created
+  lazily by `fulltext.js` (only when the feature is on and needed). Chosen over an offscreen document because it (1) needs no new
+  permission, (2) receives the file bytes as a **transferred ArrayBuffer over a MessagePort** (runtime messaging would JSON-encode them),
+  (3) lives in the **extension origin**, so one IndexedDB is shared by `toledo.kuleuven.be`, `ultra.edu.kuleuven.cloud` and every tab
+  (extension frames get unpartitioned storage on sites the extension has host permissions for — verified by `tests/e2e/fulltext.e2e.js`),
+  (4) may start module workers from extension URLs (pdf.js), and (5) is an out-of-process frame: the Toledo page never janks.
+  Page CSP does not apply to `chrome-extension:` frames. The frame starts a **module Worker** (`fulltext-worker.mjs`) for extraction;
+  pdf.js runs inside it in its in-thread "fake worker" mode (`globalThis.pdfjsWorker`), imported lazily on the first PDF; the worker is
+  terminated after 60 s idle.
+- **Handshake** (page scripts must not reach the index): the content script sends `{type:'tp-ft-hello', nonce}` with
+  `chrome.runtime.sendMessage` (only extension contexts can; the frame checks `sender.id`, `sender.tab`, Toledo origin), then posts
+  `{type:'tp-ft-port', nonce}` + a `MessagePort` to the frame window (target origin = the extension origin). The frame accepts a port only
+  for a fresh (≤ 30 s), unused nonce. `background.js` ignores the hello (unchanged).
+- Vendored code is ES modules (`.mjs`) loaded only by the extension frame/worker; content scripts stay classic IIFEs.
+  `fulltext-engine.js` is a classic script that is both a content script and a side-effect module import of the frame and worker
+  (`globalThis.TPFT`). New files are listed in `web_accessible_resources` (the frame page and its module graph), which is also what puts
+  them in the release zip (`scripts/pack.mjs`).
+
+**Load order:** `src/i18n/fulltext.js` with the other i18n files; `src/core/fulltext-engine.js`, `src/core/fulltext.js` right after `index.js`.
+
+```
+TP.fulltext.enabled() → bool                       // settings.search.fullText === true
+TP.fulltext.search(q, {limit}) → Promise<Hit[]>     // never rejects; [] when off. Hidden courses are skipped.
+   Hit = { key:'cid:contentId', cid, luId, id (contentId), title, fileName, course, color, page, unit:'page'|'slide'|'', type, url, snippet:[[text, marked]] }
+TP.fulltext.where(hit) → "p. 14" | "dia 6" | ''     ; TP.fulltext.snippetHtml(segs) → escaped HTML with <mark>
+TP.fulltext.open(hit)                               // sync window.open (keeps user activation), PDF → #page=n; fallback TP.data.ultraOpen
+TP.fulltext.warm() / status() → {enabled, files, skipped, bytes, known, active} / statusText() (palette footer) / settingsText()
+TP.fulltext.indexCourse({cid, luId?, roots?}) → run ; cancelCourse(cid) ; wipe()
+TP.fulltext.courseBox(cid) / updateCourseBox(root, cid) / courseAction(act, {cid, luId, roots, root})   // course view helpers
+TP.fulltext.on('change'|'progress', fn) → unsubscribe
+```
+- **(a) Files opened/downloaded through Toledo+** (when on): `fulltext.js` wraps `TP.net.blob` — a blob fetched from
+  `…/attachments/{aid}/download` is indexed from the **same bytes** (no second download) — and `TP.data.ultraOpen` — "open" streams into a
+  new tab, so one idle-time fetch of that file is queued (Ultra only; supported types only).
+- **(b) Course action** "Doorzoek alle bestanden" (course header, Ultra only): a confirm line states the number of files and the limits and
+  turns the setting on; then a live progress line (`role=status`) with Stop. Files whose stored `modified` matches the tree are not fetched.
+- **(c) Settings › Zoeken**: switch `s:search.fullText`, status ("12 bestanden doorzoekbaar (4,2 MB) · 3 overgeslagen"), "Wis bestandsindex".
+- **Throttle:** one file at a time; each file waits for `requestIdleCallback` and a visible tab (paused while `document.hidden`);
+  429/5xx → back-off 5 s × 2ⁿ (Retry-After wins, max 5 min), up to 4 retries per file; 401/403 → stop ("sessie verlopen"); ≤ 25 MB per
+  file (Content-Length checked before reading, stream capped otherwise); **300 MB of downloads per day** (`chrome.storage.local`
+  `fulltext:budget = {day, bytes}`, shared by tabs; tapped downloads cost nothing).
+- **Supported:** PDF (text layer; scans without text → skipped, no OCR; password-protected → skipped), DOCX (pages from explicit and Word's
+  rendered page breaks), PPTX (slide numbers), XLSX (shared strings), TXT/MD/CSV, HTML. Everything else is never downloaded for indexing.
+  Limits per file: 2000 pages, 50 000 chars/page, 2 M chars.
+- **Storage:** IndexedDB `tplus-fulltext` v1 in the extension origin: `files` (metadata incl. `attId`, `modified`, `size`, `url`, `skipped`,
+  `used`), `pages` ([key, n] → text), `terms` ([key, n] → unique normalised words). Re-indexed when the attachment id, `modified` or size
+  changes. Capped at 100 M chars (~200 MB): least recently used files are evicted. Skipped files are remembered (so they are not retried
+  until they change). Each frame keeps an inverted index (term → pages; prefix search on a sorted vocabulary) built from `terms`; frames
+  in other tabs are kept in sync with a `BroadcastChannel`.
+- **Matching:** lowercase, diacritics stripped (NFKD), ligatures folded; every query word must occur on the same page as a word or a
+  word prefix (exact > prefix; title match boosts); best page per file.

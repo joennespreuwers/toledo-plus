@@ -40,7 +40,7 @@ async function start() {
     const fileName = decodeURIComponent(u.pathname.split('/').pop() || 'file');
     for (const fn of listeners) fn({ url: `https://${HOST}${req.url}`, fileName, headers: req.headers, via: 'server' });
     res.writeHead(200, { ...cors, 'content-type': u.searchParams.get('type') || 'application/octet-stream' });
-    res.end(`MOCK FILE ${fileName}\n`);
+    res.end(require('./fixture-files').fileBody(fileName) || `MOCK FILE ${fileName}\n`); // real bytes for full-text tests
   });
   await new Promise((r) => srv.listen(0, '127.0.0.1', r));
   const port = srv.address().port;

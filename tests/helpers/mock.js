@@ -52,6 +52,10 @@ const ultraHtml = (title) => `<!doctype html><html lang="nl"><head><meta charset
 <a id="go-item" href="#" onclick="history.pushState({},'',location.origin+'/ultra/courses/_900661_1/outline/file/_5000_1');return false">open item</a>
 <a id="go-stream" href="#" onclick="history.pushState({},'',location.origin+'/ultra/stream');return false">stream</a></div></body></html>`;
 
+// Real (generated, fictitious) bytes for some attachments — full-text search tests (tests/helpers/fixture-files.js).
+const { fileBody } = require('./fixture-files');
+const bodyFor = (fileName) => fileBody(fileName) || Buffer.from(`MOCK FILE ${fileName}\n`);
+
 const json = (route, data, status = 200) => route.fulfill({ status, contentType: 'application/json; charset=utf-8', body: JSON.stringify(data) });
 
 function allNodes(tree) {
@@ -130,7 +134,7 @@ async function install(ctx, fx, opts = {}) {
       if (r && r.redirect && !opts.files) { // no local storage server: serve the file inline
         const t = new URL(r.redirect); const fileName = decodeURIComponent(t.pathname.split('/').pop());
         rec.downloads.push({ url: r.redirect, fileName, headers: {}, via: 'inline' });
-        return route.fulfill({ status: 200, headers: { 'content-type': t.searchParams.get('type') || 'application/octet-stream' }, body: Buffer.from(`MOCK FILE ${fileName}\n`) });
+        return route.fulfill({ status: 200, headers: { 'content-type': t.searchParams.get('type') || 'application/octet-stream' }, body: bodyFor(fileName) });
       }
       if (r && r.redirect) return route.fulfill({ status: 302, headers: { location: r.redirect, 'cache-control': 'no-store' } });
       if (r === null) { rec.unknown.push(e); return json(route, { status: 404, message: 'not mocked' }, 404); }
@@ -149,7 +153,7 @@ async function install(ctx, fx, opts = {}) {
     const u = new URL(req.url()); const fileName = decodeURIComponent(u.pathname.split('/').pop());
     rec.downloads.push({ url: req.url(), fileName, headers: req.headers() });
     const mime = u.searchParams.get('type') || 'application/octet-stream';
-    return route.fulfill({ status: 200, headers: { ...cors, 'content-type': mime }, body: Buffer.from(`MOCK FILE ${fileName}\n`) });
+    return route.fulfill({ status: 200, headers: { ...cors, 'content-type': mime }, body: bodyFor(fileName) });
   });
 
   // ---- base-href CDN (must never be hit)

@@ -247,10 +247,16 @@
   function clearGhosts(container) { container.querySelectorAll(':scope .tp-ghost').forEach((g) => g.remove()); }
 
   /** Clone a removed/hidden row as a fading, non-interactive ghost at its old place (needs a live host). */
-  function ghost(b, host, anims) {
+  // Reads (host rect + position) happen for every ghost before the first one is inserted (ghostJob), so a batch of
+  // removed rows costs one layout instead of one forced reflow per ghost.
+  function ghostJob(b, host) {
+    if (b.rect.height > 360) return null;
+    return { b, host, hr: host.getBoundingClientRect(), isStatic: getComputedStyle(host).position === 'static',
+      cl: host.clientLeft, ct: host.clientTop, sl: host.scrollLeft, st: host.scrollTop };
+  }
+  function ghost(job, anims) {
+    const { b, host, hr } = job;
     const r = b.rect;
-    if (r.height > 360) return;
-    const hr = host.getBoundingClientRect();
     const g = b.el.cloneNode(true);
     g.removeAttribute('hidden');
     g.removeAttribute('id');
@@ -258,10 +264,10 @@
     g.classList.add('tp-ghost');
     g.setAttribute('aria-hidden', 'true');
     g.setAttribute('inert', '');
-    if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
+    if (job.isStatic) host.style.position = 'relative';
     Object.assign(g.style, {
       position: 'absolute', margin: '0', boxSizing: 'border-box', pointerEvents: 'none',
-      left: `${r.left - hr.left - host.clientLeft + host.scrollLeft}px`, top: `${r.top - hr.top - host.clientTop + host.scrollTop}px`,
+      left: `${r.left - hr.left - job.cl + job.sl}px`, top: `${r.top - hr.top - job.ct + job.st}px`,
       width: `${r.width}px`, height: `${r.height}px`,
     });
     host.insertBefore(g, host.firstChild);
@@ -313,6 +319,7 @@
     const anims = new Set();
     flipping.set(container, anims);
     const after = measure(container, sel);
+    const tint = o.highlight ? (getComputedStyle(container).getPropertyValue('--tint-soft').trim() || 'rgba(238,139,53,.15)') : null; // read before any write
     const rm = reduced();
     const moved = new Map(); // el → [dx, dy] total
     const fresh = [];
@@ -348,20 +355,19 @@
         gone.push(b);
       }
       const goneEls = new Set(gone.map((b) => b.el));
-      let n = 0;
+      const jobs = [];
       for (const b of gone) {
-        if (n >= MAX_GHOSTS) break;
+        if (jobs.length >= MAX_GHOSTS) break;
         let nested = false;
         for (let p = b.el.parentElement; p; p = p.parentElement) if (goneEls.has(p)) { nested = true; break; }
         if (nested || b.el.classList.contains('tp-seg-pill')) continue;
         const host = ghostHost(b, after, container);
-        if (!host) continue;
-        ghost(b, host, anims);
-        n++;
+        const job = host && ghostJob(b, host);
+        if (job) jobs.push(job);
       }
+      for (const job of jobs) ghost(job, anims); // writes only
     }
     // new rows: fade up, staggered (≤ 8 steps of 20 ms)
-    const tint = o.highlight ? (getComputedStyle(container).getPropertyValue('--tint-soft').trim() || 'rgba(0,122,255,.15)') : null;
     fresh.forEach((el, i) => {
       const a = animate(el, [{ opacity: 0, translate: '0px 4px' }, { opacity: 1, translate: '0px 0px' }],
         { duration: DUR[2], delay: Math.min(i, 8) * 20, easing: EASE.out, keep: true });
@@ -373,7 +379,7 @@
   /** Brief tint pulse (new items after ↻). */
   function highlight(el, color) {
     if (!el) return null;
-    const c = color || (getComputedStyle(el).getPropertyValue('--tint-soft').trim() || 'rgba(0,122,255,.15)');
+    const c = color || (getComputedStyle(el).getPropertyValue('--tint-soft').trim() || 'rgba(238,139,53,.15)');
     return animate(el, [{ backgroundColor: c }, { backgroundColor: c, offset: 0.4 }, { backgroundColor: 'transparent' }], { duration: 1600, easing: EASE.standard, keep: true, always: true });
   }
 

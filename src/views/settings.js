@@ -159,6 +159,27 @@
       t('settings.agenda.foot'));
   }
 
+  // ---- BEGIN full-text block (owner: TP.fulltext, src/core/fulltext.js) — switch, status, "Wis bestandsindex" ----
+  function fullTextRows() {
+    const F = TP.fulltext;
+    if (!F) return '';
+    return toggleRow('s:search.fullText', F.enabled(), t('fulltext.setting'), t('fulltext.settingDesc'))
+      + `<div class="st-row"><span class="st-label">${esc(t('fulltext.status'))}</span><span class="st-value" data-ft-status>${esc(F.settingsText())}</span></div>`
+      + `<div class="st-row st-row-actions"><button type="button" class="st-action st-danger" data-action="ft-wipe" data-fk="ft-wipe">${TP.ui.icon('trash', { size: 16 })}<span>${esc(t('fulltext.wipe'))}</span></button></div>`;
+  }
+  function bindFullText() {
+    try {
+      TP.fulltext && TP.fulltext.on('change', () => {
+        const el = cur && cur.root.querySelector('.st-view [data-ft-status]');
+        if (el) el.textContent = TP.fulltext.settingsText();
+      });
+    } catch { /* no full-text module */ }
+  }
+  function onFullTextWipe() {
+    Promise.resolve(TP.fulltext && TP.fulltext.wipe()).catch(() => {}).finally(() => { TP.shell.toast?.(t('fulltext.wiped')); rerender(); });
+  }
+  // ---- END full-text block ----
+
   function search(s) {
     const on = ((s.search || {}).indexAll) !== false;
     let st = null;
@@ -170,7 +191,8 @@
       + `<div class="st-row"><span class="st-label">${esc(t('settings.search.status'))}</span><span class="st-value st-index-status" data-index-status>${esc(line)}</span></div>`
       + `<div class="st-row st-row-actions">
         <button type="button" class="st-action" data-action="reindex" data-fk="reindex"${busy ? ' aria-busy="true"' : ''}>${TP.ui.icon('refresh', { size: 16 })}<span>${esc(t('settings.search.rebuild'))}</span></button>
-      </div>`,
+      </div>`
+      + fullTextRows(),
       t('settings.search.foot'));
   }
 
@@ -357,6 +379,7 @@
     if (root.__tpSettingsBound) return;
     root.__tpSettingsBound = true;
 
+    bindFullText();
     // Index status line + rebuild button follow the crawl (only while this view is shown).
     try {
       TP.index.on('change', () => {
@@ -382,7 +405,8 @@
       else if (act === 'ics-cancel') { ui.icsEdit = false; rerender(); cur?.root.querySelector('[data-fk="ics-edit"]')?.focus(); }
       else if (act === 'ics-remove') {
         Promise.resolve(TP.kuloket && TP.kuloket.setIcsUrl('')).catch(() => {}).finally(() => { TP.shell.toast?.(t('settings.agenda.icsRemoved')); rerender(); });
-      } else if (act === 'reindex') {
+      } else if (act === 'ft-wipe') onFullTextWipe();
+      else if (act === 'reindex') {
         if (b.getAttribute('aria-busy') === 'true') return;
         TP.shell.announce?.(t('settings.search.rebuilding'));
         Promise.resolve(TP.index.rebuild()).catch(() => {}).finally(rerender);

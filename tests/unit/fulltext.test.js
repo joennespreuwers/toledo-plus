@@ -154,3 +154,46 @@ test('daily budget resets per local day; back-off grows and honours Retry-After'
   assert.deepEqual([1, 2, 3, 10].map((n) => E.backoff(n)), [5000, 10000, 20000, 300000]);
   assert.equal(E.backoff(1, '30'), 30000);
 });
+
+test('search over a typical index (312 files × 20 pages) answers well within 50 ms', () => {
+  const ix = E.createIndex();
+  const vocab = Array.from({ length: 6000 }, (_, i) => `woord${i.toString(36)}`);
+  let seed = 7;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  for (let f = 0; f < 312; f++) {
+    const pages = [];
+    for (let p = 1; p <= 20; p++) {
+      const ws = new Set();
+      for (let k = 0; k < 250; k++) ws.add(vocab[Math.floor(rnd() ** 2 * vocab.length)]);
+      if (f === 200 && p === 14) ws.add('kwartelkoning');
+      pages.push({ n: p, terms: [...ws].join(' ') });
+    }
+    ix.add('f' + f, pages);
+  }
+  const qs = [['kwartelkoning'], ['woord1', 'woord2'], ['woorda'], ['woord'], ['woord3', 'woordz']];
+  ix.search(['warmup']);
+  const t0 = process.hrtime.bigint();
+  for (const q of qs) ix.search(q, { limit: 8 });
+  const ms = Number(process.hrtime.bigint() - t0) / 1e6 / qs.length;
+  assert.deepEqual(plain(ix.search(['kwartelkoning'])).map((r) => [r.key, r.page]), [['f200', 14]]);
+  assert.ok(ms < 50, `average ${ms.toFixed(1)} ms per query`);
+});
+
+test('packaging: host page, worker, engine and pdf.js (+ its licence) ship; no new permissions; no eval in our modules', async () => {
+  const fs = require('fs');
+  const { read, exists } = require('../helpers/sandbox');
+  const m = JSON.parse(read('manifest.json'));
+  assert.deepEqual(m.permissions, ['storage'], 'no offscreen/unlimitedStorage permission needed');
+  const { packFiles } = await import(path.join(ROOT, 'scripts/pack.mjs'));
+  const files = packFiles(ROOT);
+  for (const f of ['src/core/fulltext-host.html', 'src/core/fulltext-host.mjs', 'src/core/fulltext-worker.mjs', 'src/core/fulltext-engine.js', 'src/core/fulltext.js',
+    'src/i18n/fulltext.js', 'src/vendor/pdfjs/pdf.min.mjs', 'src/vendor/pdfjs/pdf.worker.min.mjs', 'src/vendor/pdfjs/LICENSE']) assert.ok(files.includes(f), `${f} not packed`);
+  // the frame loads exactly these files (relative module imports)
+  assert.match(read('src/core/fulltext-host.html'), /<script type="module" src="fulltext-host\.mjs"><\/script>/);
+  for (const f of ['src/core/fulltext-host.mjs', 'src/core/fulltext-worker.mjs']) {
+    const s = read(f);
+    assert.ok(!/\beval\s*\(|new\s+Function\s*\(|importScripts|https?:\/\/(?!toledo\.kuleuven\.be|ultra\.edu\.kuleuven\.cloud)/.test(s.replace(/\/\*[\s\S]*?\*\//g, '')), `${f}: no eval / remote code`);
+    for (const [, dep] of s.matchAll(/import\s*(?:[^'"]*from\s*)?\(?\s*'([^']+)'/g)) assert.ok(exists(path.join('src/core', dep)), `${f} imports missing ${dep}`);
+  }
+  assert.ok(fs.statSync(path.join(ROOT, 'src/vendor/pdfjs/pdf.worker.min.mjs')).size < 2 * 1024 * 1024);
+});

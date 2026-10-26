@@ -200,7 +200,7 @@
     const staff = (st.data && st.data.staff) || [];
     // Teacher chips: phones/tablets only; ≥1100px the "Docenten" card in the side column says it (CSS).
     const teachers = staff.length ? `<ul class="cv-teachers" role="list">${staff.map((s) => `<li>${s.email
-      ? `<a href="mailto:${esc(s.email)}" aria-label="${esc(t('course.mail', { name: s.name }))}">${TP.ui.icon('mail', { size: 14 })}<span>${esc(s.name)}</span></a>`
+      ? `<a href="mailto:${esc(s.email)}">${TP.ui.icon('mail', { size: 14 })}<span>${esc(s.name)}</span><span class="cv-sr">, ${esc(t('course.mailSuffix'))}</span></a>`
       : `<span>${esc(s.name)}</span>`}</li>`).join('')}</ul>` : '';
 
     let sub = '';
@@ -223,6 +223,7 @@
         <div class="cv-head-main">
           <p class="cv-sub">${sub || (st.error ? '' : `${spinner()}<span>${esc(t('course.loading'))}</span>`)}</p>
           ${teachers}
+          ${TP.fulltext && st.cid && !st.error ? TP.fulltext.courseBox(st.cid) /* full-text: "Doorzoek alle bestanden" (src/core/fulltext.js) */ : ''}
         </div>
         <div class="cv-actions">${actions}</div>
       </header>`;
@@ -248,7 +249,7 @@
       const busy = st.busy.has(n.id);
       return `
         <div class="cv-row cv-leaf" data-lq="${lq}" style="--depth:${depth}">
-          <button type="button" class="cv-row-main" data-action="open" data-id="${esc(n.id)}" data-fk="o${fk}" aria-label="${esc(t('course.open', { title: n.title }))}">${dot}${ico}${main}</button>
+          <button type="button" class="cv-row-main" data-action="open" data-id="${esc(n.id)}" data-fk="o${fk}">${dot}${ico}${main}<span class="cv-sr">, ${esc(t('course.openSuffix'))}</span></button>
           <button type="button" class="cv-mini" data-action="download" data-id="${esc(n.id)}" data-fk="d${fk}" aria-label="${esc(t('course.download', { title: n.title }))}" ${busy ? 'aria-busy="true" disabled' : ''}>${busy ? spinner() : TP.ui.icon('download', { size: 17 })}</button>
         </div>`;
     }
@@ -449,7 +450,7 @@
       const lq = esc(String(s.name || '').toLowerCase());
       const inner = `<span class="cv-ico">${TP.ui.icon('mail', { size: 16 })}</span><span class="cv-main"><span class="cv-name">${esc(s.name)}</span>${s.email ? `<span class="cv-meta">${esc(s.email)}</span>` : ''}</span>`;
       return s.email
-        ? `<a class="cv-row cv-row-main" href="mailto:${esc(s.email)}" data-lq="${lq}" aria-label="${esc(t('course.mail', { name: s.name }))}">${inner}</a>`
+        ? `<a class="cv-row cv-row-main" href="mailto:${esc(s.email)}" data-lq="${lq}">${inner}<span class="cv-sr">, ${esc(t('course.mailSuffix'))}</span></a>`
         : `<div class="cv-row" data-lq="${lq}">${inner}</div>`;
     }).join('');
     return sec('teachers', t('course.teachers'), TP.ui.group(rows, { cls: 'cv-group' }));
@@ -693,6 +694,7 @@
   function bind(root) {
     if (root.__tpCourseBound) return;
     root.__tpCourseBound = true;
+    try { TP.fulltext && TP.fulltext.on('progress', () => { if (cur && st.cid) TP.fulltext.updateCourseBox(cur.root, st.cid); }); } catch { /* no full-text module */ }
 
     root.addEventListener('click', (ev) => {
       if (!ev.target.closest('.cv-view')) return;
@@ -717,6 +719,11 @@
           return;
         }
         if (act === 'focus-item') { ev.preventDefault(); focusOn(a.dataset.id); return; }
+        if (act.startsWith('ft-') && TP.fulltext) { // full-text: run / confirm / stop (src/core/fulltext.js)
+          ev.preventDefault();
+          TP.fulltext.courseAction(act, { cid: st.cid, luId: st.luId, roots: st.partial || !st.data ? null : st.data.roots, root });
+          return;
+        }
       }
       const link = ev.target.closest('a[data-recent]');
       if (link && root.contains(link)) {
