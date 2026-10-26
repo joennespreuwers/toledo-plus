@@ -30,7 +30,33 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Fresh screenshots + og images from the real extension UI on every deploy, so the site always shows the current
+  # design (website/tools/screens.mjs, fictitious demo data, NL/EN/FR, light/dark). If this fails, the deploy still
+  # goes out with the committed images.
+  screens:
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble   # keep in sync with "playwright" in package.json
+      options: --ipc=host
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Install dev dependencies
+        run: npm install --no-audit --no-fund
+      - name: Generate screenshots
+        run: TZ=Europe/Brussels node website/tools/screens.mjs
+      - uses: actions/upload-artifact@v7
+        with:
+          name: screens
+          path: website/assets/img/
+          retention-days: 3
+
   deploy:
+    needs: screens
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -39,6 +65,13 @@ jobs:
       - uses: actions/checkout@v7
 
       - uses: actions/configure-pages@v5
+
+      - name: Use the fresh screenshots (if the screens job succeeded)
+        if: needs.screens.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: screens
+          path: website/assets/img/
 
       - name: Assemble site (+ demo/ext from the extension)
         run: |
