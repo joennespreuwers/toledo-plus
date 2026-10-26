@@ -13,7 +13,7 @@ workers_dev = true
 [[d1_databases]]
 binding = "DB"
 database_name = "toledo-plus"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "4100ceae-cd08-43ac-919e-36e5af3cf7ed"
 
 # Workers Rate Limiting API (GA, wrangler >= 4.36): approximate per-location burst guard.
 # period must be 10 or 60 seconds. The exact hourly/daily limits are enforced in D1 by the worker itself.
