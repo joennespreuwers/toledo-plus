@@ -40,13 +40,14 @@ test('content scripts follow the documented load order and exist', () => {
     for (const f of [...(s.js || []), ...(s.css || [])]) assert.ok(exists(f), `content script file ${f} missing`);
     const js = s.js || [];
     const idx = (f) => js.indexOf(f);
-    const order = ['src/core/util.js', 'src/core/i18n.js', 'src/core/settings.js', 'src/core/net.js', 'src/core/data.js', 'src/core/ui.js', 'src/core/shell.js', 'src/boot.js'];
+    const order = ['src/core/util.js', 'src/core/i18n.js', 'src/core/settings.js', 'src/core/net.js', 'src/core/data.js', 'src/core/index.js', 'src/core/ui.js', 'src/core/shell.js', 'src/core/palette.js', 'src/boot.js'];
     for (const f of order) assert.ok(idx(f) >= 0, `${f} not loaded in content script for ${s.matches}`);
     for (let i = 1; i < order.length; i++) assert.ok(idx(order[i - 1]) < idx(order[i]), `${order[i - 1]} must load before ${order[i]}`);
     for (const f of list('src/i18n', /\.js$/)) {
       assert.ok(idx(f) > idx('src/core/i18n.js') && idx(f) < idx('src/core/settings.js'), `${f} must load between i18n.js and settings.js`);
     }
     for (const f of list('src/views', /\.js$/)) {
+      assert.ok(idx(f) > idx('src/core/palette.js'), `${f} must load after palette.js`);
       assert.ok(idx(f) > idx('src/core/shell.js') && idx(f) < idx('src/boot.js'), `${f} must load between shell.js and boot.js`);
     }
     assert.equal(js[js.length - 1], 'src/boot.js', 'boot.js must be last');

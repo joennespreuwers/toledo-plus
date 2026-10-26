@@ -196,6 +196,20 @@
     };
   }
 
+  /** One status line, e.g. "Doorzoekt 214 documenten in 15 vakken · bijgewerkt 17:40". */
+  function statusText() {
+    const s = status();
+    const t = (k, v) => TP.t(k, v);
+    if (s.items) {
+      let txt = `${t('palette.status.docs', { n: s.items })} ${t('palette.status.courses', { n: s.courses })}`;
+      if (s.crawling) txt += ` · ${t('palette.status.updating')}`;
+      else if (s.updated && TP.fmt && TP.fmt.ago) txt += ` · ${t('palette.status.updated', { time: TP.fmt.ago(s.updated) })}`;
+      return txt;
+    }
+    if (s.crawling) return t('palette.status.building');
+    return t('palette.status.openCourse');
+  }
+
   // ---------------------------------------------------------------- matching
   /** Lowercase, no diacritics, single spaces. */
   function norm(s) {
@@ -261,7 +275,7 @@
   } catch (_) { /* tests */ }
 
   TP.index = {
-    load, put, crawl, crawlIfStale, schedule, rebuild, status, search, score, norm, ancestors, on, enabled,
+    load, put, crawl, crawlIfStale, schedule, rebuild, status, statusText, search, score, norm, ancestors, on, enabled,
     get(cid) { return idx[cid] || null; },
     _test: { flatten, cap, _set(o) { idx = o; }, _reset() { idx = {}; meta = { lastCrawl: 0, attempt: 0, failed: 0 }; } },
   };

@@ -73,3 +73,4 @@
 }
 .st-view .st-row-toggle { padding-left: 0; padding-right: 0; }
 .st-view .st-row-order { padding-right: 12px; }
+.st-index-status { text-align: right; overflow-wrap: anywhere; font-size: var(--fs-subhead, .8125rem); }

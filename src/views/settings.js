@@ -161,6 +161,21 @@
       t('settings.courses.foot'));
   }
 
+  function search(s) {
+    const on = ((s.search || {}).indexAll) !== false;
+    let st = null;
+    try { st = TP.index.status(); } catch { st = null; }
+    const busy = !!(st && st.crawling);
+    const line = st ? TP.index.statusText() : t('settings.search.never');
+    return block('search', t('settings.search'),
+      toggleRow('s:search.indexAll', on, t('settings.search.index'), t('settings.search.indexDesc'))
+      + `<div class="st-row"><span class="st-label">${esc(t('settings.search.status'))}</span><span class="st-value st-index-status" data-index-status>${esc(line)}</span></div>`
+      + `<div class="st-row st-row-actions">
+        <button type="button" class="st-action" data-action="reindex" data-fk="reindex"${busy ? ' aria-busy="true"' : ''}>${TP.ui.icon('refresh', { size: 16 })}<span>${esc(t('settings.search.rebuild'))}</span></button>
+      </div>`,
+      t('settings.search.foot'));
+  }
+
   function sync(s) {
     const y = s.sync || {};
     return block('sync', t('settings.sync'),
@@ -213,7 +228,7 @@
     try { ctx.setActions && ctx.setActions([]); } catch { /* ignore */ }
     const focus = snapFocus(root);
     const s = TP.settings.get();
-    root.innerHTML = `<div class="st-view">${language(s)}${look(s)}${overview(s)}${deadlines(s)}${coursesBlock(s)}${sync(s)}${wrap(s)}${data()}${about()}</div>`;
+    root.innerHTML = `<div class="st-view">${language(s)}${look(s)}${overview(s)}${deadlines(s)}${coursesBlock(s)}${search(s)}${sync(s)}${wrap(s)}${data()}${about()}</div>`;
     restoreFocus(root, focus);
   }
   // Async callers only repaint while the settings view is still what the container shows.
@@ -285,6 +300,17 @@
     if (root.__tpSettingsBound) return;
     root.__tpSettingsBound = true;
 
+    // Index status line + rebuild button follow the crawl (only while this view is shown).
+    try {
+      TP.index.on('change', () => {
+        if (!cur || !cur.root.querySelector(':scope > .st-view')) return;
+        const el = cur.root.querySelector('[data-index-status]');
+        if (el) el.textContent = TP.index.statusText();
+        const b = cur.root.querySelector('[data-action="reindex"]');
+        if (b) { if (TP.index.status().crawling) b.setAttribute('aria-busy', 'true'); else b.removeAttribute('aria-busy'); }
+      });
+    } catch { /* no index */ }
+
     root.addEventListener('click', (ev) => {
       if (!ev.target.closest('.st-view')) return;
       const b = ev.target.closest('[data-action]');
@@ -294,6 +320,12 @@
       else if (act === 'sec-down') moveSection(b.dataset.id, 1);
       else if (act === 'export') exportSettings();
       else if (act === 'reset') resetClick();
+      else if (act === 'reindex') {
+        if (b.getAttribute('aria-busy') === 'true') return;
+        TP.shell.announce?.(t('settings.search.rebuilding'));
+        Promise.resolve(TP.index.rebuild()).catch(() => {}).finally(rerender);
+        rerender();
+      }
       else if (act === 'color-reset') { save(TP.settings.setCourse(b.dataset.lu, { color: null })); rerender(); }
     });
 

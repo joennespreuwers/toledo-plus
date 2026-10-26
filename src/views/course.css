@@ -104,3 +104,13 @@ details[open] > summary .cv-chev svg { transform: rotate(90deg); }
 @keyframes cv-pulse { 50% { opacity: .4; } }
 @media (prefers-contrast: more) { .cv-row::before, .cv-view .cv-folder > summary::before { border-top-width: 1px; } }
 .cv-view a.cv-row, .cv-view a.cv-row:visited { color: var(--label); }
+
+/* ⌘K palette → "show in course": the target row is briefly highlighted (not by colour alone: it also gets focus) */
+.cv-view .cv-focus { animation: cv-focus 2.4s ease-out; border-radius: var(--r-control); }
+@keyframes cv-focus {
+  0%, 60% { background: var(--tint-soft); box-shadow: inset 0 0 0 2px var(--tint-text); }
+  100% { background: transparent; box-shadow: inset 0 0 0 2px transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cv-view .cv-focus { animation: none; background: var(--tint-soft); box-shadow: inset 0 0 0 2px var(--tint-text); }
+}

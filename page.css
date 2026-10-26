@@ -10,11 +10,17 @@ html.tplus-on {
   color-scheme: light;
 }
 html.tplus-on, html.tplus-on body {
-  overflow: auto !important; overflow-x: hidden !important;
   height: auto !important; min-height: 100% !important; max-height: none !important;
   position: static !important;
 }
-html.tplus-on body { padding: 0 !important; margin: 0 !important; background: transparent !important; transform: none !important; }
+/* Only <html> may scroll (it propagates to the viewport). If <body> also had overflow ≠ visible it would
+   become a scroll container that never scrolls, and the shell's sticky sidebar/toolbar would scroll away.
+   No transform/filter/contain on html/body either: they would trap position:fixed/sticky. */
+html.tplus-on { overflow: auto !important; overflow-x: hidden !important; transform: none !important; filter: none !important; contain: none !important; }
+html.tplus-on body {
+  overflow: visible !important; contain: none !important; filter: none !important; perspective: none !important;
+  padding: 0 !important; margin: 0 !important; background: transparent !important; transform: none !important;
+}
 html.tplus-on.tplus-dark { background: #000 !important; color-scheme: dark; }
 @media (prefers-color-scheme: dark) { html.tplus-on:not(.tplus-light) { background: #000 !important; color-scheme: dark; } }
 

@@ -58,6 +58,7 @@
       'course.kind.folder': 'Map',
       'course.kind.announcement': 'Mededeling',
       'course.kind.notice': 'Bericht',
+      'course.focusMissing': 'Dit item staat niet (meer) in het vak.',
     },
     en: {
       'course.title': 'Course',
@@ -113,6 +114,7 @@
       'course.kind.folder': 'Folder',
       'course.kind.announcement': 'Announcement',
       'course.kind.notice': 'Notice',
+      'course.focusMissing': 'This item is no longer in the course.',
     },
     fr: {
       'course.title': 'Cours',
@@ -168,6 +170,7 @@
       'course.kind.folder': 'Dossier',
       'course.kind.announcement': 'Annonce',
       'course.kind.notice': 'Avis',
+      'course.focusMissing': 'Cet élément n’est plus dans le cours.',
     },
   });
 })();

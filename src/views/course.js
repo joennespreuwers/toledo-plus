@@ -22,6 +22,7 @@
     data: null, partial: true, error: null,
     prevVisit: 0, openIds: null, q: '',
     busy: new Set(), // content ids being downloaded
+    focusUsed: false, // params.focus already applied
   };
   let cur = null;
 
@@ -108,7 +109,7 @@
     st.key = p.cid ? 'c:' + p.cid : 'l:' + (p.luId || '');
     st.cid = p.cid || null;
     st.luId = p.luId || null;
-    st.data = null; st.partial = true; st.error = null; st.prevVisit = 0; st.openIds = null; st.busy.clear();
+    st.data = null; st.partial = true; st.error = null; st.prevVisit = 0; st.openIds = null; st.busy.clear(); st.focusUsed = false;
     const token = ++st.token;
     load(token);
   }
@@ -137,6 +138,7 @@
       st.partial = false;
       if (!st.luId && st.data && st.data.course) st.luId = st.data.course.courseId || null;
       paint();
+      applyFocus();
       const visits = { ...((TP.state.get() || {}).visits || {}), [cid]: Date.now() };
       await TP.state.set({ visits });
     } catch (e) {
@@ -405,6 +407,53 @@
       start(ctx);
     }
     paint(true);
+    applyFocus();
+  }
+
+  // ---------- focus a content item (⌘K palette: params.focus or state.focus) ----------
+  // Opens the containing folders, scrolls to the row and briefly highlights it.
+  function pendingFocus() {
+    const p = (cur && cur.params) || {};
+    if (p.focus && !st.focusUsed) return { id: String(p.focus), param: true };
+    const f = (TP.state.get() || {}).focus;
+    if (f && f.id && Date.now() - (f.at || 0) < 120e3 && ((st.cid && f.cid === st.cid) || (st.luId && f.luId === st.luId))) return { id: String(f.id) };
+    return null;
+  }
+  function pathTo(id, nodes, trail = []) {
+    for (const n of nodes || []) {
+      if (n.id === id) return trail;
+      if (n.kids) { const r = pathTo(id, n.kids, trail.concat(n.id)); if (r) return r; }
+    }
+    return null;
+  }
+  function applyFocus() {
+    if (!cur || !st.data || st.partial || st.error || !st.cid) return;
+    const f = pendingFocus();
+    if (!f) return;
+    if (f.param) st.focusUsed = true;
+    else Promise.resolve(TP.state.set({ focus: null })).catch(() => {});
+    const trail = pathTo(f.id, st.data.roots);
+    if (!trail) { TP.shell.toast?.(t('course.focusMissing')); return; }
+    const node = findNode(f.id);
+    const ids = node && isFolder(node.node) ? trail.concat(f.id) : trail;
+    const root = cur.root;
+    if (!st.openIds) st.openIds = new Set([...root.querySelectorAll('.cv-view details.cv-folder[open]')].map((d) => d.dataset.id));
+    ids.forEach((id) => st.openIds.add(id));
+    root.__cvTouched = true;
+    if (st.q) { st.q = ''; }
+    paint();
+    persistOpen();
+    const id = cssEsc(f.id);
+    const doc = root.querySelector(`[data-tree] details.cv-doc[data-keep="t:${id}"]`);
+    if (doc) doc.open = true;
+    const el = root.querySelector(`[data-tree] [data-fk="ot:${id}"], [data-tree] [data-fk="at:${id}"], [data-tree] [data-fk="st:${id}"], [data-tree] details.cv-folder[data-id="${id}"] > summary`);
+    if (!el) return;
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    el.scrollIntoView({ block: 'center', behavior: reduce ? 'auto' : 'smooth' });
+    el.focus({ preventScroll: true });
+    const row = el.closest('.cv-leaf, details.cv-doc, details.cv-folder > summary') || el;
+    row.classList.add('cv-focus');
+    setTimeout(() => row.classList.remove('cv-focus'), 2400);
   }
 
   // ---------- search ----------
