@@ -9,6 +9,7 @@
 //   https://icts-p-toledo-journey.cloud.icts.kuleuven.be   ultraLink → 302 to the course outline
 //   https://ultra.edu.kuleuven.cloud               Ultra HTML (with <base href> to a CDN!) + /learn/api/public/*
 //   https://files.mock-storage.test                "S3": signed file downloads with ACAO:*
+//   https://icts-p-toledo-valvas.cloud.icts.kuleuven.be   Ad Valvas message pages (rec.valvas: mode ok/login)
 //
 // NOTE: Playwright does not intercept the follow-up request of a 3xx produced by route.fulfill().
 //  - download 302s therefore land on a real local HTTPS server (files-server.js, mapped via --host-resolver-rules);
@@ -22,6 +23,7 @@ const ULTRA = 'https://ultra.edu.kuleuven.cloud';
 const FILES = 'https://files.mock-storage.test';
 const CDN = 'https://cdn.example.invalid';
 const API = 'https://api.toledoplus.be'; // Toledo+'s own API (ping/latest/feedback)
+const VALVAS = 'https://icts-p-toledo-valvas.cloud.icts.kuleuven.be'; // Ad Valvas message pages (school notices)
 
 // Emulates the live portal's AngularJS router (verified live): any hash whose path is not a known
 // route ('#/tplus/x', '#/home/tplus/x', '#!/x', …) is rewritten to '#/home' shortly after load/hashchange;
@@ -180,6 +182,23 @@ async function install(ctx, fx, opts = {}) {
     return route.abort('blockedbyclient');
   });
   await require('./kuloket-mock').install(ctx, rec, opts); // KU Loket + TimeEdit (registered last → matched first)
+
+  // ---- Ad Valvas message pages (server-rendered HTML; tests/fixtures/advalvas-message.html).
+  //      rec.valvas.mode: 'ok' (session) | 'login' (no session: the IdP's SAML page — served here as a 200, because Playwright
+  //      can't route the follow-up of a mocked 3xx; the relay's real redirect guard is unit-tested). rec.valvas.pages[id] overrides.
+  rec.valvas = { mode: 'ok', pages: {}, hits: [] };
+  await ctx.route(`${VALVAS}/**`, async (route) => {
+    const req = route.request(); log(req);
+    const u = new URL(req.url());
+    const m = u.pathname.match(/^\/student\/messages\/(\d+)\/external$/);
+    rec.valvas.hits.push({ path: u.pathname, mode: rec.valvas.mode, sw: safeIsSW(req) });
+    if (rec.valvas.mode === 'login') {
+      return route.fulfill({ contentType: 'text/html; charset=utf-8', headers: { 'cache-control': 'no-store' }, body: '<!doctype html><html><head><title>KU Leuven Login</title></head><body><form method="post" action="https://idp.kuleuven.be/idp/profile/SAML2/POST/SSO"><input type="hidden" name="SAMLRequest" value="bW9jaw=="><noscript><button>Doorgaan</button></noscript></form></body></html>' });
+    }
+    if (!m) { rec.unknown.push({ method: req.method(), url: req.url() }); return route.fulfill({ status: 404, contentType: 'text/plain', body: 'not mocked' }); }
+    const body = rec.valvas.pages[m[1]] || require('fs').readFileSync(require('path').join(__dirname, '..', 'fixtures', 'advalvas-message.html'), 'utf8');
+    return route.fulfill({ contentType: 'text/html; charset=utf-8', headers: { 'cache-control': 'no-store', 'x-frame-options': 'DENY' }, body });
+  });
   return rec;
 }
 
@@ -236,4 +255,4 @@ function cloneTree(U, cid) {
   return (treeCache[cid] = walk(U.defaultTree));
 }
 
-module.exports = { install, PORTAL, ULTRA, FILES, CDN, JOURNEY, allNodes };
+module.exports = { install, PORTAL, ULTRA, FILES, CDN, JOURNEY, VALVAS, allNodes };

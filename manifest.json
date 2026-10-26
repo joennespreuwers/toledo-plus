@@ -20,7 +20,8 @@
     "https://ultra.edu.kuleuven.cloud/*",
     "https://webwsp.aps.kuleuven.be/*",
     "https://cloud.timeedit.net/*",
-    "https://api.toledoplus.be/*"
+    "https://api.toledoplus.be/*",
+    "https://icts-p-toledo-valvas.cloud.icts.kuleuven.be/*"
   ],
   "declarative_net_request": {
     "rule_resources": [

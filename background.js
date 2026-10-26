@@ -1,6 +1,7 @@
 /* Toledo+ — MV3 service worker.
    Only job: a cross-origin fetch relay for our own content scripts
-   (toledo.kuleuven.be portal <-> ultra.edu.kuleuven.cloud Blackboard Ultra, plus read-only KU Loket/TimeEdit and the Toledo+ API for the anonymous usage signal/feedback).
+   (toledo.kuleuven.be portal <-> ultra.edu.kuleuven.cloud Blackboard Ultra, plus read-only KU Loket/TimeEdit, read-only Ad Valvas
+   message pages and the Toledo+ API for the anonymous usage signal/feedback).
    Content scripts can only fetch their own origin with cookies; the extension can fetch
    the allowed origins because of host_permissions. Nothing else is reachable through this relay. */
 'use strict';
@@ -12,7 +13,11 @@ const TP_ALLOWED = {
   'https://webwsp.aps.kuleuven.be': ['GET'],            // KU Loket (SAP OData: uurrooster, examenrooster, iCal-link)
   'https://cloud.timeedit.net': ['GET'],                // public TimeEdit iCal feed of the student's timetable
   'https://api.toledoplus.be': ['GET', 'POST'],         // Toledo+ API (exact paths: TP_API_PATHS)
+  'https://icts-p-toledo-valvas.cloud.icts.kuleuven.be': ['GET'], // Ad Valvas: the page of one school notice (TP_VALVAS_PATH)
 };
+// Ad Valvas: only the read-only message page of one notice (server-rendered HTML); query: none or exactly "?continue".
+const TP_VALVAS = 'https://icts-p-toledo-valvas.cloud.icts.kuleuven.be';
+const TP_VALVAS_PATH = /^\/student\/messages\/\d+\/external$/;
 // The Toledo+ API: only these exact method+path pairs, no query string, no cookies.
 const TP_API = 'https://api.toledoplus.be';
 const TP_API_PATHS = ['POST /v1/ping', 'POST /v1/forget', 'POST /v1/feedback', 'GET /v1/latest'];
@@ -63,6 +68,10 @@ async function tpRelay(msg) {
     const u = new URL(url);
     if (u.search || u.hash || !TP_API_PATHS.includes(`${method} ${u.pathname}`)) return { ok: false, status: 0, data: null, error: 'blocked-url' };
   }
+  if (tpOrigin(url) === TP_VALVAS) {
+    const u = new URL(url);
+    if (u.hash || (u.search && u.search !== '?continue') || !TP_VALVAS_PATH.test(u.pathname)) return { ok: false, status: 0, data: null, error: 'blocked-url' };
+  }
 
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), tpCfg.timeout);
@@ -72,6 +81,8 @@ async function tpRelay(msg) {
     const r = await fetch(url, init);
     // Redirects (e.g. an expired session bouncing to the SSO login) must not leave the allowed origins.
     if (r.url && !tpAllowed(r.url)) return { ok: false, status: r.status || 0, data: null, error: 'redirected' };
+    // Ad Valvas: landing anywhere but a message page (e.g. its own login/home page) counts as signed out.
+    if (r.url && tpOrigin(url) === TP_VALVAS && !TP_VALVAS_PATH.test(new URL(r.url).pathname)) return { ok: false, status: r.status || 0, data: null, error: 'redirected' };
     const retryAfter = (r.headers && r.headers.get && r.headers.get('retry-after')) || null;
     const text = await r.text();
     let data = text;

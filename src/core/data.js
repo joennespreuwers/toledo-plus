@@ -1261,6 +1261,181 @@
     return { title: (a && a.title) || '', body: (a && a.body) || '', created: toMs(a && a.created) };
   }
 
+  // ---------------------------------------------------------------- announcement bodies (sheet)
+  // Small in-memory caches (per tab, never persisted: notices stay off disk). Failures are never cached.
+  const BODY_TTL = 30 * 60e3, BODY_MAX = 40;
+  const bodyCache = new Map();     // key → {v, t}   (Map order = recency)
+  const bodyInflight = new Map();  // key → Promise
+  function memo(key, opts, fn) {
+    const hit = bodyCache.get(key);
+    if (!(opts && opts.force) && hit && Date.now() - hit.t < BODY_TTL) {
+      bodyCache.delete(key); bodyCache.set(key, hit);
+      return Promise.resolve(hit.v);
+    }
+    if (bodyInflight.has(key)) return bodyInflight.get(key);
+    const p = Promise.resolve().then(fn).then((v) => {
+      bodyCache.delete(key); bodyCache.set(key, { v, t: Date.now() });
+      while (bodyCache.size > BODY_MAX) bodyCache.delete(bodyCache.keys().next().value);
+      return v;
+    }).finally(() => bodyInflight.delete(key));
+    bodyInflight.set(key, p);
+    return p;
+  }
+
+  /** Ultra course id + announcement id of a portal announcement event (url, else the event id 'ultra~_123_1'). */
+  function annIds(e) {
+    let s = String((e && e.url) || '');
+    try { s = decodeURIComponent(s); } catch (_) { /* keep raw */ }
+    const cid = (s.match(/\/courses\/(_\d+_\d+)/) || s.match(/course_?[iI]d=(_\d+_\d+)/) || [])[1] || null;
+    const aid = (s.match(/announcements?\/(_\d+_\d+)/) || s.match(/announcement_?[iI]d=(_\d+_\d+)/) || [])[1]
+      || (String((e && e.id) || '').match(/^ultra~(_\d+_\d+)$/) || [])[1] || null;
+    return { cid, aid };
+  }
+
+  /** Full text of a course announcement (portal event) → {title, html (raw — sanitize before rendering), created, cid, aid}.
+   *  Course id from the url, else resolved from the event's learning unit; announcement id from the url/event id, else the
+   *  course's latest announcements are matched by title. Same origin on Ultra, relay on the portal. */
+  async function announcementBody(e) {
+    if (!e) throw Object.assign(new Error('no announcement'), { status: 0 });
+    let { cid, aid } = annIds(e);
+    if (!cid && e.sourceId && e.sourceId !== 'advalvas') cid = await resolveCourseId(e.sourceId);
+    if (!cid) throw Object.assign(new Error('no course id'), { status: 404 });
+    return memo(`u:${cid}:${aid || normTitle(e.title)}`, null, async () => {
+      if (aid) {
+        try {
+          const a = await ultraAnnouncement(cid, aid);
+          return { title: a.title, html: a.body, created: a.created, cid, aid };
+        } catch (err) { if (!err || err.status !== 404) throw err; }
+      }
+      const want = normTitle(e.title);
+      const list = arr(await ultra(`${BB}/v1/courses/${encodeURIComponent(cid)}/announcements?limit=50`)).filter((a) => a && !a.draft);
+      const hit = list.find((a) => normTitle(a.title) === want);
+      if (!hit) throw Object.assign(new Error('announcement not found'), { status: 404 });
+      return { title: hit.title || '', html: hit.body || '', created: toMs(hit.created), cid, aid: hit.id };
+    });
+  }
+
+  // ---------------------------------------------------------------- Ad Valvas (school notices)
+  // The portal's Ad Valvas events link to a server-rendered page on the valvas host (verified live):
+  //   GET /student/messages/{id}/external → #messageModalExternal (.modal-title, input#from, textarea#recipients,
+  //   input#startDate "26/10/2026 13:23", attachment row, textarea#message = the body as escaped HTML).
+  // Without a valvas session it redirects to the KU Leuven IdP: the relay answers error 'redirected' → needsLogin.
+  // A top-level visit (new tab) lets SSO set the session; after that the relay can read it.
+  const VALVAS = 'https://icts-p-toledo-valvas.cloud.icts.kuleuven.be';
+  function valvasId(x) {
+    if (x == null) return null;
+    if (typeof x === 'number' || /^\d+$/.test(String(x))) return String(x);
+    if (typeof x !== 'object') return (String(x).match(/^tol-valven~(\d+)$/) || [])[1] || null;
+    try {
+      const u = new URL(String(x.url || ''));
+      const m = u.origin === VALVAS && u.pathname.match(/^\/student\/messages\/(\d+)(\/|$)/);
+      if (m) return m[1];
+    } catch (_) { /* no url */ }
+    return (String(x.id || '').match(/^tol-valven~(\d+)$/) || [])[1] || null;
+  }
+  const advalvasUrl = (x) => { const id = valvasId(x); return id ? `${VALVAS}/student/messages/${id}/external` : null; };
+
+  const needsLogin = (msg) => Object.assign(new Error(msg || 'Ad Valvas: sign-in needed'), { status: 0, auth: true, needsLogin: true });
+  const nbsp = (s) => String(s == null ? '' : s).replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+  /** "26/10/2026 13:23" → local ms (0 when unparseable). */
+  function valvasDate(s) {
+    const m = String(s || '').match(/(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/);
+    if (!m) return 0;
+    const d = new Date(+m[3], +m[2] - 1, +m[1], +(m[4] || 0), +(m[5] || 0));
+    return Number.isFinite(d.getTime()) ? d.getTime() : 0;
+  }
+  const PRESENTATIONAL = ['style', 'class', 'id', 'color', 'face', 'size', 'bgcolor', 'background', 'width', 'height', 'align', 'valign', 'border', 'cellpadding', 'cellspacing', 'dir', 'lang'];
+
+  /** Parse an Ad Valvas message page (string) → {title, from, to, date, dateText, attachments:[{name,url}], html (sanitized)}.
+   *  Never injects the page: DOMParser documents are inert. Throws needsLogin for a login/SAML page, an Error otherwise. */
+  function parseAdvalvas(html, base) {
+    base = base || VALVAS + '/';
+    const doc = new DOMParser().parseFromString(String(html || ''), 'text/html');
+    const box = doc.querySelector('#messageModalExternal') || doc.querySelector('.modal-content') || null;
+    const msg = (box || doc).querySelector('textarea#message');
+    const titleEl = (box || doc).querySelector('.modal-title');
+    if (!box || (!msg && !titleEl)) {
+      const login = doc.querySelector('input[name="SAMLRequest"], input[name="SAMLResponse"], input[type="password"], form[action*="idp" i], form[action*="saml" i], form[action*="login" i]');
+      if (login || /idp\.kuleuven|shibboleth|single sign-on|aanmelden|log ?in/i.test(doc.title || '')) throw needsLogin();
+      throw Object.assign(new Error('Ad Valvas: unexpected page'), { status: 0, parse: true });
+    }
+    const val = (sel) => { const el = box.querySelector(sel); return el ? nbsp(el.tagName === 'TEXTAREA' ? el.value || el.textContent : (el.getAttribute('value') || el.textContent)) : ''; };
+    const abs = (h) => { try { const u = new URL(h, base); return /^https?:$/.test(u.protocol) ? u.href : null; } catch (_) { return null; } };
+    const dateText = val('#startDate');
+    // Attachments: every link in the "Bijlage" row (markup varies), none when #attachmentMissing is the only content.
+    const attachments = [];
+    const labelRe = /^(bijlage|bijlagen|attachments?|pi[eè]ces? jointes?)\s*:?$/i;
+    const label = [...box.querySelectorAll('label, dt, th, .control-label, strong, b, span, div')].find((el) => labelRe.test(nbsp(el.textContent)));
+    let row = label ? (label.closest('.row, .form-group, tr, dl') || label.parentElement) : null;
+    if (row && msg && row.contains(msg)) row = label.parentElement;
+    let links = row ? [...row.querySelectorAll('a[href]')] : [];
+    if (!links.length) links = [...box.querySelectorAll('a[href*="attachment" i], a[href*="bijlage" i], a[href*="download" i]')];
+    for (const a of links) {
+      const url = abs(a.getAttribute('href'));
+      if (!url || attachments.some((x) => x.url === url)) continue;
+      let name = nbsp(a.textContent) || nbsp(a.getAttribute('title')) || '';
+      if (!name) { try { name = decodeURIComponent(new URL(url).pathname.split('/').pop() || ''); } catch (_) { name = ''; } }
+      attachments.push({ name: name || url, url });
+    }
+    // Body: escaped HTML inside the summernote textarea → own inert document; strip presentation, images and
+    // relative links (absolutized against the valvas page — our sanitize would resolve them against Toledo), then sanitize.
+    const body = new DOMParser().parseFromString(msg ? String(msg.value || msg.textContent || '') : '', 'text/html');
+    body.querySelectorAll('img, picture, video, audio, source, svg, font[face=""]').forEach((n) => n.remove());
+    body.querySelectorAll('font').forEach((f) => f.replaceWith(...f.childNodes));
+    body.querySelectorAll('*').forEach((el) => {
+      for (const a of PRESENTATIONAL) el.removeAttribute(a);
+      if (el.tagName === 'A') {
+        const h = el.getAttribute('href');
+        const u = h && !/^(mailto|tel):/i.test(h.trim()) ? abs(h) : h;
+        if (u) el.setAttribute('href', u); else el.removeAttribute('href');
+      }
+    });
+    return {
+      title: nbsp(titleEl ? titleEl.textContent : ''),
+      from: val('#from'),
+      to: val('#recipients'),
+      date: valvasDate(dateText),
+      dateText,
+      attachments,
+      html: U().sanitize(body.body ? body.body.innerHTML : ''),
+    };
+  }
+  let valvasParser = parseAdvalvas; // unit tests swap it (no DOM in node)
+
+  /** → Promise<{id, url, title, from, to, date, dateText, attachments, html}>. Errors: .needsLogin (no valvas session:
+   *  open advalvasUrl() top-level once, then retry), .noId, or a network/parse error. 30 min in-memory cache, failures not cached. */
+  function advalvasMessage(x, opts = {}) {
+    const id = valvasId(x);
+    if (!id) return Promise.reject(Object.assign(new Error('no Ad Valvas id'), { status: 0, noId: true }));
+    const url = advalvasUrl(id);
+    return memo('v:' + id, opts, async () => {
+      let html;
+      try {
+        html = await net().text(url, { headers: { Accept: 'text/html' } });
+      } catch (e) {
+        if (e && e.stale) markStale();
+        if (e && e.auth) e.needsLogin = true; // redirected to the IdP (relay 'redirected') or 401/403
+        throw e;
+      }
+      return Object.assign(valvasParser(html, url), { id, url });
+    });
+  }
+
+  /** Undo a read mark: events read:false + out of the local read-set and the pending queue. With sync on, a best-effort
+   *  PATCH read:false (Toledo may ignore it; then the next refresh shows the item as read again). → bool */
+  function markUnread(events) {
+    const list = (Array.isArray(events) ? events : [events]).filter((e) => e && e.id != null);
+    if (!list.length) return Promise.resolve(true);
+    const ids = new Set(list.map((e) => e.id));
+    const ev = peek('events');
+    if (Array.isArray(ev)) mutate('events', ev.map((e) => (ids.has(e.id) && e.read ? Object.assign({}, e, { read: false }) : e)));
+    const gone = Object.fromEntries(list.map((e) => [e.id, null]));
+    setState({ read: gone, pendingRead: gone });
+    if (!((S().sync || {}).markReadInToledo)) return Promise.resolve(true);
+    return track(net().json(PORTAL + '/portal/api/batch/events', { method: 'PATCH', body: list.map((e) => ({ id: e.id, type: e.type, subType: e.subType, read: false })) })
+      .then(() => true, (e) => { if (e && e.stale) markStale(); log('markUnread sync failed', e && e.status); return false; }));
+  }
+
   function rememberCid(luId, cid) {
     if ((ST().cidMap || {})[luId] === cid) return;
     setState({ cidMap: { [luId]: cid } });
@@ -1325,11 +1500,13 @@
     markRead, markFeedSeen, setPinned, toggleDone, addCustomDeadline, removeCustomDeadline, addRecent, ics,
     userName, loadUser,
     ultraCourse, ultraTree, ultraDownload, ultraOpen, ultraAnnouncement, resolveCourseId, clearCourseCache, ultraItemUrl: itemLink,
+    announcementBody, annIds, advalvasMessage, advalvasUrl, advalvasId: valvasId, markUnread, VALVAS,
     // exposed for unit tests only
     _test: {
       hash, normTitle, parseCalendarName, mapCalendarItem, icsFold, icsText, icsStamp, legacyKey, toledoKey, ultraKey,
       trimEntry, calWindows, firstName, migrateDoneKeys, pruneState, flushPendingRead, markStale, cfg,
-      _reset() { mem = {}; courseCache.clear(); courseData.clear(); aliasMap = new Map(); wantDays = 0; lazyAt = 0; lazyDays = 0; authExpired = false; ultraAuth = false; meTried = false; meInflight = null; for (const k of Object.keys(status)) delete status[k]; },
+      parseAdvalvas, valvasDate, setValvasParser(fn) { valvasParser = fn || parseAdvalvas; }, bodyCacheSize: () => bodyCache.size,
+      _reset() { mem = {}; courseCache.clear(); courseData.clear(); bodyCache.clear(); bodyInflight.clear(); aliasMap = new Map(); wantDays = 0; lazyAt = 0; lazyDays = 0; authExpired = false; ultraAuth = false; meTried = false; meInflight = null; for (const k of Object.keys(status)) delete status[k]; },
       _put(k, v, extra) { mem[k] = Object.assign({ v, t: Date.now(), rev: 0 }, extra || {}); },
       _entry(k) { return mem[k]; },
       courseCacheSize: () => courseCache.size,

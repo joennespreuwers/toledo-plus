@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<title>Ad Valvas</title>
+<!-- Synthetic fixture mirroring the structure of an Ad Valvas message page (/student/messages/{id}/external).
+     Fictitious names and content only. The body sits HTML-escaped inside textarea#message (summernote source). -->
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+<script src="/js/jquery.min.js"></script>
+<script>window.__valvasPageScript = 1;</script>
+</head>
+<body>
+<div class="modal fade in" id="messageModalExternal" tabindex="-1" role="dialog" style="display:block">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title">Nieuwe openingsuren van het studentensecretariaat</h1>
+      </div>
+      <div class="modal-body">
+        <div class="row form-group">
+          <label class="col-sm-2 control-label" for="from">Van</label>
+          <div class="col-sm-10"><input type="text" class="form-control" id="from" value="Docent A&nbsp;(docent.a@example.edu)" readonly></div>
+        </div>
+        <div class="row form-group">
+          <label class="col-sm-2 control-label" for="recipients">Naar</label>
+          <div class="col-sm-10"><textarea class="form-control" id="recipients" readonly>Opleiding Voorbeeldkunde &amp; Media</textarea></div>
+        </div>
+        <div class="row form-group">
+          <label class="col-sm-2 control-label" for="startDate">Datum</label>
+          <div class="col-sm-10"><input type="text" class="form-control" id="startDate" value="26/10/2026 13:23" readonly></div>
+        </div>
+        <div class="row form-group">
+          <label class="col-sm-2 control-label">Bijlage</label>
+          <div class="col-sm-10">
+            <a href="/student/messages/775906/attachments/1" class="btn btn-link">Openingsuren&nbsp;2026.pdf</a>
+            <a href="https://icts-p-toledo-valvas.cloud.icts.kuleuven.be/student/messages/775906/attachments/2" class="btn btn-link">Plattegrond.png</a>
+          </div>
+        </div>
+        <div class="row form-group">
+          <div class="col-sm-12">
+            <textarea id="message" class="summernote" style="display:none">&lt;p style=&quot;font-size: 14px; font-family: Arial; background-color: rgb(255, 255, 0);&quot;&gt;Beste studenten,&lt;/p&gt;&lt;p&gt;Vanaf &lt;b&gt;maandag&lt;/b&gt; is het secretariaat open van &lt;span style=&quot;color: rgb(255, 0, 0);&quot;&gt;9 tot 12 uur&lt;/span&gt;.&lt;/p&gt;&lt;ul&gt;&lt;li&gt;Lokaal A.01&lt;/li&gt;&lt;li&gt;Online via &lt;a href=&quot;/student/info&quot;&gt;de infopagina&lt;/a&gt;&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;&lt;font face=&quot;Comic Sans MS&quot; color=&quot;#ff00ff&quot;&gt;Tot dan!&lt;/font&gt;&lt;img src=&quot;https://tracker.example.org/pixel.gif&quot;&gt;&lt;img src=&quot;/img/logo.png&quot;&gt;&lt;/p&gt;&lt;script&gt;window.__valvasXss=1&lt;/script&gt;&lt;p&gt;&lt;a href=&quot;javascript:window.__valvasXss=1&quot; onclick=&quot;window.__valvasXss=1&quot;&gt;klik&lt;/a&gt; · &lt;a href=&quot;mailto:secretariaat@example.edu&quot;&gt;mail ons&lt;/a&gt;&lt;/p&gt;</textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer"><button type="button" class="btn btn-default" data-dismiss="modal">Sluiten</button></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
