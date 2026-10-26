@@ -122,11 +122,15 @@
 .va-time span + span { color: var(--label-2); }
 .va-bar { width: 4px; border-radius: 2px; background: var(--c, var(--label-3)); align-self: stretch; min-height: 32px; }
 
-.va-dayhead {
-  margin: 16px 4px 8px; /* aligned with the section title (.tp-sec-head: 0 4px) */ font-size: var(--fs-headline, .9375rem); font-weight: 600; color: var(--label);
-}
+/* schedule: one card, a small sub-heading per day, rows separated like any group */
+.va-dayhead { margin: 0; padding: 10px var(--row-px) 2px; font-size: var(--fs-subhead); line-height: var(--lh-subhead); font-weight: 600; color: var(--label); }
 .va-dayhead span { font-weight: 400; color: var(--label-2); margin-left: 4px; }
-.va-dayhead:first-child, .va-day:first-child > .va-dayhead { margin-top: 4px; }
+.va-day > * { position: relative; }
+.va-day > :where(:not([hidden])) ~ :not(.va-dayhead + *)::before {
+  content: ''; position: absolute; top: 0; right: 0; left: var(--inset); height: var(--hairline);
+  background: var(--separator); pointer-events: none; z-index: 1;
+}
+.va-dayempty { margin: 0; padding: 4px var(--row-px) 12px; font-size: var(--fs-subhead); color: var(--label-2); }
 
 /* ---------- filters bar (deadlines, announcements) ---------- */
 .va-filters {

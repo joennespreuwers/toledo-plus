@@ -471,11 +471,12 @@
     else if (!list.length) body = TP.ui.group(TP.ui.empty(t('overview.deadlines.empty', { n: horizon })));
     else {
       const rows = list.map((d) => VA.deadlineRow(d, { prefix: 'ov', urgentDays: cfg.urgentDays ?? 3, now })).join('');
-      const more = overdue.length > 3 ? t('overview.deadlines.allOverdue', { n: overdue.length }) : t('overview.deadlines.all');
       body = (state !== 'ok' && state !== 'loading' ? VA.errorBlock(t('overview.deadlines.error'), 'events') : '')
-        + TP.ui.group(rows + linkRow(TP.shell.href('deadlines'), more, { attrs: { 'data-va-nofilter': '' } }), { cls: 'va-dl-group' });
+        + TP.ui.group(rows, { cls: 'va-dl-group' });
     }
-    return section('deadlines', { title: esc(t('overview.deadlines.title')), body });
+    const more = overdue.length > 3 ? t('overview.deadlines.allOverdue', { n: overdue.length }) : t('overview.deadlines.all');
+    const actions = [{ action: 'ov-nav', label: more, attrs: { 'data-route': 'deadlines', href: TP.shell.href('deadlines') } }];
+    return section('deadlines', { title: esc(t('overview.deadlines.title')), actions, body });
   }
 
   /* ---------- New (compact grouped feed) ---------- */
@@ -698,16 +699,17 @@
     if (state === 'loading') body = VA.skeleton(2, { lead: 'none' });
     else if (state === 'error') body = VA.errorBlock(t('overview.schedule.error'), 'upcoming');
     else {
-      body = days.map(([ms, key]) => {
+      // One card (its top lines up with the Deadlines card); "Vandaag" / "Morgen" are sub-headings inside it.
+      body = TP.ui.group(days.map(([ms, key]) => {
         const list = (by[TP.fmt.dayKey(ms)] || []).slice().sort((a, b) => a.start - b.start);
         const head = `<h3 class="va-dayhead">${esc(t(key))} <span>${esc(TP.fmt.date(ms, { weekday: 'short', day: 'numeric', month: 'short' }))}</span></h3>`;
-        const rows = list.length ? list.map((s) => lessonRow(s)).join('') : TP.ui.empty(t('overview.schedule.none'));
-        return `<div class="va-day" data-va-day>${head}${TP.ui.group(rows)}</div>`;
-      }).join('');
+        const rows = list.length ? list.map((s) => lessonRow(s)).join('') : `<p class="va-dayempty">${esc(t('overview.schedule.none'))}</p>`;
+        return `<div class="va-day" data-va-day>${head}${rows}</div>`;
+      }).join(''));
     }
-    const agenda = `<a href="${esc(TP.shell.href('agenda'))}" data-route="agenda">${esc(t('overview.schedule.agenda'))} ›</a>`;
-    const footer = source === 'kuloket' ? agenda : `${esc(t('overview.schedule.note'))} ${agenda}`;
-    return section('schedule', { title: esc(t('overview.schedule.title')), body, footer });
+    const actions = [{ action: 'ov-nav', label: t('overview.schedule.agenda'), attrs: { 'data-route': 'agenda', href: TP.shell.href('agenda') } }];
+    const footer = source === 'kuloket' ? '' : esc(t('overview.schedule.note'));
+    return section('schedule', { title: esc(t('overview.schedule.title')), actions, body, footer });
   }
 
   /* ---------- Announcements ---------- */
@@ -735,8 +737,9 @@
     if (!list.length && state === 'loading') body = VA.skeleton(3, { lead: 'dot' });
     else if (!list.length && state === 'error') body = VA.errorBlock(t('overview.ann.error'), 'events');
     else if (!list.length) body = TP.ui.group(TP.ui.empty(t('overview.ann.empty')));
-    else body = TP.ui.group(list.map(annRow).join('') + linkRow(TP.shell.href('announcements'), t('overview.ann.all'), { attrs: { 'data-va-nofilter': '' } }));
-    return section('announcements', { title: esc(t('overview.ann.title')), body });
+    else body = TP.ui.group(list.map(annRow).join(''));
+    const actions = [{ action: 'ov-nav', label: t('overview.ann.all'), attrs: { 'data-route': 'announcements', href: TP.shell.href('announcements') } }];
+    return section('announcements', { title: esc(t('overview.ann.title')), actions, body });
   }
 
   /* ---------- Links ---------- */

@@ -240,7 +240,7 @@ describe('device compatibility', () => {
     const ws = await h.page.evaluate(() => getComputedStyle(document.querySelector('#tplus-root').shadowRoot.querySelector('.tp-row-sub')).whiteSpace);
     assert.equal(ws, 'normal');
     const links = await h.page.evaluate(() => [...document.querySelector('#tplus-root').shadowRoot.querySelectorAll('.tp-sec-foot a, .va-foot a')].map((a) => Math.round(a.getBoundingClientRect().height)));
-    assert.ok(links.length >= 1 && links.every((x) => x >= 24), `inline link heights: ${links}`);
+    assert.ok(links.every((x) => x >= 24), `inline link heights: ${links}`); // the overview may have none ("Agenda" is a header button now)
   });
 
   it('course page below 1100px: "‹ Vakken" back button in the toolbar', async () => {

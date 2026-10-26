@@ -826,7 +826,7 @@ a.tp-row:active, button.tp-row:active, summary.tp-row:active { background: var(-
 .tp-btn-gray { background: var(--fill); color: var(--label) !important; }
 .tp-btn-gray:hover:not(:disabled) { background: color-mix(in srgb, var(--fill) 100%, var(--fill-2)); filter: brightness(.97); }
 .tp-btn-icon { width: 32px; padding: 0; }
-.tp-sec-actions .tp-btn { min-height: 28px; padding-block: 2px; font-size: var(--fs-subhead); }
+.tp-sec-actions .tp-btn { min-height: 28px; padding-block: 2px; font-size: var(--fs-subhead); margin-block: -6px; } /* full hit area, but no taller than the title: cards line up across columns */
 
 /* segmented control */
 .tp-segmented {
