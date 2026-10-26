@@ -1,27 +1,101 @@
 # Toledo+
 
-Persoonlijke Chrome/Edge-extensie die de Toledo-startpagina en de vakpagina's (Blackboard Ultra) vervangt door een rustiger overzicht volgens Apple's Human Interface Guidelines.
+**Een rustigere, duidelijkere Toledo.** Toledo+ is een gratis browserextensie voor Chrome en Edge die KU Leuven Toledo (het portaal én de Blackboard Ultra-vakpagina's) in één overzichtelijke app giet: deadlines eerst, één compacte feed met wat er nieuw is, en elke vakpagina in dezelfde vorm.
 
-## Installeren
-1. Zet deze map op een vaste plek (bv. ~/Developer/Toledo+). Chrome laadt hem van daaruit.
-2. Chrome: ga naar chrome://extensions — Edge: edge://extensions.
-3. Zet **Ontwikkelaarsmodus** aan.
-4. Klik **Uitgepakte extensie laden** en kies deze map.
-5. Open toledo.kuleuven.be/portal en log in.
+> **Onofficieel.** Toledo+ is een onafhankelijk studentenproject en is niet verbonden aan KU Leuven, LUCA School of Arts of Blackboard/Anthology. Je gebruikt gewoon je eigen Toledo-sessie.
+
+🇬🇧 [Read this in English](README.en.md)
+
+## Screenshots
+
+| Overzicht | Vakpagina | Instellingen |
+|---|---|---|
+| ![Overzicht (licht)](docs/screenshots/overview-light.png) | ![Vak (licht)](docs/screenshots/course-light.png) | ![Instellingen (licht)](docs/screenshots/settings-light.png) |
+| ![Overzicht (donker)](docs/screenshots/overview-dark.png) | ![Vak (donker)](docs/screenshots/course-dark.png) | ![Instellingen (donker)](docs/screenshots/settings-dark.png) |
+
+<sub>Screenshots met fictieve gegevens.</sub>
 
 ## Wat het doet
-- Deadlines uit Toledo-opdrachten, plus eigen deadlines (opgeslagen in de browser), exporteerbaar als .ics.
-- Nieuwe items gegroepeerd per vak, met "Wis".
-- Rooster van vandaag en morgen, mededelingen (Ad Valvas + aankondigingen).
-- Vakken van dit jaar; communities en vorige jaren ingeklapt.
-- Zoeken (⌘K) over alles. Licht/donker volgt je systeem.
-- "Klassieke Toledo" in het accountmenu of de footer schakelt terug; de knop "Toledo+" rechtsonder zet het weer aan.
 
-Alle data komt rechtstreeks uit Toledo's eigen /portal/api met jouw sessie; niets wordt elders naartoe gestuurd.
+- **Overzicht** – deadlines, nieuw sinds je laatste bezoek (compact, per vak), verder waar je gebleven was, je vakken, rooster van vandaag en morgen, mededelingen.
+- **Vakken** – alleen de vakken van dit jaar; communities en vorige jaren in het archief. Geef vakken een **bijnaam** en **kleur**, zet ze vast of verberg ze.
+- **Vakpagina** – recent toegevoegd, de volledige inhoud als uitklapbare mappen, zoeken door alle mappen, bestanden openen of downloaden met één klik, deadlines, aankondigingen en docenten.
+- **Deadlines** – Toledo-deadlines + Ultra-kalender + je eigen deadlines in één lijst; afvinken; exporteren naar je agenda (.ics) met herinnering.
+- **Planning** en **Mededelingen** (aankondigingen en Ad Valvas, met filters).
+- **Gelezen = gelezen in Toledo**: wat je in Toledo+ als gelezen markeert, staat ook in Toledo als gelezen (uit te zetten).
+- **Nederlands, English, Français**; licht/donker; accentkleur; dichtheid; secties aan/uit en herschikken.
+- Zoeken met **⌘K** of **/**. Werkt op laptop én smartphonebreedte (tabbalk onderaan).
+- **Klassieke Toledo** is altijd één klik weg (accountmenu); de knop *Toledo+* zet het weer aan.
 
-## Vakpagina's (v0.2)
-- Op ultra.edu.kuleuven.cloud/ultra/courses/<vak>/outline: recent toegevoegd, de volledige inhoud als uitklapbare mappen, zoeken in het vak, bestanden openen of downloaden met één klik, deadlines van het vak, aankondigingen (uitklapbaar) en de docenten (mail).
-- Blauwe stip = nieuw sinds je vorige bezoek aan dat vak.
-- "Klassiek" schakelt terug naar Ultra; de knop "Toledo+" linksonder zet het weer aan. Een item openen in Ultra blijft gewoon in Ultra.
+## Installeren
 
-Na een update: chrome://extensions → Toledo+ → herlaadknop (↻).
+Toledo+ staat (nog) niet in de Chrome Web Store. Installeren duurt 1 minuut:
+
+1. Download **`toledo-plus-<versie>.zip`** van de [laatste release](https://github.com/joennespreuwers/toledo-plus/releases/latest).
+2. Pak het zip-bestand uit naar een vaste plek (bv. `Documenten/Toledo+`). Verwijder die map later niet: de browser laadt de extensie van daaruit.
+3. Open de extensiepagina:
+   - **Chrome:** `chrome://extensions`
+   - **Edge:** `edge://extensions`
+4. Zet **Ontwikkelaarsmodus** aan (rechtsboven in Chrome, links onderaan in Edge).
+5. Klik **Uitgepakte extensie laden** en kies de uitgepakte map (de map met `manifest.json`).
+6. Open [toledo.kuleuven.be/portal](https://toledo.kuleuven.be/portal) en log in zoals altijd.
+
+> Chrome kan bij het opstarten melden dat er ontwikkelaarsextensies actief zijn – dat is normaal voor extensies buiten de Web Store.
+
+### Updaten
+
+1. Download de nieuwe zip van [Releases](https://github.com/joennespreuwers/toledo-plus/releases).
+2. Vervang de inhoud van je Toledo+-map door de nieuwe bestanden.
+3. Ga naar `chrome://extensions` (of `edge://extensions`) en klik op ↻ (herladen) bij Toledo+.
+4. Herlaad je Toledo-tabblad. Je instellingen blijven bewaard.
+
+Je versie zie je in **Instellingen → Over**. Volg de repository (*Watch → Custom → Releases*) om een melding te krijgen bij nieuwe versies.
+
+## Privacy
+
+Toledo+ leest alleen wat Toledo jou zelf al toont, via je eigen sessie op `toledo.kuleuven.be` en `ultra.edu.kuleuven.cloud`. Instellingen staan in de opslag van je browser. **Geen analytics, geen trackers, geen eigen servers, geen andere websites.** Details: [PRIVACY.md](PRIVACY.md).
+
+## Problemen of ideeën?
+
+- 🐞 **Bug:** [meld een bug](https://github.com/joennespreuwers/toledo-plus/issues/new?template=bug_report.yml)
+- ✨ **Idee:** [stel iets voor](https://github.com/joennespreuwers/toledo-plus/issues/new?template=feature_request.yml)
+- 💬 **Vraag:** [Discussions](https://github.com/joennespreuwers/toledo-plus/discussions)
+- 🔒 **Beveiliging:** zie [SECURITY.md](SECURITY.md)
+
+Zet **geen echte persoonsgegevens** (namen, e-mails, r-nummer, vakinhoud) in issues of screenshots. Issues worden twee keer per week bekeken.
+
+## Ontwikkelen
+
+```bash
+git clone https://github.com/joennespreuwers/toledo-plus.git && cd toledo-plus
+npm install && npx playwright install chromium
+npm test            # unit + e2e (headless Chromium met de extensie en een gemockte Toledo)
+npm run pack        # dist/toledo-plus-<versie>.zip
+```
+
+Geen build-stap: laad de map rechtstreeks via *Uitgepakte extensie laden*. Lees eerst [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) en [`docs/DESIGN.md`](docs/DESIGN.md).
+
+### Projectstructuur
+
+```
+manifest.json        MV3-manifest
+background.js        cross-origin fetch-relay (portaal ↔ Ultra)
+page.css             verbergt de originele pagina, "Toledo+"-knop in klassieke modus
+ui.css               design tokens + gedeelde componenten (in de shadow root)
+src/core/            util, i18n, settings, net, data, ui, shell
+src/i18n/            vertalingen (nl/en/fr) per view
+src/views/           overview, courses, course, deadlines, planning, announcements, settings (+ .css)
+src/boot.js          start alles op beide origins
+tests/               unit (node:test) + e2e (Playwright) met synthetische fixtures
+scripts/             pack.mjs (zip), setup-github.sh, run-tests.mjs
+docs/                architectuur en design
+legacy/              v0.2-prototype (alleen ter referentie)
+```
+
+## Bijdragen
+
+Graag! Lees [CONTRIBUTING.md](CONTRIBUTING.md) en de [gedragscode](CODE_OF_CONDUCT.md). AI-agents: [AGENTS.md](AGENTS.md).
+
+## Licentie
+
+[MIT](LICENSE) © 2026 Joenne Spreuwers

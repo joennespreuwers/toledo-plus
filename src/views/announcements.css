@@ -1,0 +1,16 @@
+/* Toledo+ — Announcements view (shared va-* pieces live in overview.css). */
+.va-ann-list .tp-summary .tp-row-title { white-space: normal; }
+.va-ann-slot { padding: 0 16px 14px 44px; }
+.va-ann-body {
+  color: var(--label); font-size: var(--fs-body, .9375rem); line-height: 1.45;
+  overflow-wrap: anywhere; max-width: 68ch;
+}
+.va-ann-body img, .va-ann-body video { max-width: 100%; height: auto; border-radius: 8px; }
+.va-ann-body table { border-collapse: collapse; max-width: 100%; display: block; overflow-x: auto; }
+.va-ann-body td, .va-ann-body th { border: 1px solid var(--separator); padding: 4px 8px; }
+.va-ann-body a { color: var(--tint-text, var(--tint)); text-decoration: underline; }
+.va-ann-body p { margin: 0 0 .7em; }
+.va-ann-open { margin: 10px 0 0; font-size: var(--fs-subhead, .8125rem); }
+.va-ann-open a { color: var(--tint-text, var(--tint)); font-weight: 600; }
+.va-ann .tp-row-trail { color: var(--label-2); }
+.va-announcements > .va-foot { margin-top: 16px; }

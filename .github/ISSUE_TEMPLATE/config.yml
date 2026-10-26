@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: "💬 Vraag of hulp nodig / Question or help"
+    url: https://github.com/joennespreuwers/toledo-plus/discussions
+    about: "Stel vragen in Discussions, niet als issue. / Ask questions in Discussions, not as an issue."
+  - name: "🔒 Beveiligingsprobleem / Security issue"
+    url: https://github.com/joennespreuwers/toledo-plus/blob/main/SECURITY.md
+    about: "Meld beveiligingsproblemen niet publiek. / Do not report security issues publicly."
+  - name: "🏫 Probleem met Toledo zelf / Problem with Toledo itself"
+    url: https://www.kuleuven.be/toledo
+    about: "Toledo+ is onofficieel. Problemen met Toledo zelf meld je bij de KU Leuven-helpdesk. / Toledo+ is unofficial; report Toledo problems to KU Leuven."

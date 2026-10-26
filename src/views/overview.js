@@ -18,7 +18,10 @@
     tool: 'tool', folder: 'folder', announcement: 'megaphone', notice: 'bell',
   };
 
+  const cssEsc = (v) => (globalThis.CSS && CSS.escape ? CSS.escape(String(v)) : String(v).replace(/["\\\]\[#.:()]/g, '\\$&'));
+
   const VA = {
+    cssEsc,
     /** Insert extra attributes into the first tag of an HTML string. */
     addAttrs(html, attrs) {
       const s = Object.entries(attrs || {})
@@ -65,6 +68,19 @@
       return `<div class="va-delay" aria-busy="true">${TP.ui.skeleton(n)}</div>`;
     },
 
+    /** Robust ms from number | ISO string. */
+    ms(v) {
+      if (typeof v === 'number') return v;
+      const n = new Date(v).getTime();
+      return Number.isFinite(n) ? n : 0;
+    },
+    /** <time> element with relative "ago" text. */
+    timeAgo(v) {
+      const n = VA.ms(v);
+      if (!n) return '';
+      return `<time datetime="${esc(new Date(n).toISOString())}">${esc(TP.fmt.ago(n))}</time>`;
+    },
+
     capitalize(s) { s = String(s || ''); return s.charAt(0).toUpperCase() + s.slice(1); },
 
     sameDay(a, b) { return TP.fmt.dayKey(a) === TP.fmt.dayKey(b); },
@@ -92,9 +108,9 @@
       const parts = [];
       for (const at of ['data-action', 'data-key', 'data-id', 'data-eid', 'data-lu', 'name', 'value']) {
         const v = a.getAttribute(at);
-        if (v != null) parts.push(`[${at}="${CSS.escape(v)}"]`);
+        if (v != null) parts.push(`[${at}="${cssEsc(v)}"]`);
       }
-      if (a.id) return '#' + CSS.escape(a.id);
+      if (a.id) return '#' + cssEsc(a.id);
       return parts.length ? a.tagName.toLowerCase() + parts.join('') : null;
     },
     restoreFocus(root, key) {
@@ -320,8 +336,8 @@
       if (!g.items.some((x) => x.id === id)) g.items.push(k.e);
     }
     for (const g of groups) {
-      g.items.sort((a, b) => b.date - a.date);
-      g.latest = g.items.length ? g.items[0].date : g.latest;
+      g.items.sort((a, b) => VA.ms(b.date) - VA.ms(a.date));
+      g.latest = g.items.length ? VA.ms(g.items[0].date) : g.latest;
       S.groupsMeta.set(String(g.luId), { luId: g.luId, course: g.course, name: g.name, color: g.color });
       for (const e of g.items) S.events.set(String(e.id), e);
     }
@@ -346,7 +362,7 @@
       attrs: { 'data-action': 'ov-open', 'data-eid': String(e.id), ...(extra ? { hidden: '' } : {}) },
       leading: VA.kindTile(kind),
       title: esc(e.title),
-      trailing: `<time datetime="${esc(new Date(e.date).toISOString())}">${esc(TP.fmt.ago(e.date))}</time>`,
+      trailing: VA.timeAgo(e.date),
       q: `${e.title} ${g.name}`.toLowerCase(),
       cls: `va-feed-item${read ? ' is-read' : ''}${extra ? ' va-extra' : ''}`,
     });
@@ -361,7 +377,7 @@
     const more = rest > 0 && href
       ? linkRow(href, t('overview.new.more', { n: rest, course: g.name }), { cls: 'va-more va-feed-more' })
       : '';
-    const latest = g.latest ? `<time datetime="${esc(new Date(g.latest).toISOString())}">${esc(TP.fmt.ago(g.latest))}</time>` : '';
+    const latest = VA.timeAgo(g.latest);
     const badge = unread.length ? TP.ui.badge(unread.length, { tone: 'tint', label: t('overview.new.badge', { n: unread.length }) }) : '';
     const html = TP.ui.disclosure({
       id: 'ov-fg-' + g.luId,
@@ -416,7 +432,7 @@
       href: r.url ? TP.util.abs(r.url) : undefined,
       leading: VA.kindTile(r.kind),
       title: esc(r.title),
-      subtitle: `${esc(r.courseName || '')}${r.ts ? `<span aria-hidden="true"> · </span>${esc(TP.fmt.ago(r.ts))}` : ''}`,
+      subtitle: `${esc(r.courseName || '')}${r.ts ? `<span aria-hidden="true"> · </span>${VA.timeAgo(r.ts)}` : ''}`,
       chevron: true,
       q: `${r.title} ${r.courseName || ''}`.toLowerCase(),
     })).join('');
@@ -452,7 +468,7 @@
   function lessonRow(s, prefixQ = '') {
     const loc = [s.location && s.location.mnemonic, s.location && s.location.roomNumber]
       .filter((x) => x && x !== '?').join(' ');
-    const color = (s.source && s.source.color) ? (typeof s.source.color === 'number' ? TP.util.colorForIndex(s.source.color) : s.source.color) : 'var(--label-3)';
+    const color = s.color || (s.source && typeof s.source.color === 'number' ? TP.util.colorForIndex(s.source.color) : 'var(--label-3)');
     const link = s.source && s.source.link;
     return TP.ui.row({
       href: link || undefined,
@@ -495,7 +511,7 @@
       attrs: { 'data-action': 'ov-open', 'data-eid': String(e.id), ...(school ? { target: '_blank', rel: 'noopener' } : {}) },
       leading: VA.unreadDot(!e.read),
       title: esc(e.title),
-      subtitle: `${esc(src)}<span aria-hidden="true"> · </span>${esc(TP.fmt.ago(e.date))}${school ? `<span class="va-sr"> ${esc(t('va.newTab'))}</span>` : ''}`,
+      subtitle: `${esc(src)}<span aria-hidden="true"> · </span>${VA.timeAgo(e.date)}${school ? `<span class="va-sr"> ${esc(t('va.newTab'))}</span>` : ''}`,
       strong: !e.read,
       q: `${e.title} ${src}`.toLowerCase(),
       cls: 'va-ann' + (e.read ? ' is-read' : ''),

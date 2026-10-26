@@ -1,0 +1,84 @@
+name: "🐞 Bug melden / Report a bug"
+description: "Iets werkt niet of ziet er fout uit. / Something is broken or looks wrong."
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Bedankt! **Plak geen echte namen, e-mailadressen, r-nummers of inhoud van je vakken** – maak screenshots onherkenbaar waar nodig.
+        Thanks! **Do not paste real names, e-mail addresses, student numbers or course content** – blur screenshots where needed.
+  - type: textarea
+    id: what
+    attributes:
+      label: "Wat gebeurde er? / What happened?"
+      description: "Beschrijf het probleem kort. / Short description of the problem."
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: "Stappen om het te reproduceren / Steps to reproduce"
+      placeholder: |
+        1. Open Toledo → Overzicht / Overview
+        2. Klik op … / Click …
+        3. …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: "Wat verwachtte je? / What did you expect?"
+    validations:
+      required: true
+  - type: dropdown
+    id: view
+    attributes:
+      label: "Welke pagina? / Which view?"
+      options: ["Overzicht / Overview", "Vakken / Courses", "Vakpagina / Course page", "Deadlines", "Planning", "Mededelingen / Announcements", "Instellingen / Settings", "Diepere Toledo-pagina (balk bovenaan) / Deep page bar", "Klassieke modus / Classic mode", "Anders / Other"]
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: "Browser + versie / Browser + version"
+      description: "bv. / e.g. Chrome 131 (macOS), Edge 130 (Windows) – zie chrome://version"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: "Toledo+ versie / version"
+      description: "Instellingen → Over, of chrome://extensions. / Settings → About, or chrome://extensions."
+      placeholder: "1.0.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: language
+    attributes:
+      label: "Taalinstelling / Language setting"
+      options: ["Systeem / System", "Nederlands", "English", "Français"]
+    validations:
+      required: true
+  - type: dropdown
+    id: appearance
+    attributes:
+      label: "Weergave / Appearance"
+      options: ["Systeem / System", "Licht / Light", "Donker / Dark"]
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: "Screenshot (optioneel / optional)"
+      description: "Sleep een afbeelding hierheen. Maak persoonlijke gegevens onleesbaar. / Drag an image here. Blur personal data."
+  - type: textarea
+    id: console
+    attributes:
+      label: "Console-fouten (optioneel) / Console errors (optional)"
+      description: "Rechtsklik → Inspecteren → Console. / Right-click → Inspect → Console."
+      render: text
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: "Privacy"
+      options:
+        - label: "Ik heb geen persoonlijke gegevens van mezelf of anderen gedeeld. / I did not share personal data of myself or others."
+          required: true

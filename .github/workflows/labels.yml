@@ -1,0 +1,26 @@
+name: Sync labels
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [".github/labels.json"]
+
+permissions:
+  issues: write
+
+jobs:
+  labels:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create/update labels from .github/labels.json
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node -e '
+            for (const l of require("./.github/labels.json"))
+              console.log([l.name, l.color.replace(/^#/, ""), l.description].join("\t"));
+          ' | while IFS=$'\t' read -r name color description; do
+            gh label create "$name" --repo "$GITHUB_REPOSITORY" --color "$color" --description "$description" --force
+          done

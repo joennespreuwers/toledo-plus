@@ -1,0 +1,106 @@
+/* Toledo+ — Course view (views-B). Colours only through semantic variables. */
+.cv-view { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.cv-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.cv-sec[hidden], .cv-view [data-lq][hidden], .cv-view details.cv-folder[hidden] { display: none !important; }
+
+/* ---------- header ---------- */
+.cv-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px 16px; }
+.cv-head-main { display: flex; flex-direction: column; gap: 8px; min-width: 0; flex: 1 1 280px; }
+.cv-sub { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; color: var(--label-2); font-size: .875rem; }
+.cv-sub-new { display: inline-flex; align-items: center; gap: 6px; color: var(--label); }
+.cv-teachers { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.cv-teachers a, .cv-teachers span:only-child {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 2px 10px; border-radius: 999px;
+  background: var(--fill); color: var(--label); text-decoration: none; font-size: .8125rem;
+}
+.cv-teachers a { color: var(--tint-text, var(--tint)); }
+.cv-teachers a:hover { background: var(--fill-2, var(--fill)); }
+.cv-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.cv-btn {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 4px 12px; border: 0; border-radius: 8px;
+  background: var(--fill); color: var(--tint-text, var(--tint)); font: inherit; font-size: .875rem; font-weight: 600; cursor: pointer;
+}
+.cv-btn[aria-pressed="true"] { background: var(--tint); color: var(--on-tint, #fff); }
+.cv-btn:hover { filter: brightness(.97); }
+
+/* ---------- rows ---------- */
+.cv-group { overflow: hidden; }
+.cv-row {
+  --pad: calc(12px + var(--depth, 0) * 20px);
+  position: relative; display: flex; align-items: center; gap: 10px; min-height: 44px; box-sizing: border-box;
+  padding: 8px 12px 8px var(--pad); color: var(--label); text-decoration: none; min-width: 0;
+}
+.cv-row::before, .cv-view .cv-folder > summary::before {
+  content: ''; position: absolute; top: 0; right: 0; left: calc(var(--pad, 12px) + 46px);
+  border-top: .5px solid var(--separator); pointer-events: none;
+}
+.cv-group > :first-child > .cv-row::before, .cv-group > .cv-row:first-child::before,
+.cv-group > details:first-child > summary::before { display: none; }
+.cv-row-main { cursor: pointer; }
+a.cv-row:hover, summary.cv-row:hover, .cv-view .cv-folder > summary:hover, .cv-row .cv-row-main:hover { background: var(--fill); }
+.cv-leaf.cv-row:has(> button.cv-row-main) { padding: 0 8px 0 0; }
+.cv-leaf > button.cv-row-main {
+  flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 10px; min-height: 44px;
+  padding: 8px 4px 8px var(--pad); border: 0; background: none; color: inherit; font: inherit; text-align: left;
+}
+.cv-new { flex: 0 0 8px; width: 8px; display: inline-flex; justify-content: center; }
+.cv-new-dot { width: 8px; height: 8px; border-radius: 999px; background: var(--tint); }
+.cv-ico {
+  flex: 0 0 auto; display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 7px;
+  background: var(--fill); color: var(--tint-text, var(--tint));
+}
+.cv-ico-folder { color: var(--tint-text, var(--tint)); }
+.cv-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.cv-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .9375rem; }
+.cv-strong { font-weight: 600; }
+.cv-meta { display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--label-2); font-size: .8125rem; }
+.cv-trail, .cv-chev { flex: 0 0 auto; display: inline-flex; color: var(--label-3); }
+.cv-chev svg { transition: transform .2s ease-out; }
+details[open] > summary .cv-chev svg { transform: rotate(90deg); }
+.cv-view summary { list-style: none; }
+.cv-view summary::-webkit-details-marker { display: none; }
+.cv-mini {
+  flex: 0 0 auto; display: inline-grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 8px;
+  background: none; color: var(--tint-text, var(--tint)); cursor: pointer;
+}
+.cv-mini:hover { background: var(--fill); }
+.cv-mini:disabled { cursor: progress; }
+
+/* folders (TP.ui.disclosure) */
+.cv-view .cv-folder > summary { --pad: calc(12px + var(--depth, 0) * 20px); position: relative; padding-left: var(--pad); }
+.cv-view .cv-folder > summary .tp-row-lead { display: inline-flex; align-items: center; gap: 10px; }
+.cv-empty-folder { margin: 0; padding: 10px 12px 10px calc(12px + (var(--depth, 0) + 1) * 20px + 46px); color: var(--label-2); font-size: .8125rem; }
+
+/* documents / announcements expanded inline */
+.cv-doc-body { padding: 4px 16px 14px calc(12px + var(--depth, 0) * 20px + 46px); }
+.cv-ann .cv-doc-body { padding-left: 30px; }
+.cv-prose { color: var(--label); font-size: .9375rem; line-height: 1.5; overflow-wrap: anywhere; }
+.cv-prose :where(p, ul, ol) { margin: 0 0 .6em; }
+.cv-prose img, .cv-prose video { max-width: 100%; height: auto; }
+.cv-prose table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; }
+.cv-prose a, .cv-doc-link { color: var(--tint-text, var(--tint)); }
+.cv-doc-link { display: inline-block; margin-top: 6px; font-size: .8125rem; }
+
+/* deadlines */
+.cv-dl { gap: 12px; }
+.cv-dl.is-done { opacity: .6; }
+.cv-due { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 4px; font-size: .8125rem; color: var(--label-2); white-space: nowrap; }
+.cv-due.is-urgent { color: var(--orange); font-weight: 600; }
+.cv-due.is-overdue { color: var(--red); font-weight: 600; }
+
+/* misc */
+.cv-noresults { margin: 8px 0; text-align: center; color: var(--label-2); }
+.cv-spin {
+  display: inline-block; width: 14px; height: 14px; border-radius: 999px; flex: 0 0 auto;
+  border: 2px solid var(--fill); border-top-color: var(--tint); animation: cv-spin .8s linear infinite;
+}
+@keyframes cv-spin { to { transform: rotate(360deg); } }
+
+.cv-view :is(a, button, summary):focus-visible { outline: 2px solid var(--tint); outline-offset: -2px; border-radius: 8px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cv-chev svg { transition: none; }
+  .cv-spin { animation: cv-pulse 1.2s ease-in-out infinite; border-top-color: var(--fill); background: var(--fill); }
+}
+@keyframes cv-pulse { 50% { opacity: .4; } }
+@media (prefers-contrast: more) { .cv-row::before, .cv-view .cv-folder > summary::before { border-top-width: 1px; } }

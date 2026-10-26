@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # No lockfile on purpose (only one pinned devDependency), so `npm ci` is not possible.
+      - name: Install dev dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Manifest is valid JSON
+        run: node -e "JSON.parse(require('fs').readFileSync('manifest.json','utf8'))"
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: E2E tests (headless Chromium with the extension loaded)
+        run: xvfb-run --auto-servernum npm run test:e2e
+        env:
+          CI: "true"
+
+      - name: Pack (smoke test)
+        run: npm run pack
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: tests/artifacts/
+          if-no-files-found: ignore
+          retention-days: 14

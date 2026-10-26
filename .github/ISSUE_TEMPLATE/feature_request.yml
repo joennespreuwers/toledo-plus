@@ -1,0 +1,40 @@
+name: "✨ Idee of verbetering / Feature request"
+description: "Stel iets nieuws of beters voor. / Suggest something new or better."
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Toledo+ wil bewust eenvoudig blijven (zie de ontwerpprincipes in `docs/DESIGN.md`). Beschrijf vooral het **probleem** dat je hebt.
+        Toledo+ deliberately stays simple (see the design principles in `docs/DESIGN.md`). Focus on the **problem** you have.
+  - type: textarea
+    id: problem
+    attributes:
+      label: "Welk probleem wil je oplossen? / What problem are you trying to solve?"
+      placeholder: "Ik mis vaak … omdat … / I often miss … because …"
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: "Voorstel / Proposal"
+      description: "Hoe zou het moeten werken? / How should it work?"
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: "Alternatieven / Alternatives"
+      description: "Wat doe je nu, of wat heb je overwogen? / What do you do now, or what did you consider?"
+  - type: dropdown
+    id: view
+    attributes:
+      label: "Welke pagina? / Which view?"
+      multiple: true
+      options: ["Overzicht / Overview", "Vakken / Courses", "Vakpagina / Course page", "Deadlines", "Planning", "Mededelingen / Announcements", "Instellingen / Settings", "Nieuw / New view", "Anders / Other"]
+    validations:
+      required: true
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: "Schets of screenshot (optioneel / optional)"

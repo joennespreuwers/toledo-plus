@@ -271,7 +271,9 @@
         case 'fav': {
           const c = TP.data.course(lu);
           b.disabled = true;
-          try { await TP.data.setFavorite(lu, !(c && c.favorite)); } catch { TP.shell.toast?.(t('courses.favFailed')); }
+          let ok = true;
+          try { ok = await TP.data.setFavorite(lu, !(c && c.favorite)); } catch { ok = false; }
+          if (ok === false) TP.shell.toast?.(t('courses.favFailed'));
           b.disabled = false;
           break;
         }

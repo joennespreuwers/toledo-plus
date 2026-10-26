@@ -1,0 +1,145 @@
+/* Toledo+ — Overview view styles + shared "va-" pieces used by the views-A family
+   (overview, deadlines, planning, announcements). Semantic tokens only (see docs/DESIGN.md). */
+
+/* ---------- shared ---------- */
+.va-sr {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.va-view { display: block; }
+.va-view [hidden] { display: none !important; }
+
+.va-tile {
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+  width: 28px; height: 28px; border-radius: 7px;
+  background: var(--fill); color: var(--tint-text, var(--tint));
+}
+.va-muted { color: var(--label-2); }
+.va-foot {
+  margin: 8px 16px 0; color: var(--label-2);
+  font-size: var(--fs-footnote, .75rem); line-height: 1.35;
+}
+.va-foot .tp-ic { vertical-align: -2px; }
+.va-foot a, .tp-sec-foot a { color: var(--tint-text, var(--tint)); }
+.va-noresults {
+  margin: 24px 16px; text-align: center; color: var(--label-2);
+  font-size: var(--fs-body, .9375rem);
+}
+
+/* delayed skeleton: appears after 300ms (fade only) */
+.va-delay { opacity: 0; animation: va-fade-in 200ms ease-out 300ms forwards; }
+@keyframes va-fade-in { to { opacity: 1; } }
+
+/* unread dot (never color alone: has aria-label + bold title) */
+.va-unread {
+  display: inline-block; flex: none; width: 9px; height: 9px; border-radius: 50%;
+  background: var(--tint); margin: 0 2px;
+}
+.va-unread-off { background: transparent; }
+
+.va-tag {
+  display: inline-block; margin-left: 4px; padding: 0 6px; border-radius: 999px;
+  background: var(--fill); color: var(--label-2);
+  font-size: var(--fs-footnote, .75rem); font-weight: 600; line-height: 1.5;
+}
+
+/* icon-only buttons/links inside rows (≥ 28px target) */
+.va-iconbtn {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 28px; min-height: 28px; padding: 0; margin: 0;
+  border: 0; border-radius: 8px; background: transparent;
+  color: var(--label-2); cursor: pointer; text-decoration: none;
+}
+.va-iconbtn:hover { background: var(--fill); color: var(--label); text-decoration: none; }
+
+/* ---------- deadline rows (shared) ---------- */
+.va-dl .tp-row-lead { display: inline-flex; align-items: center; gap: 8px; }
+.va-check {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; margin: -4px -2px -4px -6px; padding: 0;
+  border: 0; border-radius: 50%; background: transparent;
+  color: var(--label-2); cursor: pointer;
+}
+.va-check:hover { background: var(--fill); color: var(--tint-text, var(--tint)); }
+.va-check.is-done { color: var(--green); }
+.va-dl .tp-row-sub { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.va-dl.is-done .tp-row-title { color: var(--label-2); text-decoration: line-through; text-decoration-color: var(--label-3); }
+.va-dl .tp-row-trail { display: inline-flex; align-items: center; gap: 4px; }
+.va-urg {
+  display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
+  color: var(--label-2); font-size: var(--fs-subhead, .8125rem);
+}
+.va-urg.is-urgent { color: var(--orange); font-weight: 600; }
+.va-urg.is-overdue { color: var(--red); font-weight: 600; }
+.va-urg.is-done { color: var(--green); }
+
+/* "See all" / "N more" link rows */
+.va-more .tp-row-title { color: var(--tint-text, var(--tint)); }
+
+/* ---------- lessons (overview schedule + planning) ---------- */
+.va-lesson .tp-row-lead { display: inline-flex; align-items: stretch; gap: 10px; }
+.va-time {
+  display: inline-flex; flex-direction: column; justify-content: center; min-width: 3.1em;
+  font-variant-numeric: tabular-nums; font-size: var(--fs-subhead, .8125rem); line-height: 1.25;
+  color: var(--label);
+}
+.va-time span + span { color: var(--label-2); }
+.va-bar { width: 4px; border-radius: 2px; background: var(--c, var(--label-3)); align-self: stretch; min-height: 32px; }
+
+.va-dayhead {
+  margin: 16px 16px 6px; font-size: var(--fs-headline, .9375rem); font-weight: 600; color: var(--label);
+}
+.va-dayhead span { font-weight: 400; color: var(--label-2); margin-left: 4px; }
+.va-dayhead:first-child { margin-top: 4px; }
+
+/* ---------- filters bar (deadlines, announcements) ---------- */
+.va-filters {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+  margin: 0 0 20px;
+}
+.va-filters .tp-field { display: inline-flex; align-items: center; gap: 8px; }
+
+/* ---------- overview: feed ---------- */
+.va-feed .tp-summary .tp-row-sub {
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.va-feed-trail {
+  display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
+  color: var(--label-2); font-size: var(--fs-subhead, .8125rem);
+}
+.va-feed-body .tp-row { padding-left: 36px; }
+.va-feed-item.is-read .tp-row-title { color: var(--label-2); }
+.va-feed-item .tp-row-trail { color: var(--label-2); font-size: var(--fs-subhead, .8125rem); white-space: nowrap; }
+.va-showall .tp-row-title { color: var(--tint-text, var(--tint)); font-weight: 600; }
+
+/* ---------- overview: announcements ---------- */
+.va-ann.is-read .tp-row-title { color: var(--label); }
+.va-ann .tp-row-sub time, .va-ann .tp-row-sub { color: var(--label-2); }
+
+/* ---------- overview: course grid ---------- */
+.va-cgrid {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
+}
+.va-ccard {
+  display: flex; align-items: center; gap: 10px; min-height: 48px;
+  padding: 10px 12px; border-radius: 12px;
+  background: var(--bg-2); color: var(--label); text-decoration: none;
+}
+.va-ccard:hover { background: color-mix(in srgb, var(--bg-2) 92%, var(--label) 8%); text-decoration: none; }
+.va-ccard.is-dim { color: var(--label-2); }
+.va-swatch { flex: none; width: 12px; height: 28px; border-radius: 4px; background: var(--c, var(--tint)); }
+.va-cname {
+  flex: 1 1 auto; min-width: 0; font-weight: 600; font-size: var(--fs-body, .9375rem);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.va-cpin { color: var(--label-2); display: inline-flex; }
+
+@media (prefers-contrast: more) {
+  .va-ccard { outline: 1px solid var(--separator); }
+  .va-check { color: var(--label); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .va-delay { animation-duration: 1ms; }
+}

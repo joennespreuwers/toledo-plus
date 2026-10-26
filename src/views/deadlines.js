@@ -98,7 +98,7 @@
           <input name="time" type="time" value="${esc(dr.time || '23:59')}"></label>
       </div>
       <p class="va-form-error" role="alert" hidden></p>
-      <div class="va-form-actions">${TP.ui.button(t('deadlines.add.submit'), { kind: 'filled', icon: 'plus', attrs: { type: 'submit' } })}</div>
+      <div class="va-form-actions"><button type="submit" class="tp-btn tp-btn-filled">${TP.ui.icon('plus')}<span>${esc(t('deadlines.add.submit'))}</span></button></div>
     </form>`;
     const html = TP.ui.disclosure({
       id: 'dl-add',

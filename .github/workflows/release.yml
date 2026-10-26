@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Check tag matches manifest version
+        run: |
+          V=$(node -p "require('./manifest.json').version")
+          if [ "v$V" != "${GITHUB_REF_NAME}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match manifest.json version $V"; exit 1
+          fi
+
+      - name: Pack extension
+        run: npm run pack
+
+      - name: Release notes from CHANGELOG
+        run: |
+          V=$(node -p "require('./manifest.json').version")
+          awk -v v="$V" '
+            $0 ~ "^## \\[" v "\\]" {f=1; next}
+            f && /^## \[/ {exit}
+            f {print}
+          ' CHANGELOG.md > RELEASE_NOTES.md
+          cat >> RELEASE_NOTES.md <<'NOTES'
+
+          ---
+          **Installeren / Install:** download `toledo-plus-*.zip`, pak uit, ga naar `chrome://extensions` (of `edge://extensions`), zet *Ontwikkelaarsmodus / Developer mode* aan → *Uitgepakte extensie laden / Load unpacked* → kies de uitgepakte map. Zie de README.
+          NOTES
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/toledo-plus-*.zip
+          body_path: RELEASE_NOTES.md
+          fail_on_unmatched_files: true
