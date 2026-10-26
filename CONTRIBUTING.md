@@ -58,7 +58,7 @@ Read first: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (contract: modules, d
 2. Commit small, push the branch, open a PR early (draft is fine) so others see what you're working on.
 3. CI must be green; one approving review from another maintainer; resolve conversations. Merge with **Squash and merge**.
 4. Keep the branch current with `git pull --rebase origin main` when `main` moves; fix conflicts locally.
-5. Releases: bump the version in `manifest.json` + `package.json` and add a `## [x.y.z]` section to `CHANGELOG.md` in the PR. Merging it to `main` releases automatically (tag, zip, GitHub release, API "latest version").
+5. Don't bump the version in feature/fix PRs — add your line under `## [Unreleased]` in `CHANGELOG.md`. Releases are a separate small PR "Release X.Y.Z" (see [docs/RELEASING.md](docs/RELEASING.md) for patch/minor/major); merging it releases automatically (tag, zip, GitHub release, API "latest version").
 
 
 One topic per PR, fill in the template checklist, include light + dark screenshots for UI changes. CI must be green.

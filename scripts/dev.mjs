@@ -22,7 +22,8 @@ await webExt.cmd.run({
   chromiumProfile: PROFILE,
   keepProfileChanges: true,
   startUrl: ['https://toledo.kuleuven.be/portal/'],
-  // Not part of the extension: don't reload when these change.
-  ignoreFiles: ['website', 'tests', 'docs', 'legacy', 'worker', 'scripts', 'dist', 'test-results', '*.md', 'package*.json']
+  // Not part of the extension: don't reload when these change. _metadata/ is written by Chrome itself when it loads the
+  // declarativeNetRequest rules; watching it reloads the extension, which rewrites it, which reloads it… (endless loop).
+  ignoreFiles: ['website', 'tests', 'docs', 'legacy', 'worker', 'scripts', 'dist', 'test-results', '*.md', 'package*.json', '.dev-profile', '_metadata']
     .flatMap((p) => [p, `${p}/**`]),
 }, { shouldExitProgram: false });
