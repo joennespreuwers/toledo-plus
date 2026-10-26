@@ -19,6 +19,22 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # Docs/website-only changes don't need the extension test suite: the job still reports "test" (so the
+      # required check passes) but skips the heavy steps. Anything else — or a push to main — runs everything.
+      - name: What changed?
+        id: scope
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then echo "full=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          files=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD")
+          echo "$files"
+          if [ -z "$files" ] || echo "$files" | grep -qvE '^(docs/|website/|[^/]+\.md$|\.github/(ISSUE_TEMPLATE/|PULL_REQUEST_TEMPLATE\.md|CODEOWNERS|labels\.json))'; then
+            echo "full=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Only docs/website changed – skipping the extension tests."; echo "full=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - uses: actions/setup-node@v7
         with:
@@ -26,23 +42,36 @@ jobs:
 
       # No lockfile on purpose (only one pinned devDependency), so `npm ci` is not possible.
       - name: Install dev dependencies
+        if: steps.scope.outputs.full == 'true'
         run: npm install --no-audit --no-fund
 
+      # Cache the Chromium download (the apt system deps are still installed each run).
+      - name: Cache Playwright browsers
+        if: steps.scope.outputs.full == 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-${{ runner.os }}-${{ hashFiles('package.json') }}
+
       - name: Install Chromium
+        if: steps.scope.outputs.full == 'true'
         run: npx playwright install --with-deps chromium
 
       - name: Manifest is valid JSON
         run: node -e "JSON.parse(require('fs').readFileSync('manifest.json','utf8'))"
 
       - name: Unit tests
+        if: steps.scope.outputs.full == 'true'
         run: npm run test:unit
 
       - name: E2E tests (headless Chromium with the extension loaded)
+        if: steps.scope.outputs.full == 'true'
         run: xvfb-run --auto-servernum npm run test:e2e
         env:
           CI: "true"
 
       - name: Pack (smoke test)
+        if: steps.scope.outputs.full == 'true'
         run: npm run pack
 
       - name: Upload screenshots
