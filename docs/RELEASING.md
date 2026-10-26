@@ -16,11 +16,23 @@ nieuwe functie overal klopt. De PR-template bevat dezelfde checklist in het kort
 Eenmalig nodig (repo › Settings › Secrets and variables › Actions): `CLOUDFLARE_API_TOKEN` (sjabloon *Edit Cloudflare
 Workers* + *D1 Edit*) en `CLOUDFLARE_ACCOUNT_ID`. Zonder die secrets wordt de API-stap overgeslagen (met een waarschuwing).
 
+## Versienummers (SemVer: MAJOR.MINOR.PATCH)
+
+| Verhoging | Wanneer | Voorbeelden |
+|---|---|---|
+| **Patch** `1.5.1 → 1.5.2` | Alleen bugfixes en kleine poets, niets nieuws voor de gebruiker | thema-knop, geplet logo, juiste mailteller |
+| **Minor** `1.5.x → 1.6.0` | Iets **nieuws** dat de gebruiker merkt, een merkbare UX-wijziging, of een **nieuw recht/host** in het manifest. Bestaande instellingen blijven werken. | mededelingen-pop-up + Ad Valvas lezen, een reeks layout-PR's samen |
+| **Major** `1.x → 2.0.0` | Iets dat **breekt** (instellingen/opslag gaan niet mee), een totaal nieuwe structuur, of een mijlpaal zoals de eerste store-release | — |
+
+Alleen wijzigingen aan de website, docs, tests of CI krijgen **geen** nieuwe versie: de website publiceert vanzelf opnieuw.
+
 ## Een release maken
 
-1. In je PR: verhoog de versie in **`manifest.json` én `package.json`** (SemVer: fix → patch, functie → minor).
-2. Verplaats de items onder `## [Unreleased]` in `CHANGELOG.md` naar `## [X.Y.Z] - JJJJ-MM-DD`.
-3. Merge naar `main`. Klaar — de rest gebeurt automatisch.
+1. **Feature- en fix-PR's verhogen de versie niet.** Ze zetten hun regel onder `## [Unreleased]` in `CHANGELOG.md` (Added / Changed / Fixed). Zo zitten twee PR's nooit tegelijk aan de versie.
+2. Wie een release wil, opent een kleine PR **"Release X.Y.Z"** (branch `release/X.Y.Z`) die enkel:
+   - de versie verhoogt in **`manifest.json` én `package.json`** (zie de tabel hierboven voor patch/minor/major);
+   - `## [Unreleased]` hernoemt naar `## [X.Y.Z] - JJJJ-MM-DD` en daarboven een nieuwe lege `## [Unreleased]` zet.
+3. Merge naar `main`. Klaar — tag, zip, GitHub-release en de "nieuwe versie"-melding via de API gebeuren automatisch.
 
 ## Checklist per nieuwe functie
 
