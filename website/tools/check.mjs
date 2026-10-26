@@ -4,7 +4,8 @@
 //   NODE_PATH=$(npm root -g) node website/tools/check.mjs [--shots]
 //
 // Site: every page × light/dark × 320/390/768/1440/2560 → no horizontal scroll, no console errors, no requests
-// outside the site, images with alt + width/height that load, internal links and #anchors that resolve.
+// outside the site, images with alt + width/height that load, internal links and #anchors that resolve; every page
+// uses its own language's og/hero images. Theme toggle: every click flips the visible theme (system light and dark).
 // Demo: overview, deadlines, courses, a course page, agenda, KU Loket, announcements, settings and the ⌘K palette
 // render with no console errors and no requests outside the page origin.
 // --shots writes screenshots to website/.screens/ (gitignored) for a visual pass.
@@ -28,6 +29,10 @@ const SITE = path.join(ROOT, 'website');
 const SHOTS = process.argv.includes('--shots') ? path.join(SITE, '.screens') : null;
 const PAGES = ['/', '/en/', '/fr/', '/privacy.html', '/en/privacy.html', '/fr/privacy.html', '/does-not-exist'];
 const WIDTHS = [320, 390, 768, 1440, 2560];
+const HOMES = { '/': 'nl', '/en/': 'en', '/fr/': 'fr' }; // home page → language of its screenshots
+const LANG_OF = (p) => (/^\/(en|fr)\//.exec(p) || [, 'nl'])[1];
+/** The hero screenshot the visitor sees right now (currentSrc: the WebP <source> when supported). */
+const visibleShot = (page) => page.evaluate(() => { const v = [...document.querySelectorAll('img.shot')].find((i) => i.offsetParent !== null); return v && (v.currentSrc || v.src); });
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json',
   '.png': 'image/png', '.webp': 'image/webp', '.ico': 'image/x-icon', '.svg': 'image/svg+xml', '.xml': 'application/xml', '.txt': 'text/plain' };
 const EXCLUDED = /^\/(tools|\.screens)(\/|$)|^\/README\.md$/; // not deployed
@@ -81,9 +86,9 @@ async function checkSite(browser, origin) {
           if (!i.w || !i.h) fail(`${tag}: image without width/height: ${i.src}`);
           if (!i.ok && !i.lazy) fail(`${tag}: image did not load: ${i.src}`);
         }
-        if (p === '/' && w === 1440) {
-          const shot = await page.evaluate(() => { const v = [...document.querySelectorAll('img.shot')].find((i) => i.offsetParent !== null); return v && v.src; });
-          if (!shot || !shot.includes(`overview-${scheme}`)) fail(`${tag}: hero screenshot is not the ${scheme} variant (${shot})`);
+        if (HOMES[p] && w === 1440) {
+          const shot = await visibleShot(page);
+          if (!shot || !shot.includes(`overview-${scheme}-${HOMES[p]}.`)) fail(`${tag}: hero screenshot is not the ${scheme}/${HOMES[p]} variant (${shot})`);
         }
         if (errs.length) fail(`${tag}: console errors: ${errs.join(' | ')}`);
         if (foreign.length) fail(`${tag}: external requests: ${foreign.join(', ')}`);
@@ -116,6 +121,39 @@ async function checkSite(browser, origin) {
   console.log(`  ${PAGES.length} pages × 2 schemes × ${WIDTHS.length} widths checked`);
 }
 
+// ---------------------------------------------------------------- localized images (screens.mjs writes one set per language)
+function checkLocalizedImages() {
+  console.log('Localized images');
+  const IMG = path.join(SITE, 'assets', 'img');
+  for (const p of PAGES.filter((x) => x !== '/does-not-exist').concat(['/404.html'])) {
+    const lang = LANG_OF(p);
+    const file = path.join(SITE, p.endsWith('/') ? p + 'index.html' : p);
+    const html = fs.readFileSync(file, 'utf8');
+    const refs = [...html.matchAll(/assets\/img\/([\w.-]+\.(?:png|webp))/g)].map((m) => m[1]);
+    for (const r of refs) {
+      if (!fs.existsSync(path.join(IMG, r))) fail(`${p}: references missing image assets/img/${r}`);
+      const m = /-(nl|en|fr)\.(png|webp)$/.exec(r);
+      if (!m) fail(`${p}: unlocalized image assets/img/${r}`);
+      else if (m[1] !== lang) fail(`${p}: references the ${m[1]} image ${r} (page is ${lang})`);
+    }
+    for (const meta of ['og:image', 'twitter:image']) {
+      const m = html.match(new RegExp(`(?:property|name)="${meta}" content="([^"]+)"`));
+      if (!m) fail(`${p}: no ${meta}`);
+      else if (!m[1].endsWith(`/og-${lang}.png`)) fail(`${p}: ${meta} is ${m[1]} (expected og-${lang}.png)`);
+    }
+    if (HOMES[p]) {
+      for (const want of [`overview-light-${lang}.webp`, `overview-dark-${lang}.webp`, `overview-light-${lang}.png`]) {
+        if (!refs.includes(want)) fail(`${p}: does not use ${want}`);
+      }
+      if (!/<link rel="preload" as="image"[^>]*overview-light-/.test(html)) fail(`${p}: no preload for its light screenshot`);
+    }
+  }
+  let total = 0;
+  for (const f of fs.readdirSync(IMG)) total += fs.statSync(path.join(IMG, f)).size;
+  if (total > 1500 * 1024) fail(`assets/img is ${(total / 1024).toFixed(0)} KB (> 1500 KB)`);
+  console.log(`  own-language og/hero images on every page; assets/img ${(total / 1024).toFixed(0)} KB`);
+}
+
 // ---------------------------------------------------------------- brand, theme toggle, motion, Lenis
 const hex = (rgb) => { const m = String(rgb).match(/\d+(\.\d+)?/g) || []; return m.slice(0, 3).map(Number); };
 const lum = (c) => { const [r, g, b] = c.map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
@@ -132,14 +170,24 @@ async function checkTheme(browser, origin) {
     const btn = page.locator('[data-theme-toggle]');
     if (!(await btn.isVisible())) { fail(`${tag}: theme toggle not visible`); await ctx.close(); continue; }
     const seen = [];
-    for (let i = 0; i < 3; i++) {
+    const look = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+    let before = await look();
+    const initial = await page.evaluate(() => document.querySelector('[data-theme-toggle]').getAttribute('data-mode'));
+    if (initial !== scheme) fail(`${tag}: before any click the toggle shows ${initial} (system is ${scheme})`);
+    for (let i = 0; i < 4; i++) {
       await btn.click();
       await page.waitForTimeout(320);
+      const now = await look();
+      if (now === before) fail(`${tag}: click ${i + 1} did not change the theme (background stays ${now})`);
+      before = now;
       const st = await page.evaluate(() => {
         const cs = (el) => getComputedStyle(el);
         const body = cs(document.body), lead = cs(document.querySelector('.lead')), link = cs(document.querySelector('.link-arrow, main a:not(.btn)'));
         const prim = cs(document.querySelector('.btn-primary'));
-        return { attr: document.documentElement.getAttribute('data-theme'), stored: localStorage.getItem('tp-theme'), label: document.querySelector('[data-theme-toggle]').getAttribute('aria-label'),
+        const tg = document.querySelector('[data-theme-toggle]');
+        const icon = [...tg.querySelectorAll('svg')].find((x) => getComputedStyle(x).display !== 'none');
+        return { attr: document.documentElement.getAttribute('data-theme'), stored: localStorage.getItem('tp-theme'), label: tg.getAttribute('aria-label'), mode: tg.getAttribute('data-mode'),
+          icon: icon && icon.getAttribute('class'),
           bg: body.backgroundColor, fg: body.color, lead: lead.color, link: link.color, pbg: prim.backgroundColor, pfg: prim.color,
           tc: [...document.querySelectorAll('meta[name="theme-color"]')].map((m) => m.content) };
       });
@@ -152,8 +200,27 @@ async function checkTheme(browser, origin) {
       if (st.attr === 'light' && hex(st.bg).join() !== '255,255,255') fail(`${tag}: data-theme=light but background ${st.bg}`);
       if (st.attr && st.stored !== st.attr) fail(`${tag}: choice not stored (${st.stored})`);
       if (!st.label) fail(`${tag}: toggle without a label`);
+      if (st.mode !== st.attr) fail(`${tag}: toggle shows ${st.mode} while the page is ${st.attr}`);
+      if (!st.icon || !st.icon.includes(`ti-${st.attr}`)) fail(`${tag}: toggle icon ${st.icon} while the page is ${st.attr}`);
+      if (st.label !== { light: 'Thema: licht', dark: 'Thema: donker' }[st.attr]) fail(`${tag}: toggle label "${st.label}" while the page is ${st.attr}`);
+      const shot = await visibleShot(page);
+      if (!shot || !shot.includes(`overview-${st.attr}-nl.`)) fail(`${tag} → ${st.attr}: hero screenshot ${shot}`);
     }
-    if (seen.join() !== 'light,dark,system') fail(`${tag}: toggle cycle was ${seen.join(' → ')}`);
+    const flip = scheme === 'light' ? ['dark', 'light'] : ['light', 'dark'];
+    if (seen.join() !== [...flip, ...flip].join()) fail(`${tag}: toggle sequence was ${seen.join(' → ')} (expected ${[...flip, ...flip].join(' → ')})`);
+    // EN/FR: the toggle swaps to their own dark/light screenshots.
+    for (const [p, l] of [['/en/', 'en'], ['/fr/', 'fr']]) {
+      await page.evaluate(() => localStorage.removeItem('tp-theme'));
+      await page.goto(origin + p, { waitUntil: 'load' });
+      for (let i = 0; i < 2; i++) {
+        await page.locator('[data-theme-toggle]').click();
+        await page.waitForTimeout(150);
+        const attr = await page.evaluate(() => document.documentElement.getAttribute('data-theme'));
+        const shot = await visibleShot(page);
+        if (attr !== flip[i]) fail(`${tag} ${p}: click ${i + 1} → ${attr} (expected ${flip[i]})`);
+        if (!shot || !shot.includes(`overview-${attr}-${l}.`)) fail(`${tag} ${p} → ${attr}: hero screenshot ${shot}`);
+      }
+    }
     // No flash: a stored choice is applied before the stylesheet paints (inline <head> script).
     await page.evaluate((v) => localStorage.setItem('tp-theme', v), scheme === 'light' ? 'dark' : 'light');
     await page.goto(origin + '/privacy.html', { waitUntil: 'commit' });
@@ -199,7 +266,7 @@ async function checkTheme(browser, origin) {
   const hid = await p2.locator('#features .feature').evaluateAll((l) => l.filter((e) => parseFloat(getComputedStyle(e).opacity) < 1).length);
   if (hid) fail(`no JS: ${hid} feature card(s) hidden`);
   await nojs.close();
-  console.log('  toggle (light/dark/system), stored choice before paint, contrast, Lenis + anchors + keyboard, reduced motion, no-JS checked');
+  console.log('  toggle (every click flips the visible theme, icon/label follow), stored choice before paint, contrast, Lenis + anchors + keyboard, reduced motion, no-JS checked');
 }
 
 async function checkDemo(browser, origin) {
@@ -271,12 +338,19 @@ async function checkDemo(browser, origin) {
         if (vp.width === 1440 || lang === 'nl') {
           const appearance = () => shadow(page, (sr) => sr && sr.querySelector('.tp-app') && sr.querySelector('.tp-app').dataset.appearance);
           const modes = [];
+          const mode0 = await page.locator('#demo-bar [data-theme-toggle]').getAttribute('data-mode');
+          if (mode0 !== scheme) fail(`${tag}: demo theme toggle shows ${mode0} before any click (system is ${scheme})`);
           for (let i = 0; i < 3; i++) {
             await page.locator('#demo-bar [data-theme-toggle]').click();
             await page.waitForTimeout(250);
-            modes.push(await appearance());
+            const m = await appearance();
+            modes.push(m);
+            const tg = await page.evaluate(() => { const b = document.querySelector('#demo-bar [data-theme-toggle]'); return { mode: b.getAttribute('data-mode'), label: b.getAttribute('aria-label') }; });
+            if (tg.mode !== m) fail(`${tag}: demo theme toggle shows ${tg.mode} while the app is ${m}`);
+            if (!tg.label) fail(`${tag}: demo theme toggle without a label`);
           }
-          if (modes.join() !== 'light,dark,system') fail(`${tag}: demo theme toggle → app appearance ${modes.join(' → ')}`);
+          const want = scheme === 'light' ? 'dark,light,dark' : 'light,dark,light';
+          if (modes.join() !== want) fail(`${tag}: demo theme toggle → app appearance ${modes.join(' → ')} (expected ${want.replace(/,/g, ' → ')})`);
         }
         const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
         if (overflow > 0) fail(`${tag}: horizontal scroll (${overflow}px)`);
@@ -320,6 +394,7 @@ const sizes = () => {
   const origin = `http://127.0.0.1:${srv.address().port}`;
   const browser = await chromium.launch();
   try {
+    checkLocalizedImages();
     await checkSite(browser, origin);
     await checkTheme(browser, origin);
     await checkDemo(browser, origin);

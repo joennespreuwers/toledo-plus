@@ -7,8 +7,10 @@
 //   1. loads the unpacked extension (repo root) in Playwright's Chromium,
 //   2. answers every Toledo / Ultra / KU Loket / TimeEdit / api.toledoplus.be request from website/demo/data/*.json
 //      through website/demo/mock.js (the same mock the online demo uses); everything else is blocked,
-//   3. opens the overview (welcome card dismissed, banners/toasts hidden) in light and dark at 1440×900 @2x,
-//   4. writes website/assets/img/overview-{light,dark}.webp and og.png (1200×630, brand: Inter, ink/orange),
+//   3. opens the overview (welcome card dismissed, banners/toasts hidden) in light and dark at 1440×900 @2x, once per
+//      app language (TP setting `language` = nl / en / fr, so the UI chrome matches the page; the demo data stays Dutch),
+//   4. writes website/assets/img/overview-{light,dark}-{nl,en,fr}.webp, overview-light-{nl,en,fr}.png (fallback for
+//      browsers without WebP) and og-{nl,en,fr}.png (1200×630, brand: Inter, ink/orange),
 //   5. writes the version from manifest.json into index.html, en/index.html and fr/index.html,
 //   6. copies the extension into website/demo/ext/ (gitignored) so the demo works locally.
 // Dev-only: website/tools/ is not deployed. Uses `sharp` for smaller PNGs when it is installed, else Chromium's encoder.
@@ -26,8 +28,11 @@ const require = createRequire(import.meta.url);
 const SITE = path.join(ROOT, 'website');
 const IMG = path.join(SITE, 'assets', 'img');
 const DATA = path.join(SITE, 'demo', 'data');
-const BUDGET = 800 * 1024;
+const BUDGET = 1500 * 1024;
+const LANGS = ['nl', 'en', 'fr'];
 const VIEW = { width: 1440, height: 900 };
+const WEBP_W = 2400, WEBP_Q = 0.72; // retina hero; tuned to keep all images < BUDGET
+const PNG_W = 1440;                 // fallback only (no WebP support): 1×, palette PNG
 
 function load(name) {
   try { return require(name); } catch (_) { /* fall through */ }
@@ -74,50 +79,57 @@ async function main() {
 
     let [sw] = ctx.serviceWorkers();
     if (!sw) sw = await ctx.waitForEvent('serviceworker', { timeout: 10000 });
-    // Start like a student who already closed the welcome card; Dutch UI; system appearance.
-    await sw.evaluate(async () => {
-      await chrome.storage.sync.set({ settings: { language: 'nl', appearance: 'system' } });
-      await chrome.storage.local.set({ 'state:ui': { onboarded: true } });
-    });
 
-    const shots = {};
-    for (const scheme of ['light', 'dark']) {
-      const page = await ctx.newPage();
-      page.on('console', (m) => { if (m.type() === 'error') errors.push(`[${scheme}] ${m.text()}`); });
-      page.on('pageerror', (e) => errors.push(`[${scheme}] ${e.message}`));
-      await page.emulateMedia({ colorScheme: scheme, reducedMotion: 'reduce' });
-      await page.goto(`${Mock.PORTAL}/portal/#/home?tplus=overview`);
-      await waitForShell(page);
-      await settle(page);
-      await page.waitForTimeout(1500); // second wave (KU Loket, index) + re-render
-      await settle(page);
-      await page.evaluate(() => document.fonts && document.fonts.ready);
-      await hideChrome(page);
-      await page.waitForTimeout(300);
-      shots[scheme] = await page.screenshot({ type: 'png' });
-      await page.close();
+    const shots = {}; // shots[lang][scheme] = png buffer
+    for (const lang of LANGS) {
+      // Start like a student who already closed the welcome card; UI in `lang`; system appearance.
+      await sw.evaluate(async (language) => {
+        await chrome.storage.sync.set({ settings: { language, appearance: 'system' } });
+        await chrome.storage.local.set({ 'state:ui': { onboarded: true } });
+      }, lang);
+      shots[lang] = {};
+      for (const scheme of ['light', 'dark']) {
+        const page = await ctx.newPage();
+        page.on('console', (m) => { if (m.type() === 'error') errors.push(`[${lang} ${scheme}] ${m.text()}`); });
+        page.on('pageerror', (e) => errors.push(`[${lang} ${scheme}] ${e.message}`));
+        await page.emulateMedia({ colorScheme: scheme, reducedMotion: 'reduce' });
+        await page.goto(`${Mock.PORTAL}/portal/#/home?tplus=overview`);
+        await waitForShell(page);
+        await settle(page);
+        await page.waitForTimeout(1500); // second wave (KU Loket, index) + re-render
+        await settle(page);
+        await page.evaluate(() => document.fonts && document.fonts.ready);
+        await hideChrome(page);
+        await page.waitForTimeout(300);
+        const lng = await page.evaluate(() => document.querySelector('#tplus-root')?.shadowRoot?.querySelector('[lang]')?.getAttribute('lang') || '');
+        if (lng && lng.slice(0, 2) !== lang) console.warn(`  warning: ${lang} ${scheme}: the app reports lang="${lng}"`);
+        shots[lang][scheme] = await page.screenshot({ type: 'png' });
+        await page.close();
+      }
     }
-    for (const [scheme, buf] of Object.entries(shots)) fs.writeFileSync(path.join(os.tmpdir(), `tplus-overview-${scheme}.png`), buf);
 
     // ---------- encode
     const enc = await ctx.newPage();
     await enc.goto('about:blank');
     fs.mkdirSync(IMG, { recursive: true });
     const out = {};
-    out['overview-light.webp'] = await toWebp(enc, shots.light, 2400, 0.8);
-    out['overview-dark.webp'] = await toWebp(enc, shots.dark, 2400, 0.8);
-    out['og.png'] = await ogImage(ctx, shots.light);
+    for (const lang of LANGS) {
+      out[`overview-light-${lang}.webp`] = await toWebp(enc, shots[lang].light, WEBP_W, WEBP_Q);
+      out[`overview-dark-${lang}.webp`] = await toWebp(enc, shots[lang].dark, WEBP_W, WEBP_Q);
+      out[`overview-light-${lang}.png`] = await toPng(enc, shots[lang].light, PNG_W);
+      out[`og-${lang}.png`] = await ogImage(ctx, shots[lang].light);
+    }
     await enc.close();
 
     let total = 0;
     for (const [name, buf] of Object.entries(out)) {
       fs.writeFileSync(path.join(IMG, name), buf);
       total += buf.length;
-      console.log(`  assets/img/${name.padEnd(20)} ${(buf.length / 1024).toFixed(0).padStart(5)} KB`);
+      console.log(`  assets/img/${name.padEnd(26)} ${(buf.length / 1024).toFixed(0).padStart(5)} KB`);
     }
     console.log(`  total ${(total / 1024).toFixed(0)} KB (budget ${BUDGET / 1024} KB)${total > BUDGET ? '  ← over budget!' : ''}`);
-    // Images that are no longer used by the pages.
-    for (const f of fs.readdirSync(IMG)) if (!(f in out)) console.log(`  note: assets/img/${f} is not generated by this script (unused?)`);
+    // Images that are no longer generated (e.g. the old unlocalized overview-light.webp / og.png).
+    for (const f of fs.readdirSync(IMG)) if (!(f in out)) console.log(`  note: assets/img/${f} is not generated by this script (unused? delete it)`);
 
     setVersion(manifest.version);
     console.log('  demo/ext ←', path.relative(ROOT, syncExt()));
