@@ -49,15 +49,14 @@ describe('ultra course page', () => {
   });
 
   it('course header "Zet in zijbalk" adds the course to the sidebar (and "Uit zijbalk" removes it)', async () => {
-    const btn = page.locator('#tplus-root .cv-actions [data-action="sidebar"]');
+    const btn = page.locator('#tplus-root .tp-head-actions [data-shell="view-action"][data-id="sidebar"]'); // same place as every page action
     assert.equal((await btn.innerText()).trim(), 'Zet in zijbalk');
     assert.equal(await page.locator('#tplus-root nav.tp-sidebar .tp-sb-course').count(), 0, 'nothing in the sidebar yet');
     await btn.click();
     await page.waitForFunction(() => !!document.querySelector('#tplus-root').shadowRoot.querySelector('nav.tp-sidebar .tp-sb-course.active[aria-current="page"]'), null, { timeout: 4000 });
     assert.equal((await btn.innerText()).trim(), 'Uit zijbalk');
-    const lu = await btn.getAttribute('data-lu');
-    assert.ok(await waitSettings(h, (st) => st.courses?.items?.[lu]?.inSidebar === true), 'stored');
-    await page.waitForFunction(() => document.querySelector('#tplus-root').shadowRoot.activeElement?.dataset?.fk === 'sidebar', null, { timeout: 2000 }).catch(() => {});
+    assert.ok(await waitSettings(h, (st) => Object.values(st.courses?.items || {}).some((c) => c && c.inSidebar === true)), 'stored');
+    await page.waitForFunction(() => document.querySelector('#tplus-root').shadowRoot.activeElement?.dataset?.id === 'sidebar', null, { timeout: 2000 }).catch(() => {});
     assert.equal(await btn.evaluate((b) => b.getRootNode().activeElement === b), true, 'focus stays on the button after the re-render');
   });
 
@@ -216,7 +215,7 @@ describe('ultra course page', () => {
 
   it('classic toggle on the course page, and the pill re-enables Toledo+', async () => {
     await openCourse();
-    await page.locator('#tplus-root [data-action="classic"]').first().click();
+    await page.locator('#tplus-root .tp-head-actions [data-id="classic"]').click();
     await page.waitForFunction(() => !document.documentElement.classList.contains('tplus-on'), null, { timeout: 5000 });
     assert.ok(await page.locator('#site-wrap').isVisible());
     await page.locator(S.pill).waitFor({ state: 'visible' });

@@ -59,7 +59,7 @@ a.cs-card-main:focus-visible { outline: 2px solid var(--tint-text, var(--tint));
 .cs-erow {
   position: relative; display: flex; align-items: center; gap: 8px 10px; min-height: 56px; padding: 6px 10px 6px 6px;
 }
-.cs-erow + .cs-erow::before { content: ''; position: absolute; top: 0; left: 44px; right: 0; border-top: var(--hairline, .5px) solid var(--separator); }
+.cs-erow + .cs-erow::before { content: ''; position: absolute; top: 0; left: 0; right: 0; border-top: var(--hairline, .5px) solid var(--separator); }
 .cs-erow[hidden] { display: none; }
 .cs-erow.is-hidden .cs-input, .cs-erow.is-hidden .cs-color-dot { opacity: .55; }
 .cs-erow.is-dragging { opacity: .5; }

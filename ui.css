@@ -28,8 +28,9 @@
   --r-control: 8px; --r-group: 14px; --r-pop: 18px; --r-pill: 999px; --r-tile: 8px;
   --margin: 16px; --section-gap: 28px;
   --toolbar-h: 44px; --sidebar-w: 240px; --rail-w: 64px; --list-max: 760px;
-  /* content column (v1.5): centred in the area right of the sidebar; wide = main + side column, narrow = list views */
-  --content-wide: 1240px; --content-narrow: calc(var(--list-max) + 2 * var(--margin));
+  /* content column: centred in the area right of the sidebar, the same for every view (main + side column) */
+  --content-wide: 1240px;
+  --overdue-bg: color-mix(in srgb, var(--red-fill) 16%, var(--bg-2)); --overdue-bg-hover: color-mix(in srgb, var(--red-fill) 22%, var(--bg-2));
   --switch-w: 38px; --switch-h: 22px;
   /* brand constants (never follow the accent) */
   --brand-orange: #EE8B35; --brand-magenta: #E3285A; --brand-ink: #1F2430;
@@ -460,17 +461,14 @@ a.tp-mail { color: var(--tint-text); text-decoration: none; }
 
 /* main + large title */
 .tp-app { --content-max: var(--content-wide); }
-.tp-app[data-width="narrow"] { --content-max: var(--content-narrow); }
 .tp-main {
-  /* one centred column right of the sidebar (≤ 1240px: main + side column; list views ≤ 760px + margins),
+  /* one centred column right of the sidebar (≤ 1240px), the same for every view,
      so wide screens have balanced space on both sides instead of a strip next to an empty area */
   flex: 1; width: 100%; max-width: var(--content-max); margin: 0 auto;
   padding: 8px var(--margin) 48px;
 }
 /* the toolbar's trailing controls line up with the content's right edge */
 .tp-toolbar { padding-right: max(calc(var(--margin) - 8px), calc((100% - var(--content-max)) / 2 + var(--margin) - 8px)); }
-/* list views: readable line length on wide screens (title ↔ status no longer 1000px apart) */
-.tp-narrow { max-width: var(--list-max); margin-inline: auto; }
 .tp-main:focus { outline: none; }
 .tp-head { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin: 4px 0 var(--section-gap); }
 .tp-head-text { flex: 1 1 260px; min-width: 0; }
@@ -694,11 +692,9 @@ a.tp-mail { color: var(--tint-text); text-decoration: none; }
 .tp-group > * { position: relative; }
 /* separator above every row that has a visible row before it (search hides rows with [hidden]) */
 .tp-group > :where(:not([hidden])) ~ *::before, .tp-disclosure-body > :where(:not([hidden])) ~ *::before { /* :where keeps the old specificity so view rows (.cv-row) can override */
-  content: ''; position: absolute; top: 0; right: 0; left: var(--row-px); height: var(--hairline);
+  content: ''; position: absolute; top: 0; right: 0; left: 0; height: var(--hairline); /* full width: every list draws its dividers edge to edge */
   background: var(--separator); pointer-events: none; z-index: 1;
 }
-.tp-group > .has-lead + *::before, .tp-group > :where(:not([hidden])) ~ .has-lead::before,
-.tp-disclosure-body > :where(:not([hidden])) ~ .has-lead::before { left: var(--inset); }
 .tp-disclosure-body > * { position: relative; }
 .tp-group + .tp-group { margin-top: 12px; }
 
@@ -828,7 +824,7 @@ a.tp-row:active, button.tp-row:active, summary.tp-row:active { background: var(-
 .tp-btn-gray { background: var(--fill); color: var(--label) !important; }
 .tp-btn-gray:hover:not(:disabled) { background: color-mix(in srgb, var(--fill) 100%, var(--fill-2)); filter: brightness(.97); }
 .tp-btn-icon { width: 32px; padding: 0; }
-.tp-sec-actions .tp-btn { min-height: 28px; padding-block: 2px; font-size: var(--fs-subhead); }
+.tp-sec-actions .tp-btn { min-height: 28px; padding-block: 2px; font-size: var(--fs-subhead); margin-block: -6px; } /* full hit area, but no taller than the title: cards line up across columns */
 
 /* segmented control */
 .tp-segmented {

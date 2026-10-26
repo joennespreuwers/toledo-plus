@@ -775,7 +775,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
       while (live.length > TOAST_MAX) dismissToast(live.shift());
     }
     clearTimeout(el.__tpT);
-    el.__tpT = setTimeout(() => dismissToast(el), TOAST_MS);
+    el.__tpT = setTimeout(() => dismissToast(el), Math.min(9000, Math.max(TOAST_MS, text.length * 60))); // longer text stays longer
   }
   function dismissToast(el) {
     clearTimeout(el.__tpT);
@@ -825,8 +825,13 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     }
     const acts = $('.tp-head-actions');
     if (acts) {
-      acts.innerHTML = (current.actions || []).map((a, i) =>
+      const html = (current.actions || []).map((a, i) =>
         TP.ui.button(a.label, { icon: a.icon, kind: 'tinted', attrs: { 'data-shell': 'view-action', 'data-index': i, 'data-id': a.id } })).join('');
+      if (acts.innerHTML !== html) {
+        const had = shadow.activeElement && acts.contains(shadow.activeElement) ? shadow.activeElement.dataset.id : null;
+        acts.innerHTML = html;
+        if (had) acts.querySelector(`[data-id="${CSS.escape(had)}"]`)?.focus(); // e.g. "Zet in zijbalk" → "Uit zijbalk"
+      }
     }
     if (mode === 'shell') document.title = `${title} · Toledo+`;
   }
@@ -974,7 +979,6 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     }
     if (seq !== renderSeq || cur !== current) return;
     syncBusy(cur.root);
-    syncWidth();
     updateHead();
     restoreFocus(focus);
     if (searchQ) applySearch();
@@ -985,13 +989,6 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     if (!root || root.dataset.busyOwn) return;
     const busy = !!root.querySelector('.tp-skeleton');
     if (busy) root.setAttribute('aria-busy', 'true'); else root.removeAttribute('aria-busy');
-  }
-  // Content width (v1.5): list views (.tp-narrow) get a centred ~760px column, the rest a centred column of at
-  // most --content-wide (main + side column). The toolbar's trailing controls follow the same right edge.
-  function syncWidth() {
-    if (!app || !current?.root) return;
-    const w = current.root.querySelector('.tp-narrow') ? 'narrow' : 'wide';
-    if (app.dataset.width !== w) app.dataset.width = w;
   }
   // Debounced full refresh of nav + current view, with a guard against render→change→render loops.
   let burst = { at: 0, n: 0, warned: false };

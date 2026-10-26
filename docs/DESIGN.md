@@ -29,7 +29,7 @@ Over-engineering to avoid: drag-and-drop widget builders, themes beyond light/da
   | footnote | 10/13 | 12/16 | 13/18 | 400 |
 - Spacing scale 2 4 8 12 16 20 24 32 48. Content margin 16 (mobile) / 24 (desktop) / 32 (≥1100). Section gap 28.
 - Radii: controls 8, inset groups 12, popovers/sheets 16, pills 999. Concentric: inner = outer − padding.
-- Row: min-height 44 (compact 36), padding 11 16; hairline separators 0.5px inset to text start.
+- Row: min-height 44 (compact 36), padding 11 16; hairline separators 0.5px, full width (edge to edge, the same in every list).
 - Colors (semantic vars only; v1.6 brand pass — contrast measured on the actual backgrounds, see **Brand › Contrast**):
   | var | light | dark (on brand ink) |
   |---|---|---|
@@ -69,7 +69,7 @@ The UI must read as **Toledo+, not Toledo**: our own name, mark, type and colour
 
 **Colours**: orange #EE8B35 (accent, fills, icons), magenta #E3285A (secondary: only in the mark and illustrations — never for text or state, so it can't be mistaken for "te laat"), ink #1F2430 (text in light, cards in dark, the tile), white. Text on white: #C2410C (orange) / #C81E4E (magenta); on ink white and orange may be text.
 - **Accent rules**: default accent `brand` (= orange). Other accents (blue, purple, green, …) stay available; red/pink are never accents (reserved for "te laat"). The brand accent is never a course colour (`TP.util.COURSE_COLORS`).
-- **States never look like the accent**: "te laat" = red + ⚠ icon + the word; "binnenkort" = **amber** (not orange) date tile + clock icon + the relative date in label colour; new = tint-soft badge (never solid). Settings v5 migrates the old default accent `blue` to `brand` once (settings are stored whole, so an explicit "blue" chosen before v5 can't be told apart; it can be re-picked and is kept from then on). Every other stored accent is kept.
+- **States never look like the accent**: "te laat" = a red-tinted row (`--overdue-bg`) + red date tile + the words ("3 d te laat", label-2 like every relative time, no icon); "binnenkort" = **amber** (not orange) date tile + clock icon + the relative date in label colour; new = tint-soft badge (never solid). Settings v5 migrates the old default accent `blue` to `brand` once (settings are stored whole, so an explicit "blue" chosen before v5 can't be told apart; it can be re-picked and is kept from then on). Every other stored accent is kept.
 - Focus ring: 2 px `--tint-text` (#C2410C: 4.7:1 on --bg, #F5A35F: 9:1 on dark), 2 px offset. Selection: tint 30 %. Scrollbars: thin, `--scrollbar` (ink 26 % / white 22 %), page scrollbar via page.css.
 
 **Type**: Inter (OFL 1.1, `fonts/` + `fonts/OFL-Inter.txt`, latin + latin-ext variable wght 100–900). Chrome ignores `@font-face` inside shadow roots, so the shell declares the faces once in the **document** (`<style id="tp-fonts">` + an adopted constructable sheet, which a strict page CSP can't block) under the family name **"TP Inter"** (never touches the host page's own fonts); the shadow tokens use `"TP Inter", "Inter", system-ui, …`. The bundled subset has `tnum`/`pnum`/`frac`/`calt` but no `cv*`/`ss*` sets, so no stylistic alternates are used.
@@ -108,6 +108,11 @@ The UI must read as **Toledo+, not Toledo**: our own name, mark, type and colour
 - **Row**: leading 28px icon tile (radius 7, --fill) or color dot; title (body, 1 line ellipsis, full name in `title` attr); secondary (subhead, label-2); trailing value/badge/chevron (label-3). Hover = --fill. Whole row is the hit target.
 - **Disclosure** (content tree, feed groups, announcements): chevron trailing (rotates 90°, `--dur-2` `--ease-out`; none under reduced motion), `<details>/<summary>` acceptable (native disclosure semantics); opening animates per **Motion** below. Indent 20px per level, max ~3 levels visible.
 - **Badge**: min 18px tall, padding 0 6, 12px 600, pill; tint for new, red for overdue, gray neutral; "99+"; `aria-label="3 nieuw"`.
+- **Page actions** ("Zet in agenda", "Bewerk", "Zet in zijbalk", "Klassieke Toledo", "Open KU Loket"): only via `ctx.setActions` — tinted buttons right of the large title, the same on every page. Views don't build their own header buttons. An action on one list ("Alles gelezen") sits in that list's section header instead, next to what it acts on (Overzicht › Nieuw, Mededelingen).
+- **"See all"** links to another page: a plain section-header action (`TP.ui.section({actions})`, e.g. "Alle deadlines", "Agenda", "Alle vakken"), never a row inside the card. (In-place expansion like "Toon alle (12)" / "Nog 5 in …" stays inside the list.)
+- **Today** in the agenda (date circle, mini calendar, column tint, now line) uses the accent, not red: red only ever means "te laat".
+- **Help text sits next to what it explains**: a section footer (`TP.ui.section({footer})`, directly under its group) or the toast right after the action. No page-bottom footnotes; a page-level fact goes in the subtitle under the large title.
+- **Same thing, same row**: an exam is drawn by one row (`TP.viewsA.examRow`: date tile, course dot, when · room, relative time) in Deadlines and KU Loket; a lesson by one row (`TP.viewsA.lessonRow`: times, course bar, room · teachers) in Overzicht and KU Loket. No coloured edge on groups: state lives in the row tint, the date tile, the label and the section title.
 - **Empty state**: `TP.ui.empty(text)` shows the pill illustration above the text (`{art:false}` to omit).
 - **Segmented control**: track --fill, selected segment = one sliding pill (--bg-3 with shadow, `--ease-spring`), 28/32px tall, ≤5 segments; radio inputs.
 - **Switch**: 38×22 desktop (51×31 comfortable), on = --tint-fill (brand orange by default); native checkbox with role=switch.
@@ -124,7 +129,7 @@ The UI must read as **Toledo+, not Toledo**: our own name, mark, type and colour
 - Empty: "Je bent helemaal bij." + "Bijgewerkt 14:02". Loading: skeleton rows of the same geometry after 300ms. Error: inline row "Kon Toledo niet laden · Opnieuw" while still showing cached data.
 
 ## Layout
-- <700px: single column, tab bar, comfortable-ish touch sizes. 700–1099: sidebar (icon rail by default < 900, expands as an overlay) + one column. ≥1100: sidebar + one **centred** content column of at most 1240px: main + side column `clamp(280px, 30%, 340px)` (schedule/announcements on overview; deadlines/announcements/teachers on course). List views (deadlines, announcements, KU Loket, settings) use a centred 760px column. Nothing sits as a strip next to an empty area.
+- <700px: single column, tab bar, comfortable-ish touch sizes. 700–1099: sidebar (icon rail by default < 900, expands as an overlay) + one column. ≥1100: sidebar + one **centred** content column of at most 1240px: main + side column `clamp(280px, 30%, 340px)` (schedule/announcements on overview; deadlines/announcements/teachers on course). Every view uses that same column (list views too), so switching tabs never moves the title or the edges. Nothing sits as a strip next to an empty area.
 - Spacing: content margin 16 / 24 / 32 (<700 / ≥700 / ≥1100); section gap 28 (compact 22); section titles inset 4px, day headers likewise; group footers and row text inset 16; cards (welcome card) padding 16/20 with 12 between blocks and 16 above the button.
 - Greeting: "Goedemorgen / Goedemiddag / Goedenavond, <voornaam>" (first name from Ultra, kept locally; plain greeting when unknown).
 - Zoom to 200% without horizontal scroll; reflow at 320px.

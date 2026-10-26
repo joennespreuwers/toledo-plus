@@ -1,5 +1,5 @@
 /* Toledo+ — Announcements view (shared va-* pieces live in overview.css). */
-.va-ann-list .tp-summary .tp-row-title { white-space: normal; }
+.va-ann-list .tp-summary .tp-row-title { white-space: nowrap; } /* one line with …, like every list row; the full title is in the opened item */
 .va-ann-slot { padding: 0 16px 14px 44px; }
 .va-ann-body {
   color: var(--label); font-size: var(--fs-body, .9375rem); line-height: 1.45;
@@ -13,4 +13,21 @@
 .va-ann-open { margin: 10px 0 0; font-size: var(--fs-subhead, .8125rem); }
 .va-ann-open a { color: var(--tint-text, var(--tint)); font-weight: 600; }
 .va-ann .tp-row-trail { color: var(--label-2); }
-.va-announcements > .va-foot { margin-top: 16px; }
+
+/* the filter list (side column): the selection reads like a selected sidebar item; below 1100px it comes first */
+.va-src-row.is-on { background: color-mix(in srgb, var(--tint) 15%, transparent); }
+.va-src-row.is-on .tp-row-title { font-weight: 600; }
+/* wide: the filter list on the side; narrow (no side column): just Alles | Ongelezen above the list */
+.va-src-seg { margin-bottom: 16px; }
+@media (min-width: 1100px) { .va-src-seg { display: none; } }
+/* phones wrap row text; announcement rows stay one line each (title …, course …) like on desktop */
+@media (max-width: 699px) {
+  .va-ann-row .tp-row-title, .va-ann-row .tp-row-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
+@media (max-width: 1099px) { .va-announcements .tp-col-side { display: none; } }
+.va-src-row .tp-row-lead { color: var(--tint-text); }
+.va-src-row .tp-count { min-width: 2ch; text-align: right; font-weight: 400; }
+/* what a row does, at a glance: ⌄ expands here (flips up when open), ↗ opens another site; same 14px box so times line up */
+.va-ann-list .tp-disc .tp-ic { transform: rotate(90deg); }
+.va-ann-list .tp-disclosure[open] > summary .tp-disc .tp-ic { transform: rotate(-90deg); }
+.va-ann-ext { display: grid; place-items: center; width: 14px; margin-left: 4px; color: var(--label-3); }

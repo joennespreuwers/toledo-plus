@@ -74,7 +74,8 @@
 .va-dl .tp-row-title { display: block; }
 /* one line, ellipsis (flex-wrap orphaned the colour dot on phones) */
 .va-dl .tp-row-sub { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.va-dl .tp-row-sub .tp-dot { width: 8px; height: 8px; margin-right: 5px; vertical-align: 0; }
+.va-new-slot { visibility: hidden; } /* invisible copy of the "Nieuw" pill on read rows, so times line up */
+.va-dl .tp-row-sub .tp-dot, .va-ann-row .tp-row-sub .tp-dot { width: 8px; height: 8px; margin-right: 5px; vertical-align: 0; }
 .va-urg-under { display: none; }
 /* phones: the subtitle already carries the date and the trailing word the urgency → drop the tile, give the title room */
 @media (max-width: 480px) { .va-dl .tp-datetile { display: none; } }
@@ -94,7 +95,10 @@
 }
 .va-urg.is-urgent { color: var(--label); font-weight: 600; }
 .va-urg.is-urgent .tp-ic { color: var(--amber); }
-.va-urg.is-overdue { color: var(--red); font-weight: 600; }
+/* overdue: the row itself is tinted red (the card clips it to its corners); words in label colour, no icon */
+.va-dl.tone-overdue:not(.is-done) { background: var(--overdue-bg); }
+.va-dl.tone-overdue:not(.is-done):hover { background: var(--overdue-bg-hover); }
+.va-urg.is-overdue { color: var(--label-2); } /* same as every other relative time; the row tint carries the state */
 .va-urg.is-done { color: var(--green); }
 .va-ext { color: var(--label-2); }
 .va-late { color: var(--red); font-weight: 600; }
@@ -119,11 +123,15 @@
 .va-time span + span { color: var(--label-2); }
 .va-bar { width: 4px; border-radius: 2px; background: var(--c, var(--label-3)); align-self: stretch; min-height: 32px; }
 
-.va-dayhead {
-  margin: 16px 4px 8px; /* aligned with the section title (.tp-sec-head: 0 4px) */ font-size: var(--fs-headline, .9375rem); font-weight: 600; color: var(--label);
-}
+/* schedule: one card, a small sub-heading per day, rows separated like any group */
+.va-dayhead { margin: 0; padding: 10px var(--row-px) 2px; font-size: var(--fs-subhead); line-height: var(--lh-subhead); font-weight: 600; color: var(--label); }
 .va-dayhead span { font-weight: 400; color: var(--label-2); margin-left: 4px; }
-.va-dayhead:first-child, .va-day:first-child > .va-dayhead { margin-top: 4px; }
+.va-day > * { position: relative; }
+.va-day > :where(:not([hidden])) ~ :not(.va-dayhead + *)::before {
+  content: ''; position: absolute; top: 0; right: 0; left: 0; height: var(--hairline);
+  background: var(--separator); pointer-events: none; z-index: 1;
+}
+.va-dayempty { margin: 0; padding: 4px var(--row-px) 12px; font-size: var(--fs-subhead); color: var(--label-2); }
 
 /* ---------- filters bar (deadlines, announcements) ---------- */
 .va-filters {
@@ -190,6 +198,7 @@
   display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
   color: var(--label-2); font-size: var(--fs-subhead, .8125rem);
 }
+.va-feed-trail .tp-badge, .va-badge-slot { min-width: 28px; } /* 1- and 2-digit counts take the same width */
 .va-feed-body .tp-row { padding-left: 36px; }
 .va-feed-item.is-read .tp-row-title { color: var(--label-2); }
 .va-feed-item .tp-row-trail { color: var(--label-2); font-size: var(--fs-subhead, .8125rem); white-space: nowrap; }

@@ -489,7 +489,6 @@
     const showEmpty = !items.length && g.lessonsKnown && L.ok !== false;
     const empty = showEmpty ? `<div class="ag-empty" role="note">${icon('calendar', { size: 18 })}<span>${esc(t(g.all.length ? 'agenda.empty.filtered' : 'agenda.empty.' + emptyKind))}</span>${g.all.length ? ` <button type="button" class="tp-link-btn" data-action="ag-reset">${esc(t('agenda.filter.reset'))}</button>` : ''}</div>` : '';
     const K = TP.kuloket;
-    const foot = `<p class="ag-foot">${icon('calendar', { size: 13 })} ${esc(t('agenda.subscribeHint'))} <a href="${esc(K.icalAppUrl())}" target="_blank" rel="noopener">${esc(t('agenda.subscribeLink'))} ›<span class="tp-sr"> ${esc(t('agenda.newTab'))}</span></a><span class="ag-keyhint"> · ${esc(t('agenda.keys.hint'))}</span></p>`;
     const side = `<aside class="ag-side" aria-label="${esc(t('agenda.side'))}">${miniMonth(r)}${panelHtml(g.all, 'ag-side')}</aside>`;
 
     const view = shell(ctx);
@@ -501,7 +500,7 @@
     const pageY = typeof window !== 'undefined' ? window.scrollY : 0;
     view.className = `ag-view ag-m-${m}${S.prefs.workweek ? ' is-workweek' : ''}`;
     view.dataset.mode = m;
-    view.innerHTML = `<div class="ag-main">${bar}${statusLine(g)}<div class="ag-calwrap"${!g.lessonsKnown && L.ok !== false ? ' aria-busy="true"' : ''}>${cal}${empty}</div><div class="ag-noresults" hidden></div>${foot}</div>${side}`;
+    view.innerHTML = `<div class="ag-main">${bar}${statusLine(g)}<div class="ag-calwrap"${!g.lessonsKnown && L.ok !== false ? ' aria-busy="true"' : ''}>${cal}${empty}</div><div class="ag-noresults" hidden></div></div>${side}`;
     // keep the grid where the student scrolled it; jump to the first lesson only for a new range
     const key = `${m}|${r.from}|${r.days}`;
     const nsc = view.querySelector('.ag-scroll');

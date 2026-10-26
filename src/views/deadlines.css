@@ -1,6 +1,5 @@
 /* Toledo+ — Deadlines view (shared va-* pieces live in overview.css). */
 .va-deadlines .va-dl-add { margin-bottom: 24px; }
-.va-dl-group.is-overdue { box-shadow: inset 3px 0 0 var(--red); }
 
 .va-form { padding: 4px 16px 16px; display: grid; gap: 12px; }
 .va-form .va-foot { margin: 0; }
@@ -18,12 +17,10 @@
 .va-form-error { margin: 0; color: var(--red); font-size: var(--fs-subhead, .8125rem); }
 .va-form-actions { display: flex; justify-content: flex-end; }
 
-.va-footnotes { margin-top: 24px; display: grid; gap: 6px; }
 
 @media (max-width: 420px) {
   .va-field-row { grid-template-columns: 1fr; }
 }
-.va-exam-group { box-shadow: inset 3px 0 0 var(--orange-fill); }
 .va-exam .tp-row-sub { white-space: normal; }
 .va-sec-overdue .tp-sec-title { color: var(--red); }
 .va-exam .tp-row-title { white-space: normal; }

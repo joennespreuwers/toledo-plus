@@ -214,10 +214,11 @@
     }
     const lu = st.luId || (st.data && st.data.course && st.data.course.courseId) || null;
     const inSb = !!(lu && TP.shell.inSidebar && TP.shell.inSidebar(lu));
-    const sbBtn = lu && TP.shell.setInSidebar
-      ? `<button type="button" class="cv-btn" data-action="sidebar" data-lu="${esc(lu)}" data-fk="sidebar">${TP.ui.icon(inSb ? 'sidebarRemove' : 'sidebarAdd', { size: 16 })}<span>${esc(t(inSb ? 'shell.sbRemove' : 'shell.sbAdd'))}</span></button>`
-      : '';
-    const actions = sbBtn + `<button type="button" class="cv-btn" data-action="classic" data-fk="classic">${TP.ui.icon('classic', { size: 16 })}<span>${esc(t('course.classic'))}</span></button>`;
+    // Page actions live where every view has them: right of the large title (TP.shell head actions).
+    const acts = [];
+    if (lu && TP.shell.setInSidebar) acts.push({ id: 'sidebar', label: t(inSb ? 'shell.sbRemove' : 'shell.sbAdd'), icon: inSb ? 'sidebarRemove' : 'sidebarAdd', onClick: () => TP.shell.setInSidebar(lu) });
+    acts.push({ id: 'classic', label: t('course.classic'), icon: 'classic', onClick: () => onClassic() });
+    try { cur && cur.setActions && cur.setActions(acts); } catch { /* ignore */ }
     return `
       <header class="cv-head">
         <div class="cv-head-main">
@@ -225,7 +226,6 @@
           ${teachers}
           ${TP.fulltext && st.cid && !st.error ? TP.fulltext.courseBox(st.cid) /* full-text: "Doorzoek alle bestanden" (src/core/fulltext.js) */ : ''}
         </div>
-        <div class="cv-actions">${actions}</div>
       </header>`;
   }
 
@@ -380,13 +380,13 @@
       const urgent = !d.done && !overdue && TP.fmt.daysUntil(d.due) <= urgentDays;
       const tone = d.done ? 'muted' : overdue ? 'overdue' : urgent ? 'urgent' : 'normal';
       const trail = overdue
-        ? `<span class="cv-due is-overdue">${TP.ui.icon('clock', { size: 13 })}${esc(t('course.overdue'))}</span>`
+        ? `<span class="cv-due is-overdue">${esc(TP.viewsA.overdueText(d.due))}</span>`
         : `<span class="cv-due${urgent ? ' is-urgent' : ''}">${urgent ? TP.ui.icon('clock', { size: 13 }) : ''}${esc(TP.fmt.rel(d.due))}</span>`;
       const inner = `${TP.ui.dateTile(d.due, { tone })}
         <span class="cv-main"><span class="cv-name cv-strong" title="${esc(d.title)}">${esc(d.title)}</span>
         <span class="cv-meta">${esc(TP.fmt.date(d.due, { weekday: 'long' }))} · ${esc(TP.fmt.time(d.due))}</span></span>${trail}`;
       const lq = esc(String(d.title || '').toLowerCase());
-      const cls = `cv-row cv-dl${d.done ? ' is-done' : ''}`;
+      const cls = `cv-row cv-dl${d.done ? ' is-done' : ''}${overdue ? ' is-overdue' : ''}`;
       // The row shows the assignment in this course (unfolded + highlighted); a small icon opens it in Toledo.
       const id = itemIdOf(d.url);
       const inTree = id && st.data && findNode(id);
@@ -513,8 +513,7 @@
 
   function render(ctx) {
     cur = ctx;
-    bind(ctx.root);
-    ctx.setActions([]);
+    bind(ctx.root); // page actions are set by headerHtml() on every paint (clearing them here would drop focus)
     const p = ctx.params || {};
     const key = p.cid ? 'c:' + p.cid : 'l:' + (p.luId || '');
     if (key !== st.key || (st.error && !st.data)) {
@@ -704,8 +703,6 @@
         if (act === 'open') { ev.preventDefault(); onOpen(a); return; }
         if (act === 'download') { ev.preventDefault(); onDownload(a); return; }
         if (act === 'toggle-all') { ev.preventDefault(); toggleAll(a); return; }
-        if (act === 'classic') { ev.preventDefault(); onClassic(); return; }
-        if (act === 'sidebar') { ev.preventDefault(); TP.shell.setInSidebar(a.dataset.lu); return; } // settings change → re-render
         if (act === 'retry') {
           ev.preventDefault();
           try { if (st.cid && TP.data.clearCourseCache) TP.data.clearCourseCache(st.cid); } catch { /* ignore */ }

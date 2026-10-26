@@ -482,7 +482,7 @@
         <button type="button" class="tp-btn tp-btn-plain" data-action="ft-cancel" data-fk="ft-cancel">${esc(t('fulltext.course.stop'))}</button>`;
     } else {
       const line = r ? `<span class="cv-ft-text" role="status" data-ft-line>${esc(courseLineText(r))}</span>` : '';
-      html = `<button type="button" class="cv-btn" data-action="ft-run" data-fk="ft-run">${TP.ui.icon('search', { size: 16 })}<span>${esc(t(r && r.state === 'done' ? 'fulltext.course.again' : 'fulltext.course.run'))}</span></button>${line}`;
+      html = TP.ui.button(t(r && r.state === 'done' ? 'fulltext.course.again' : 'fulltext.course.run'), { icon: 'search', kind: 'plain', attrs: { 'data-action': 'ft-run', 'data-fk': 'ft-run' } }) + line;
     }
     return `<div class="cv-ft" data-ft-box>${html}</div>`;
   }

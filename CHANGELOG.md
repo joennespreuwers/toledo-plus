@@ -6,6 +6,18 @@ Het formaat volgt [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) en he
 
 ## [Unreleased]
 
+### Changed
+- Alle tabbladen gebruiken dezelfde breedte: Deadlines, Mededelingen, KU Loket en Instellingen springen niet meer naar een smallere kolom.
+- Geen losse kleine teksten meer onderaan de pagina, ver van waar ze over gaan: de uitleg over het agendabestand staat in de melding na het downloaden, "alleen-lezen" bij KU Loket staat onder de titel, en herhaalde of overbodige hints (Agenda: iCal en sneltoetsen, Deadlines: "Klaar", Mededelingen: nieuw tabblad) zijn weg.
+- Examens en lessen zien er overal hetzelfde uit: KU Loket gebruikt dezelfde rijen als Deadlines (examens) en Overzicht (lessen).
+- "Te laat" is rustiger en zegt hoeveel: de rij krijgt een lichtrode achtergrond en toont "3 d te laat" (zonder ⚠-icoon, in dezelfde stijl als de andere tijden), overal hetzelfde (Overzicht, Deadlines, vakpagina, details). De gekleurde rand links van examens en "Te laat" is weg.
+- Overzicht › Rooster: één kaart met "Vandaag" en "Morgen" erin, die gelijk begint met de kaart Deadlines ernaast; "Agenda" staat als knop in de sectiekop zoals bij de andere secties. "Alle deadlines" en "Alle mededelingen" staan er ook als knop in de sectiekop, niet meer als rij in de kaart.
+- Agenda: "vandaag" (datum, minikalender, kolom, tijdlijn) is oranje in plaats van rood, en "Examen" in de details is niet meer rood: rood betekent alleen nog "te laat".
+- De scheidingslijnen tussen rijen lopen overal over de volle breedte van de kaart (ze begonnen op wisselende plekken).
+- Overzicht › Nieuw: de aantallen staan nu rechts onder elkaar, ook als de tijd ernaast "16:21", "gisteren" of "donderdag" is.
+- Mededelingen: één filterlijst naast de lijst (Alles, Ongelezen en per vak of Ad Valvas, met aantallen; op de telefoon gewoon Alles | Ongelezen) in plaats van tabs; rijen tonen het vak met zijn kleur, de tijd rechts ("vandaag", "gisteren", "3 d geleden", exacte tijd bij hover) en "Nieuw" als pil in plaats van een oranje stip; titels blijven één regel; "Alles gelezen" staat bij de lijst. ⌄ leest een mededeling hier, ↗ opent Ad Valvas in een nieuw tabblad. Ook de kaart op het Overzicht.
+- Paginaknoppen staan overal op dezelfde plek in dezelfde stijl: op de vakpagina staan "Zet in zijbalk" en "Klassieke Toledo" nu rechts van de titel zoals op de andere pagina's; "Doorzoek alle bestanden" is een gewone knop.
+
 ### Fixed
 - `npm run dev` reloaded the extension endlessly since 1.5.1: Chrome writes the compiled network rules into `_metadata/`, which the file watcher saw as a change. That folder is now ignored, and no longer tracked in git (`.gitignore`), so working trees stay clean.
 

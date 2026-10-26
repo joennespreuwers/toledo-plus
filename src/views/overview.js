@@ -42,6 +42,21 @@
     },
 
     /** Unread marker: dot with label, or an invisible spacer of the same size. */
+    /** One look for an announcement row (Mededelingen + Overview card), built only from standard row parts:
+     *  title (600 when unread) · meta "● course" like a deadline row · trailing [Nieuw] time ›. */
+    annParts(e, unread) {
+      const school = e.subType === 'advalvas';
+      let color = 'var(--label-3)';
+      if (!school) { try { const c = e.sourceId && TP.data.course ? TP.data.course(e.sourceId) : null; if (c && c.color) color = c.color; } catch { /* no course */ } }
+      const src = school ? t('announcements.school') : TP.util.courseName(e.source || '');
+      return {
+        src,
+        subtitle: `${TP.ui.dot(color)}<span>${esc(src)}</span>${school ? `<span class="va-sr"> ${esc(t('va.newTab'))}</span>` : ''}`,
+        // time first, "Nieuw" last (an invisible copy on read rows): pills and times line up whatever the time says
+        trailing: `${VA.daysAgo(e.date)}${unread ? TP.ui.badge(t('course.new'), { tone: 'tint', label: t('va.unread') })
+          : `<span class="tp-badge tp-badge-tint va-new-slot" aria-hidden="true">${esc(t('course.new'))}</span>`}`,
+      };
+    },
     unreadDot(unread) {
       return unread
         ? `<span class="va-unread" role="img" aria-label="${esc(t('va.unread'))}"></span>`
@@ -104,6 +119,17 @@
       return Number.isFinite(n) ? n : 0;
     },
     /** <time> element with relative "ago" text. */
+    /** One date format for announcements, worded like deadlines ("in 9 d" / "5 d te laat"): vandaag · gisteren · 3 d geleden.
+     *  The exact date and time are in the tooltip. */
+    daysAgo(v) {
+      const n = VA.ms(v);
+      if (!n) return '';
+      const sod = (ms) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };
+      const days = Math.max(0, Math.round((sod(Date.now()) - sod(n)) / 864e5));
+      const txt = days === 0 ? t('fmt.today') : days === 1 ? t('fmt.yesterday') : t('fmt.daysAgo', { n: days });
+      const full = `${TP.fmt.date(n, { weekday: 'long', day: 'numeric', month: 'long' })} ${TP.fmt.time(n)}`;
+      return `<time datetime="${esc(new Date(n).toISOString())}" title="${esc(full)}">${esc(txt)}</time>`;
+    },
     timeAgo(v) {
       const n = VA.ms(v);
       if (!n) return '';
@@ -220,7 +246,7 @@
 
       let urg;
       if (d.done) urg = `<span class="va-urg is-done">${icon('check', { size: 13 })}${esc(t('va.doneWord'))}</span>`;
-      else if (overdue) urg = `<span class="va-urg is-overdue">${icon('warning', { size: 13 })}${esc(t('va.overdue'))}</span>`;
+      else if (overdue) urg = `<span class="va-urg is-overdue">${esc(overdueText(d.due))}</span>`;
       else if (urgent) urg = `<span class="va-urg is-urgent">${icon('clock', { size: 13 })}<span class="va-sr">${esc(t('va.urgent'))}: </span>${esc(TP.fmt.rel(d.due))}</span>`;
       else urg = `<span class="va-urg">${esc(TP.fmt.rel(d.due))}</span>`;
 
@@ -322,7 +348,7 @@
       const st = { body: null, loading: false };
       const metaRow = (ic, label, value) => TP.ui.row({ leading: `<span class="tp-tile">${icon(ic, { size: 16 })}</span>`, title: value, subtitle: esc(label) });
       const html = () => {
-        const urg = d.done ? t('va.doneWord') : overdue ? t('va.overdue') : VA.capitalize(TP.fmt.rel(d.due));
+        const urg = d.done ? t('va.doneWord') : overdue ? overdueText(d.due) : VA.capitalize(TP.fmt.rel(d.due));
         const due = `${VA.capitalize(TP.fmt.date(d.due, { weekday: 'long', day: 'numeric', month: 'long' }))} · ${TP.fmt.time(d.due)}`;
         const meta = [
           metaRow('courses', t('va.sheet.course'), `${TP.ui.dot(d.color || 'var(--label-3)')} ${esc(d.courseName || t('va.noCourse'))}`),
@@ -471,11 +497,12 @@
     else if (!list.length) body = TP.ui.group(TP.ui.empty(t('overview.deadlines.empty', { n: horizon })));
     else {
       const rows = list.map((d) => VA.deadlineRow(d, { prefix: 'ov', urgentDays: cfg.urgentDays ?? 3, now })).join('');
-      const more = overdue.length > 3 ? t('overview.deadlines.allOverdue', { n: overdue.length }) : t('overview.deadlines.all');
       body = (state !== 'ok' && state !== 'loading' ? VA.errorBlock(t('overview.deadlines.error'), 'events') : '')
-        + TP.ui.group(rows + linkRow(TP.shell.href('deadlines'), more, { attrs: { 'data-va-nofilter': '' } }), { cls: 'va-dl-group' });
+        + TP.ui.group(rows, { cls: 'va-dl-group' });
     }
-    return section('deadlines', { title: esc(t('overview.deadlines.title')), body });
+    const more = overdue.length > 3 ? t('overview.deadlines.allOverdue', { n: overdue.length }) : t('overview.deadlines.all');
+    const actions = [{ action: 'ov-nav', label: more, attrs: { 'data-route': 'deadlines', href: TP.shell.href('deadlines') } }];
+    return section('deadlines', { title: esc(t('overview.deadlines.title')), actions, body });
   }
 
   /* ---------- New (compact grouped feed) ---------- */
@@ -553,7 +580,8 @@
         title: esc(g.name),
         strong: unread.length > 0,
         subtitle: esc(summaryLine(unread.length ? unread : g.items) || t('overview.kind.read')),
-        trailing: `<span class="va-feed-trail">${badge}${latest}</span>`,
+        // time first, count last: counts line up at the right edge whatever the time says ("16:21", "gisteren", "donderdag")
+        trailing: `<span class="va-feed-trail">${latest}${badge || '<span class="va-badge-slot" aria-hidden="true"></span>'}</span>`,
       },
       body: `<div class="va-feed-body">${items}${more}</div>`,
       q: String(g.name || '').toLowerCase(),
@@ -631,6 +659,12 @@
     return section('courses', { title: esc(t('overview.courses.title')), actions, body });
   }
 
+  /** "3 d te laat" (whole days past due), or "Te laat" on the day itself. Same wording everywhere. */
+  function overdueText(due) {
+    const n = Math.floor((Date.now() - due) / 864e5);
+    return n >= 1 ? t('va.overdueBy', { n }) : t('va.overdue');
+  }
+
   /* ---------- Schedule ---------- */
   // Accepts a TP.data.schedule() item (portal "upcoming") or a TP.kuloket Lesson.
   function lessonRow(s, prefixQ = '') {
@@ -657,6 +691,7 @@
     });
   }
   TP.viewsA.lessonRow = lessonRow;
+  TP.viewsA.overdueText = overdueText;
 
   let kulAsked = '';
   /** Lessons for today + tomorrow: KU Loket when it has them, else Toledo's own "upcoming". */
@@ -691,32 +726,34 @@
     if (state === 'loading') body = VA.skeleton(2, { lead: 'none' });
     else if (state === 'error') body = VA.errorBlock(t('overview.schedule.error'), 'upcoming');
     else {
-      body = days.map(([ms, key]) => {
+      // One card (its top lines up with the Deadlines card); "Vandaag" / "Morgen" are sub-headings inside it.
+      body = TP.ui.group(days.map(([ms, key]) => {
         const list = (by[TP.fmt.dayKey(ms)] || []).slice().sort((a, b) => a.start - b.start);
         const head = `<h3 class="va-dayhead">${esc(t(key))} <span>${esc(TP.fmt.date(ms, { weekday: 'short', day: 'numeric', month: 'short' }))}</span></h3>`;
-        const rows = list.length ? list.map((s) => lessonRow(s)).join('') : TP.ui.empty(t('overview.schedule.none'));
-        return `<div class="va-day" data-va-day>${head}${TP.ui.group(rows)}</div>`;
-      }).join('');
+        const rows = list.length ? list.map((s) => lessonRow(s)).join('') : `<p class="va-dayempty">${esc(t('overview.schedule.none'))}</p>`;
+        return `<div class="va-day" data-va-day>${head}${rows}</div>`;
+      }).join(''));
     }
-    const agenda = `<a href="${esc(TP.shell.href('agenda'))}" data-route="agenda">${esc(t('overview.schedule.agenda'))} ›</a>`;
-    const footer = source === 'kuloket' ? agenda : `${esc(t('overview.schedule.note'))} ${agenda}`;
-    return section('schedule', { title: esc(t('overview.schedule.title')), body, footer });
+    const actions = [{ action: 'ov-nav', label: t('overview.schedule.agenda'), attrs: { 'data-route': 'agenda', href: TP.shell.href('agenda') } }];
+    const footer = source === 'kuloket' ? '' : esc(t('overview.schedule.note'));
+    return section('schedule', { title: esc(t('overview.schedule.title')), actions, body, footer });
   }
 
   /* ---------- Announcements ---------- */
   function annRow(e) {
     S.events.set(String(e.id), e);
     const school = e.subType === 'advalvas';
-    const src = school ? t('announcements.school') : TP.util.courseName(e.source || '');
+    const p = VA.annParts(e, !e.read);
     return TP.ui.row({
       href: e.url ? TP.util.abs(e.url) : undefined,
       attrs: { 'data-action': 'ov-open', 'data-eid': String(e.id), ...(school ? { target: '_blank', rel: 'noopener' } : {}) },
-      leading: VA.unreadDot(!e.read),
       title: esc(e.title),
-      subtitle: `${esc(src)}<span aria-hidden="true"> · </span>${VA.timeAgo(e.date)}${school ? `<span class="va-sr"> ${esc(t('va.newTab'))}</span>` : ''}`,
+      subtitle: p.subtitle,
+      trailing: p.trailing + (school ? `<span class="va-ann-ext">${TP.ui.icon('external', { size: 14 })}</span>` : ''),
+      chevron: !school, // ↗ = opens Ad Valvas in a new tab
       strong: !e.read,
-      q: `${e.title} ${src}`.toLowerCase(),
-      cls: 'va-ann' + (e.read ? ' is-read' : ''),
+      q: `${e.title} ${p.src}`.toLowerCase(),
+      cls: 'va-ann va-ann-row' + (e.read ? ' is-read' : ''),
     });
   }
 
@@ -728,8 +765,9 @@
     if (!list.length && state === 'loading') body = VA.skeleton(3, { lead: 'dot' });
     else if (!list.length && state === 'error') body = VA.errorBlock(t('overview.ann.error'), 'events');
     else if (!list.length) body = TP.ui.group(TP.ui.empty(t('overview.ann.empty')));
-    else body = TP.ui.group(list.map(annRow).join('') + linkRow(TP.shell.href('announcements'), t('overview.ann.all'), { attrs: { 'data-va-nofilter': '' } }));
-    return section('announcements', { title: esc(t('overview.ann.title')), body });
+    else body = TP.ui.group(list.map(annRow).join(''));
+    const actions = [{ action: 'ov-nav', label: t('overview.ann.all'), attrs: { 'data-route': 'announcements', href: TP.shell.href('announcements') } }];
+    return section('announcements', { title: esc(t('overview.ann.title')), actions, body });
   }
 
   /* ---------- Links ---------- */
