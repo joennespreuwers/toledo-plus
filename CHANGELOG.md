@@ -6,7 +6,11 @@ Het formaat volgt [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) en he
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-10-26
+
 ### Added
+- Zoeken in de inhoud van bestanden (⌘K › "In bestanden"): pdf, Word, PowerPoint, Excel en tekst, met paginanummer (of dianummer) en een gemarkeerd fragment; ↵ opent de pdf op die pagina, ⌘↵ downloadt. Opt-in via Instellingen › Zoeken › "Inhoud van bestanden doorzoekbaar maken"; bestanden die je via Toledo+ opent of downloadt worden meegenomen, en "Doorzoek alle bestanden" op een vakpagina leest alle bestanden van dat vak (één per keer, als je tabblad rust, max. 300 MB per dag). Alles blijft op je toestel; "Wis bestandsindex" verwijdert het. PDF-tekst via Mozilla's pdf.js (Apache-2.0), meegeleverd in de extensie; geen extra rechten.
+- Toledo's startpagina wordt overgeslagen: je gaat meteen naar je overzicht of de aanmelding (uit te zetten in Instellingen › Geavanceerd › "Sla de Toledo-startpagina over"). "Herstel standaardinstellingen" wist ook de bestandsindex.
 - **Brand (brandguide v1.0)**: Toledo+ now looks like itself, not like Toledo. The woven-plus logo (tile below 32 px, glyph above) and the "Toledo+" wordmark in the sidebar, icon rail, phone toolbar, deep bar, classic-mode pill and Instellingen › Over ("Onofficieel studentenproject" + version); a quiet "Toledo+ 1.4.0 · Klassiek" signature at the bottom of the sidebar.
 - **Inter** everywhere in the app (self-hosted, OFL; declared in the document because Chrome ignores fonts inside shadow roots), with per-size tracking and tabular numbers for counts, times and dates.
 - **Welcome card** is a branded intro: ink card with the logo, a short "this isn't Toledo, it's Toledo+" line, the three tips, the privacy line and one orange button.

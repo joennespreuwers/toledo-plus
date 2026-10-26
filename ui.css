@@ -632,6 +632,13 @@ a.tp-mail { color: var(--tint-text); text-decoration: none; }
 .tp-pal-enter { flex: none; display: inline-flex; align-items: center; gap: 4px; color: var(--label-2); visibility: hidden; }
 .tp-pal-opt[aria-selected="true"] .tp-pal-enter { visibility: visible; }
 .tp-pal-empty .tp-noresults-state { padding: 32px 16px; }
+/* full-text results (TP.fulltext, Agent J): two-line snippet with the match marked in the brand tint */
+.tp-pal-snip { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tp-pal-snip mark {
+  background: color-mix(in srgb, var(--tint) 24%, transparent); color: inherit; border-radius: 3px; padding: 0 2px;
+  font-weight: 600; box-decoration-break: clone; -webkit-box-decoration-break: clone;
+}
+.tp-pal-ftstatus { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .tp-pal-foot {
   flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 16px;
   border-top: var(--hairline) solid var(--separator); color: var(--label-2); font-size: var(--fs-footnote); line-height: var(--lh-footnote);

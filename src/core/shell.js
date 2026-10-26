@@ -252,20 +252,22 @@
 
   // First boot without cached data: a brief branded splash (tile fades/settles in, then the shell fades in under it;
   // ≤ 400 ms in total, never blocks input). Not with motion off (tests) and fades only under reduced motion.
-  function splash() {
-    if (!app || M()?.disabled) return;
-    const cached = safe(() => TP.data?.peek?.('enrollments'), null);
-    if (cached) return;
+  function splash(cached) {
+    if (!app || M()?.disabled || cached) return;
     const el = document.createElement('div');
     el.className = 'tp-splash';
     el.setAttribute('aria-hidden', 'true');
     el.innerHTML = `<div class="tp-splash-mark">${logo({ size: 64 })}${wordmark()}</div>`;
     app.appendChild(el);
+    const html = document.documentElement;
+    html.dataset.tpSplash = 'shown'; // observable from tests / the demo (DOM attributes cross worlds)
+    const gone = () => { el.remove(); html.dataset.tpSplash = 'done'; };
     const reduced = !!safe(() => TP.motion.reduced(), false);
     if (!reduced) motion('animate', el.firstElementChild, [{ opacity: 0, scale: 0.94 }, { opacity: 1, scale: 1 }], { duration: 200, easing: TP.motion.EASE.out });
     setTimeout(() => {
-      if (!M()) { el.remove(); return; }
-      motion('leave', el, { to: 'none', duration: TP.motion.DUR[1], onDone: () => el.remove() });
+      if (!M()) { gone(); return; }
+      const p = motion('leave', el, { to: 'none', duration: TP.motion.DUR[1], onDone: gone });
+      if (!p) gone();
     }, reduced ? 160 : 260);
   }
 
@@ -289,7 +291,9 @@
     applyThemeAll();
     motion('sync', app);
     ensureFonts();
-    styleRoot(shadow, CSS_FILES).then(() => { app.hidden = false; splash(); });
+    // "cached" is decided now (TP.data.init has read the cache; the network hasn't answered yet), not when the CSS is in
+    const cached = !!safe(() => TP.data?.peek?.('enrollments'), null);
+    styleRoot(shadow, CSS_FILES).then(() => { app.hidden = false; splash(cached); });
     shadow.addEventListener('click', onShellClick);
     shadow.addEventListener('input', onShellInput);
     shadow.addEventListener('keydown', onShellKeydown);
@@ -562,7 +566,7 @@ ${notif ? item(`${icon('bell')}<span class="tp-menu-label">${esc(t('shell.notifS
 <button type="button" class="tp-menu-item" role="menuitem" tabindex="-1" data-shell="classic">${icon('classic')}<span class="tp-menu-label">${esc(t('shell.classic'))}<small>${esc(t('shell.classicHint'))}</small></span></button>
 <button type="button" class="tp-menu-item" role="menuitem" tabindex="-1" data-shell="feedback">${icon('megaphone')}<span class="tp-menu-label">${esc(t('feedback.menu'))}</span></button>
 <div class="tp-menu-sep" role="separator"></div>
-${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</span>`, ` href="${esc(logout)}"`)}`;
+${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</span>`, ` href="${esc(logout)}" data-tp-logout`)}`;
     const dot = $('.tp-avatar-dot');
     if (dot) dot.hidden = !mail; // phones only (CSS): the toolbar mail button carries the count ≥ 700px
     const mb = $('.tp-mail');
@@ -1223,6 +1227,10 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
         }
         default: break;
       }
+    }
+    // Logout: remember it for a few minutes so src/landing.js doesn't bounce the student straight back into Toledo (Agent J).
+    if (el.tagName === 'A' && el.hasAttribute('data-tp-logout')) {
+      try { chrome.storage.local.set({ 'tp:loggedOutAt': Date.now() }); sessionStorage.setItem('tp:loggedOutAt', String(Date.now())); } catch { /* storage gone */ }
     }
     // External links in the menu / More sheet (mail → new tab): close the popover behind them.
     if (el.tagName === 'A' && el.target && el.closest('.tp-menu, .tp-sheet')) { closeMenu(false); closeSheet(); return; }

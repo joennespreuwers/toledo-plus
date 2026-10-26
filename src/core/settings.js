@@ -15,7 +15,7 @@
     accent: 'brand',
     density: 'standard',
     startPage: 'overview',
-    wrap: { portal: true, courses: true, deepBar: true },
+    wrap: { portal: true, courses: true, deepBar: true, skipLanding: true }, // skipLanding: src/landing.js reads it as !== false
     overview: { sections: [{ id: 'deadlines', on: true }, { id: 'new', on: true }, { id: 'recent', on: true }, { id: 'courses', on: true },
       { id: 'schedule', on: true }, { id: 'announcements', on: true }, { id: 'links', on: false }] },
     feed: { includeAnnouncements: false, maxCourses: 5 },

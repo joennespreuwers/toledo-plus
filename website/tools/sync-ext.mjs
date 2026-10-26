@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-export const EXT_FILES = ['manifest.json', 'ui.css', 'page.css', 'src', 'icons'];
+export const EXT_FILES = ['manifest.json', 'ui.css', 'page.css', 'src', 'icons', 'fonts'];
 
 export function syncExt(dest = path.join(ROOT, 'website', 'demo', 'ext')) {
   fs.rmSync(dest, { recursive: true, force: true });

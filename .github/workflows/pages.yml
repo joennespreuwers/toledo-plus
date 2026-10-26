@@ -17,6 +17,7 @@ on:
       - "ui.css"
       - "page.css"
       - "icons/**"
+      - "fonts/**"
   workflow_dispatch:
 
 permissions:
@@ -45,7 +46,7 @@ jobs:
           cp -R website/. _site/
           rm -rf _site/tools _site/.screens _site/README.md _site/.gitignore _site/demo/ext
           mkdir -p _site/demo/ext
-          cp -R manifest.json ui.css page.css src icons _site/demo/ext/
+          cp -R manifest.json ui.css page.css src icons fonts _site/demo/ext/
 
       - uses: actions/upload-pages-artifact@v3
         with:

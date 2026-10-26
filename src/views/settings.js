@@ -211,6 +211,7 @@
       toggleRow('s:wrap.portal', w.portal, t('settings.wrap.portal'))
       + toggleRow('s:wrap.courses', w.courses, t('settings.wrap.courses'))
       + toggleRow('s:wrap.deepBar', w.deepBar, t('settings.wrap.deepBar'))
+      + toggleRow('s:wrap.skipLanding', w.skipLanding !== false, t('settings.wrap.skipLanding'))
       + `<div class="st-row st-row-actions">
         <button type="button" class="st-action" data-action="export" data-fk="export">${TP.ui.icon('download', { size: 16 })}<span>${esc(t('settings.data.export'))}</span></button>
       </div>
@@ -355,6 +356,7 @@
     }
     ui.resetArmed = false;
     try { await TP.settings.reset(); TP.shell.toast?.(t('settings.data.resetDone')); } catch { /* ignore */ }
+    try { await TP.fulltext?.wipe?.(); } catch { /* the file index lives in IndexedDB; best effort */ }
     rerender();
   }
 
