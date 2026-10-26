@@ -24,8 +24,9 @@
   const CSS_FILES = ['ui.css', 'src/views/overview.css', 'src/views/deadlines.css', 'src/views/agenda.css',
     'src/views/announcements.css', 'src/views/courses.css', 'src/views/course.css', 'src/views/settings.css', 'src/views/kuloket.css'];
 
-  const IS_MAC = (() => { try { return /Mac|iPhone|iPad|iPod/.test(navigator.userAgentData?.platform || navigator.platform || ''); } catch (_) { return false; } })();
-  const MOD = IS_MAC ? '⌘' : 'Ctrl ';
+  // Platform modifier (⌘ on macOS, Ctrl+ elsewhere) — one source of truth in TP.i18n.
+  const IS_MAC = !!TP.i18n.isMac;
+  const MOD = TP.i18n.mod;
 
   const views = {};
   let origin = 'portal';

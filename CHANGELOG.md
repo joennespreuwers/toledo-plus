@@ -9,6 +9,9 @@ Het formaat volgt [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) en he
 ### Changed
 - "Binnenkort" (morgen, over 3 d) volgt hetzelfde patroon als "te laat", in amber: de rij krijgt een lichtgele achtergrond en de tijd staat in dezelfde stijl als de andere tijden (geen klok-icoon). Overzicht, Deadlines (ook examens binnen 3 dagen) en de vakpagina.
 
+### Fixed
+- Keyboard hints follow your OS: ⌘ on macOS, Ctrl+ on Windows/Linux. On a Mac Toledo+ showed "Ctrl K" because Chromium reports the platform as "macOS" (lowercase "mac"); every "⌘" in texts (⌘K, ⌘↵, ⌘\) now adapts.
+
 ## [1.6.0] - 2026-10-27
 
 ### Changed
