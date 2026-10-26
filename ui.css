@@ -410,12 +410,12 @@
 .tp-group { position: relative; background: var(--bg-2); border-radius: var(--r-group); overflow: hidden; }
 .tp-group > * { position: relative; }
 /* separator above every row that has a visible row before it (search hides rows with [hidden]) */
-.tp-group > :not([hidden]) ~ *::before, .tp-disclosure-body > :not([hidden]) ~ *::before {
+.tp-group > :where(:not([hidden])) ~ *::before, .tp-disclosure-body > :where(:not([hidden])) ~ *::before { /* :where keeps the old specificity so view rows (.cv-row) can override */
   content: ''; position: absolute; top: 0; right: 0; left: var(--row-px); height: var(--hairline);
   background: var(--separator); pointer-events: none; z-index: 1;
 }
-.tp-group > .has-lead + *::before, .tp-group > :not([hidden]) ~ .has-lead::before,
-.tp-disclosure-body > :not([hidden]) ~ .has-lead::before { left: var(--inset); }
+.tp-group > .has-lead + *::before, .tp-group > :where(:not([hidden])) ~ .has-lead::before,
+.tp-disclosure-body > :where(:not([hidden])) ~ .has-lead::before { left: var(--inset); }
 .tp-disclosure-body > * { position: relative; }
 .tp-group + .tp-group { margin-top: 12px; }
 
