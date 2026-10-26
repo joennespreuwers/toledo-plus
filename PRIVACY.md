@@ -9,7 +9,7 @@
 | **Websites** | Only `https://toledo.kuleuven.be/*` and `https://ultra.edu.kuleuven.cloud/*` (the `host_permissions` in `manifest.json`). |
 | **Sessie / Session** | Your existing, logged-in Toledo session in your own browser. Toledo+ never sees or stores your password. |
 | **Gegevens / Data read** | Your enrollments, notifications, today/tomorrow schedule, unread-mail count, Toledo links, course content, announcements, deadline dates and teacher names/e-mail – exactly what Toledo already shows you. Grades and submissions are never read. |
-| **Gegevens / Data written** | Only when you ask for it (and only if *Sync with Toledo* is on): marking notifications read/seen/dismissed and setting Toledo's favourite star. These go to Toledo's own API. |
+| **Gegevens / Data written** | Only when you ask for it (and only if *Sync with Toledo* is on): marking notifications read/seen/dismissed and, when you pin or unpin a course, setting its Toledo favourite. These go to Toledo's own API. |
 | **Opslag / Storage** | Settings (language, appearance, nicknames, colours, own deadlines, …) in `chrome.storage.sync` – synced by your browser vendor between your own browsers if you have browser sync on. A cache of Toledo data, visit times and "done" marks in `chrome.storage.local` on your device. |
 | **Downloads** | Files are fetched from Toledo's own (signed) file storage links and saved through your browser. |
 

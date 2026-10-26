@@ -95,13 +95,13 @@
     ].filter(Boolean).join('<span aria-hidden="true"> · </span>');
     const note = `<p class="va-foot va-pl-note">${TP.ui.icon('clock', { size: 13 })} ${esc(t('planning.note'))}${links ? ` ${links}` : ''}</p>`;
 
-    V.paint(ctx.root, `<div class="va-view va-planning">${note}${body}<p class="va-noresults" role="status" hidden></p></div>`);
+    V.paint(ctx.root, `<div class="va-view va-planning">${note}${body}<div class="va-noresults" hidden></div></div>`);
     if (S.q) applySearch(ctx.root, S.q);
   }
 
   function applySearch(root, q) {
     root.querySelectorAll('.va-pl-empty').forEach((el) => { el.hidden = !!q; });
-    VA().filter(root, q, 'planning.noResults');
+    VA().filter(root, q);
   }
 
   async function onClick(ev) {

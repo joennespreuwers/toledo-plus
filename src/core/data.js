@@ -261,7 +261,14 @@
   function courseSettings(luId) {
     if (TP.settings && TP.settings.course) return TP.settings.course(luId) || {};
     const it = ((S().courses || {}).items || {})[luId] || {};
-    return Object.assign({ nickname: '', color: null, hidden: false, pinned: false }, it);
+    return Object.assign({ nickname: '', color: null, hidden: false, pinned: null }, it);
+  }
+
+  /** Pinned == Toledo favourite: an explicit choice wins; otherwise, while favourites sync with
+   *  Toledo, a Toledo favourite counts as pinned. */
+  function isPinned(cs, en) {
+    if (cs.pinned === true || cs.pinned === false) return cs.pinned;
+    return !!((S().sync || {}).favoritesToToledo && en && en.favorite);
   }
 
   function resolveColor(luId, toledoIndex) {
@@ -304,7 +311,7 @@
       year: en.academicYear || 0,
       type: en.type || 'course',
       favorite: !!en.favorite,
-      pinned: !!cs.pinned,
+      pinned: isPinned(cs, en),
       hidden: !!cs.hidden,
       available: en.available !== false,
       link: en.link || null,
@@ -591,6 +598,17 @@
     }
   }
 
+  /** Pin/unpin a course (sidebar "Pinned" group, first in lists). While sync.favoritesToToledo is on
+   *  this is also the course's Toledo favourite. → false only when the Toledo sync failed. */
+  async function setPinned(luId, pinned) {
+    if (!luId) return false;
+    pinned = !!pinned;
+    Promise.resolve(TP.settings.setCourse(luId, { pinned })).catch((e) => log('settings write failed', e));
+    emit('change', 'settings');
+    if (!((S().sync || {}).favoritesToToledo)) return true;
+    return setFavorite(luId, pinned);
+  }
+
   async function toggleDone(key) {
     const next = !((ST().done || {})[key]);
     // TP.state.set deep-merges; null deletes the map entry.
@@ -843,7 +861,7 @@
     KEYS,
     init, peek, load, refresh, lastUpdated, status: getStatus, on, off,
     courses, course, feed, kindOf, deadlines, announcements, schedule, link, quickLinks,
-    markRead, markFeedSeen, setFavorite, toggleDone, addCustomDeadline, removeCustomDeadline, addRecent, ics,
+    markRead, markFeedSeen, setFavorite, setPinned, toggleDone, addCustomDeadline, removeCustomDeadline, addRecent, ics,
     ultraCourse, ultraDownload, ultraOpen, ultraAnnouncement, resolveCourseId, ultraItemUrl: itemLink,
     // exposed for unit tests only
     _test: { hash, normTitle, parseCalendarName, mapCalendarItem, icsFold, icsText, icsStamp, deadlineKey, trimForStorage,

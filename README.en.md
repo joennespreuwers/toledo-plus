@@ -8,10 +8,11 @@
 
 ## Screenshots
 
-| Overview | Course | Settings |
-|---|---|---|
-| ![Overview (light)](docs/screenshots/overview-light.png) | ![Course (light)](docs/screenshots/course-light.png) | ![Settings (light)](docs/screenshots/settings-light.png) |
-| ![Overview (dark)](docs/screenshots/overview-dark.png) | ![Course (dark)](docs/screenshots/course-dark.png) | ![Settings (dark)](docs/screenshots/settings-dark.png) |
+| ![Overview (light)](docs/screenshots/overview-light.png) | ![Overview (dark)](docs/screenshots/overview-dark.png) |
+|---|---|
+| ![Course (light)](docs/screenshots/course-light.png) | ![Settings (light)](docs/screenshots/settings-light.png) |
+
+<p align="center"><img src="docs/screenshots/overview-phone.png" alt="Overview on a phone (light)" width="300"></p>
 
 <sub>Screenshots use fictional data.</sub>
 

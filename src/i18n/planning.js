@@ -19,7 +19,6 @@
       'planning.loading': 'Planning laden…',
       'planning.count.one': '{n} item',
       'planning.count.other': '{n} items',
-      'planning.noResults': 'Geen resultaten voor “{q}”',
     },
     en: {
       'planning.search': 'Search planning',
@@ -37,7 +36,6 @@
       'planning.loading': 'Loading planning…',
       'planning.count.one': '{n} item',
       'planning.count.other': '{n} items',
-      'planning.noResults': 'No results for “{q}”',
     },
     fr: {
       'planning.search': 'Rechercher dans le planning',
@@ -55,7 +53,6 @@
       'planning.loading': 'Chargement du planning…',
       'planning.count.one': '{n} élément',
       'planning.count.other': '{n} éléments',
-      'planning.noResults': 'Aucun résultat pour « {q} »',
     },
   });
   if (TP.i18n && TP.i18n.add) add();

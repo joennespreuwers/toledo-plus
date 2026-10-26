@@ -53,7 +53,8 @@ globalThis.TP = {
   settings: {
     get: () => settings,
     set: async (p) => { Object.assign(settings, p); },
-    course: (lu) => Object.assign({ nickname: '', color: null, hidden: false, pinned: false }, settings.courses.items[lu] || {}),
+    course: (lu) => Object.assign({ nickname: '', color: null, hidden: false, pinned: null }, settings.courses.items[lu] || {}),
+    setCourse: async (lu, p) => { settings.courses.items[lu] = Object.assign({}, settings.courses.items[lu] || {}, p); },
   },
   state: { get: () => state, set: async (p) => { Object.assign(state, p); } },
   i18n: { apiLang: () => 'nl' },
@@ -137,6 +138,32 @@ test('courses: current year only, communities/hidden excluded, nickname + colors
   assert.equal(D.courses().length, 1);
   assert.equal(D.courses({ includeHidden: true }).length, 2);
   assert.equal(D.course(LU_OLD).colorKey, keys[2]);
+});
+
+test('pinned == Toledo favourite while favourites sync; an explicit choice wins', async () => {
+  fixtures(); resetSettings();
+  // LU_B is a Toledo favourite; sync off → only the student's own pins count.
+  assert.equal(D.course(LU_B).pinned, false);
+  settings.sync.favoritesToToledo = true;
+  assert.equal(D.course(LU_B).pinned, true, 'favourite counts as pinned');
+  assert.deepEqual(D.courses().map((c) => c.luId), [LU_B, LU_A]);
+  settings.courses.items[LU_B] = { pinned: false };
+  assert.equal(D.course(LU_B).pinned, false, 'explicit unpin wins over the favourite');
+
+  netCalls.length = 0;
+  assert.equal(await D.setPinned(LU_A, true), true);
+  assert.equal(settings.courses.items[LU_A].pinned, true);
+  assert.equal(D.course(LU_A).pinned, true);
+  assert.equal(D.course(LU_A).favorite, true, 'Toledo favourite updated');
+  assert.equal(netCalls.length, 1);
+  assert.match(netCalls[0].url, /\/portal\/api\/enrollments\/11$/);
+  assert.deepEqual(netCalls[0].opts, { method: 'PATCH', body: { favorite: true } });
+
+  settings.sync.favoritesToToledo = false;
+  netCalls.length = 0;
+  await D.setPinned(LU_A, false);
+  assert.equal(D.course(LU_A).pinned, false);
+  assert.equal(netCalls.length, 0, 'no Toledo call without favourites sync');
 });
 
 test('feed: rules, grouping, counts and ordering', () => {

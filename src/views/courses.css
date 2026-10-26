@@ -34,7 +34,6 @@ a.cs-card-main:focus-visible { outline: 2px solid var(--tint); outline-offset: 2
 .cs-meta:empty + .cs-unavail, .cs-meta > .cs-unavail:first-child { margin-left: 0; }
 .cs-trail { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; color: var(--label-2); }
 .cs-flag { display: inline-flex; color: var(--label-2); }
-.cs-flag-fav { color: var(--orange); }
 
 .cs-move { flex: 0 0 auto; display: inline-flex; gap: 4px; }
 .cs-view .cs-icon-btn {
@@ -42,7 +41,7 @@ a.cs-card-main:focus-visible { outline: 2px solid var(--tint); outline-offset: 2
   background: var(--fill); color: var(--tint-text, var(--tint)); cursor: pointer; font: inherit;
 }
 .cs-view .cs-icon-btn:disabled { color: var(--label-3); cursor: default; }
-.cs-view .cs-icon-btn:focus-visible, .cs-view .cs-link-btn:focus-visible, .cs-view .cs-fav-btn:focus-visible, .cs-input:focus-visible, .cs-hidden-sum:focus-visible {
+.cs-view .cs-icon-btn:focus-visible, .cs-view .cs-link-btn:focus-visible, .cs-input:focus-visible, .cs-hidden-sum:focus-visible {
   outline: 2px solid var(--tint); outline-offset: 2px;
 }
 
@@ -61,11 +60,6 @@ a.cs-card-main:focus-visible { outline: 2px solid var(--tint); outline-offset: 2
   color: var(--tint-text, var(--tint)); font: inherit; font-size: var(--fs-subhead, .875rem); cursor: pointer;
 }
 .cs-view .cs-link-btn:hover { background: var(--fill); }
-.cs-view .cs-fav-btn {
-  display: inline-flex; align-items: center; gap: 6px; border: 0; border-radius: 8px; padding: 6px 10px; min-height: 32px;
-  background: var(--fill); color: var(--label); font: inherit; font-size: var(--fs-subhead, .875rem); cursor: pointer;
-}
-.cs-view .cs-fav-btn[aria-pressed="true"] svg { color: var(--orange); }
 
 .cs-hidden { margin-top: 12px; background: var(--bg-2); border-radius: var(--r-group, 12px); }
 .cs-hidden-sum {
@@ -80,7 +74,7 @@ a.cs-card-main:focus-visible { outline: 2px solid var(--tint); outline-offset: 2
 .cs-hidden-row[hidden] { display: none; }
 .cs-hidden-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--label-2); }
 
-.cs-noresults { margin: 8px 0; text-align: center; color: var(--label-2); }
+.cs-noresults:empty { display: none; }
 
 @media (prefers-reduced-motion: reduce) { .cs-hidden-sum svg { transition: none; } }
 @media (prefers-contrast: more) { .cs-card, .cs-hidden { outline: 1px solid var(--separator); } }

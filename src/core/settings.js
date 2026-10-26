@@ -71,6 +71,7 @@
     for (const d of DEFAULTS.overview.sections) if (!seen.has(d.id)) clean.push({ ...d });
     s.overview = { ...s.overview, sections: clean };
     if (!Array.isArray(s.custom)) s.custom = [];
+    s.v = DEFAULTS.v; // older shapes (imports, other tabs) are normalized to the current version
     if (!isObj(s.courses.items)) s.courses.items = {};
     return s;
   }

@@ -24,6 +24,14 @@ describe('settings', () => {
     for (const n of ['s:language', 's:appearance', 's:density']) {
       assert.ok(await page.locator(`#tplus-root input[name="${n}"]`).count() >= 3, `${n} control`);
     }
+    // One "Overzicht" group with start page, sections, and the feed options; no "Bijgewerkt" line here.
+    const ov = page.locator('#tplus-root section[data-section="st-overview"]');
+    assert.equal(await ov.count(), 1, 'Overzicht group');
+    for (const sel of ['select[name="s:startPage"]', 'input[name="sec__deadlines"]', '[data-action="sec-up"]', 'input[name="s:feed.includeAnnouncements"]', 'select[name="n:feed.maxCourses"]']) {
+      assert.equal(await ov.locator(sel).count() >= 1, true, `${sel} in Overzicht`);
+    }
+    assert.equal(await page.locator('#tplus-root .tp-updated:visible').count(), 0, '"Bijgewerkt" hidden on settings');
+    assert.equal(await page.locator('#tplus-root input[name="s:sync.favoritesToToledo"]').count(), 1);
     await screenshot(page, 'settings-light-desktop');
   });
 

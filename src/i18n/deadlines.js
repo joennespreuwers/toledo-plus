@@ -40,7 +40,6 @@
       'deadlines.removeLabel': 'Verwijder eigen deadline: {title}',
       'deadlines.removed': 'Deadline verwijderd',
       'deadlines.loading': 'Deadlines laden…',
-      'deadlines.noResults': 'Geen resultaten voor “{q}”',
     },
     en: {
       'deadlines.search': 'Search deadlines',
@@ -79,7 +78,6 @@
       'deadlines.removeLabel': 'Remove your deadline: {title}',
       'deadlines.removed': 'Deadline removed',
       'deadlines.loading': 'Loading deadlines…',
-      'deadlines.noResults': 'No results for “{q}”',
     },
     fr: {
       'deadlines.search': 'Rechercher des échéances',
@@ -118,7 +116,6 @@
       'deadlines.removeLabel': 'Supprimer ton échéance : {title}',
       'deadlines.removed': 'Échéance supprimée',
       'deadlines.loading': 'Chargement des échéances…',
-      'deadlines.noResults': 'Aucun résultat pour « {q} »',
     },
   });
   if (TP.i18n && TP.i18n.add) add();

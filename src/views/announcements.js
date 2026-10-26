@@ -109,10 +109,10 @@
     V.paint(ctx.root, `<div class="va-view va-announcements">
       <div class="va-filters">${seg}</div>
       ${body}
-      <p class="va-noresults" role="status" hidden></p>
+      <div class="va-noresults" hidden></div>
       ${note}
     </div>`);
-    if (S.q) V.filter(ctx.root, S.q, 'announcements.noResults');
+    if (S.q) V.filter(ctx.root, S.q);
   }
 
   function markOne(e) {
@@ -198,7 +198,7 @@
     render,
     onSearch(ctx, q) {
       S.q = (q || '').trim().toLowerCase();
-      VA().filter(ctx.root, S.q, 'announcements.noResults');
+      VA().filter(ctx.root, S.q);
     },
     destroy() { S.q = ''; S.keepRead.clear(); S.ctx = null; },
   });

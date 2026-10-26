@@ -27,20 +27,24 @@ function fakeChrome(stores) {
       cb && cb();
     },
   });
+  const listeners = [];
   const chromeObj = {
     runtime: { lastError: undefined },
-    storage: { sync: area('sync', QUOTA_BYTES_PER_ITEM), local: area('local', 0), onChanged: { addListener() {} } },
+    storage: { sync: area('sync', QUOTA_BYTES_PER_ITEM), local: area('local', 0), onChanged: { addListener(fn) { listeners.push(fn); } } },
+    _fire: (changes, name) => listeners.forEach((fn) => fn(changes, name)),
   };
   return chromeObj;
 }
 
-async function boot(stores) {
+async function boot(stores, out) {
   const s = sandbox();
   s.ctx.chrome = fakeChrome(stores);
+  if (out) out.chrome = s.ctx.chrome;
   s.load('src/core/settings.js');
   await s.TP.settings.load();
   return s.TP;
 }
+const quiet = async (fn) => { const warn = console.warn; console.warn = () => {}; try { return await fn(); } finally { console.warn = warn; } };
 
 const lu = (i) => `ULTRA-B-LUCA-N5${String(i).padStart(4, '0')}-2627`;
 
@@ -59,13 +63,57 @@ test('100 customised courses still fit in one storage.sync item (default fields 
   assert.equal(TP2.settings.course(lu(100)).color, 'green');
 });
 
-test('settings too large for storage.sync fall back to storage.local and load back', async () => {
+test('custom deadlines live in their own sync key; too many fall back to storage.local and load back', async () => {
   const stores = { sync: {}, local: {} };
   const TP = await boot(stores);
+  await TP.settings.set({ custom: [{ id: 'a', title: 'Eigen deadline', courseLuId: '', due: 1790000000000 }] });
+  assert.equal(stores.sync.custom.length, 1, "stored under sync key 'custom'");
+  assert.equal(stores.sync.settings.custom, undefined, "not inside the 'settings' item");
   const custom = Array.from({ length: 120 }, (_, i) => ({ id: 'id' + i, title: 'Een vrij lange eigen deadline titel nummer ' + i, courseLuId: lu(i), due: 1790000000000 + i }));
-  const warn = console.warn; console.warn = () => {};
-  try { await TP.settings.set({ custom }); } finally { console.warn = warn; }
-  assert.equal(stores.local.settingsLocal.custom.length, 120, 'persisted locally');
+  await quiet(() => TP.settings.set({ custom, accent: 'pink' }));
+  assert.equal(stores.local.customLocal.length, 120, 'persisted locally');
+  assert.equal(stores.sync.settings.accent, 'pink', 'the settings item itself still syncs');
   const TP2 = await boot(stores);
   assert.equal(TP2.settings.get().custom.length, 120, 'restored from the local fallback');
+  assert.equal(TP2.settings.get().accent, 'pink');
+});
+
+test('v1 settings with custom deadlines inside are migrated to the separate key', async () => {
+  const old = [{ id: 'x', title: 'Oude deadline', courseLuId: '', due: 1790000000000 }];
+  const stores = { sync: { settings: { v: 1, accent: 'green', custom: old }, settingsSavedAt: 1 }, local: {} };
+  const TP = await boot(stores);
+  assert.deepEqual(JSON.parse(JSON.stringify(TP.settings.get().custom)), old, 'available right away');
+  await new Promise((r) => setTimeout(r, 50));
+  assert.deepEqual(stores.sync.custom, old, "moved to sync key 'custom'");
+  assert.equal(stores.sync.settings.custom, undefined, "removed from 'settings'");
+  assert.equal(stores.sync.settings.v, 2);
+  assert.equal(stores.sync.settings.accent, 'green');
+  const TP2 = await boot(stores);
+  assert.equal(TP2.settings.get().custom.length, 1);
+});
+
+test('changes from other tabs update settings, also via the local fallback keys', async () => {
+  const stores = { sync: {}, local: {} };
+  const out = {};
+  const TP = await boot(stores, out);
+  const seen = [];
+  TP.settings.subscribe((s, keys) => seen.push(keys.join(',')));
+  out.chrome._fire({ custom: { newValue: [{ id: 'o', title: 'Van elders', courseLuId: '', due: 1 }] } }, 'sync');
+  assert.equal(TP.settings.get().custom.length, 1);
+  out.chrome._fire({ customLocal: { newValue: [] } }, 'local');
+  assert.equal(TP.settings.get().custom.length, 0);
+  out.chrome._fire({ settingsLocal: { newValue: { v: 2, accent: 'mint' } } }, 'local');
+  assert.equal(TP.settings.get().accent, 'mint');
+  out.chrome._fire({ settings: { newValue: { v: 2, accent: 'teal' } } }, 'sync');
+  assert.equal(TP.settings.get().accent, 'teal');
+  assert.deepEqual(seen, ['custom', 'custom', 'accent', 'accent']);
+});
+
+test('pinned defaults to "no explicit choice" (null) and an explicit false is kept', async () => {
+  const stores = { sync: {}, local: {} };
+  const TP = await boot(stores);
+  assert.equal(TP.settings.course(lu(7)).pinned, null);
+  await TP.settings.setCourse(lu(7), { pinned: false });
+  const TP2 = await boot(stores);
+  assert.equal(TP2.settings.course(lu(7)).pinned, false);
 });

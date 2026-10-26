@@ -61,8 +61,6 @@
       'overview.links.title': 'Snelkoppelingen',
       'overview.links.empty': 'Geen snelkoppelingen beschikbaar.',
 
-      'overview.noResults': 'Geen resultaten voor “{q}”',
-
       'va.done': 'Markeer als klaar: {title}',
       'va.undone': 'Markeer als niet klaar: {title}',
       'va.doneWord': 'Klaar',
@@ -143,8 +141,6 @@
       'overview.links.title': 'Quick links',
       'overview.links.empty': 'No quick links available.',
 
-      'overview.noResults': 'No results for “{q}”',
-
       'va.done': 'Mark as done: {title}',
       'va.undone': 'Mark as not done: {title}',
       'va.doneWord': 'Done',
@@ -224,8 +220,6 @@
 
       'overview.links.title': 'Liens rapides',
       'overview.links.empty': 'Aucun lien rapide disponible.',
-
-      'overview.noResults': 'Aucun résultat pour « {q} »',
 
       'va.done': 'Marquer comme terminé : {title}',
       'va.undone': 'Marquer comme non terminé : {title}',

@@ -21,10 +21,7 @@
 }
 .va-foot .tp-ic { vertical-align: -2px; }
 .va-foot a, .tp-sec-foot a { color: var(--tint-text, var(--tint)); }
-.va-noresults {
-  margin: 24px 16px; text-align: center; color: var(--label-2);
-  font-size: var(--fs-body, .9375rem);
-}
+.va-noresults:empty { display: none; }
 
 /* delayed skeleton: appears after 300ms (fade only) */
 .va-delay { opacity: 0; animation: va-fade-in 200ms ease-out 300ms forwards; }

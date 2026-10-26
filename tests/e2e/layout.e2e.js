@@ -59,6 +59,9 @@ for (const scheme of ['light', 'dark']) {
       await sheet.waitFor({ state: 'visible', timeout: 3000 });
       assert.ok(await sheet.locator('a[data-route="announcements"]').count() >= 1);
       assert.ok(await sheet.locator('a[data-route="settings"]').count() >= 1);
+      // Let the opening animation (tp-sheet-in, 250ms) finish so the capture isn't mid-slide.
+      await sheet.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished.catch(() => {}))));
+      await h.page.waitForTimeout(350);
       await screenshot(h.page, `more-sheet-${scheme}-phone`);
       assert.deepEqual(h.errors, []);
     });

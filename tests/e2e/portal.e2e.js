@@ -149,6 +149,31 @@ describe('portal shell', () => {
     assert.ok(!txt.includes('[N50265]'), 'course names are shown without the [code] suffix');
   });
 
+  it('Toledo favourites are pinned; pinning a course also makes it a Toledo favourite', async () => {
+    const GELUID = 'ULTRA-B-LUCA-N50008-2627';
+    await openPortal(h, 'courses');
+    const pinnedNav = () => page.locator('#tplus-root nav.tp-sidebar ul[aria-labelledby="tp-sb-pinned"]').innerText().catch(() => '');
+    let side = await pinnedNav();
+    assert.ok(side.includes('Filmtaal 1') && side.includes('Regie 1'), `Toledo favourites in "Vastgezet": ${side}`);
+    assert.ok(!side.includes('Geluid 1'));
+    assert.equal(await page.locator('#tplus-root .cs-view [data-action="fav"]').count(), 0, 'no separate favourite star');
+    await page.locator('#tplus-root [data-shell="view-action"][data-id="edit"]').click();
+    h.rec.reset();
+    await page.locator(`#tplus-root input[name="pin__${GELUID}"]`).check({ force: true });
+    const patch = await waitFor(() => h.rec.patches.find((p) => /\/portal\/api\/enrollments\//.test(p.path)), { timeout: 5000 });
+    assert.deepEqual(patch.body, { favorite: true }, 'PATCH enrollments {favorite:true}');
+    await waitSettings(h, (s) => s.courses?.items?.[GELUID]?.pinned === true);
+    await page.waitForFunction(() => /Geluid 1/.test(document.querySelector('#tplus-root').shadowRoot.querySelector('ul[aria-labelledby="tp-sb-pinned"]')?.textContent || ''), null, { timeout: 5000 });
+    // unpin again → favourite removed in Toledo
+    h.rec.reset();
+    await page.locator(`#tplus-root input[name="pin__${GELUID}"]`).uncheck({ force: true });
+    const un = await waitFor(() => h.rec.patches.find((p) => /\/portal\/api\/enrollments\//.test(p.path)), { timeout: 5000 });
+    assert.deepEqual(un.body, { favorite: false });
+    await page.locator('#tplus-root [data-shell="view-action"][data-id="edit"]').click();
+    side = await pinnedNav();
+    assert.ok(!side.includes('Geluid 1'), 'unpinned course left the sidebar group');
+  });
+
   it('search filters the overview and shows an empty state', async () => {
     await openPortal(h);
     const input = page.locator(S.search);
@@ -161,10 +186,24 @@ describe('portal shell', () => {
     await page.waitForTimeout(400);
     txt = await mainText(page);
     assert.ok(txt.includes('zzqqxx'), 'no-results message mentions the query');
+    const nl = strings('nl');
+    const state = page.locator('#tplus-root .tp-noresults-state:visible');
+    assert.equal(await state.count(), 1, 'exactly one empty state');
+    assert.equal(await state.locator('.tp-nr-title').innerText(), nl['common.noResults.title']);
+    assert.equal(await state.locator('.tp-nr-sub').innerText(), nl['common.noResults.for'].replace('{q}', 'zzqqxx'));
+    assert.equal(await state.locator('svg').count(), 1, 'magnifier icon');
+    await screenshot(page, 'search-empty-light-desktop');
     await input.fill('');
     await page.waitForTimeout(300);
     txt = await mainText(page);
     assert.ok(txt.includes('Productie 1'), 'clearing search restores content');
+    // A view with its own onSearch (courses) shows the same single empty state.
+    await openPortal(h, 'courses');
+    await page.locator(S.search).fill('zzqqxx');
+    await page.waitForTimeout(400);
+    assert.equal(await page.locator('#tplus-root .tp-noresults-state:visible').count(), 1, 'one empty state on courses');
+    await page.locator(S.search).fill('');
+    await openPortal(h);
     // keyboard: "/" focuses search
     await page.locator(S.title).click();
     await page.keyboard.press('/');

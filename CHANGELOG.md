@@ -20,12 +20,24 @@ Volledige wrapper rond Toledo (portaal + Blackboard Ultra). / Full wrapper aroun
 - Deadlines view merging Toledo deadlines, Ultra calendar items and your own deadlines; mark as done; export to `.ics` with reminder.
 - Planning view (today + tomorrow from Toledo, with a link to the KU Loket timetable).
 - Announcements view (course announcements + Ad Valvas) with filters.
-- Read-sync with Toledo: marking items read in Toledo+ marks them read in Toledo too (can be turned off); favourites sync to Toledo's star.
+- Read-sync with Toledo: marking items read in Toledo+ marks them read in Toledo too (can be turned off).
 - Slim "deep bar" on Ultra/portal pages Toledo+ does not replace, with a link back to the course.
 - Test suite (unit + Playwright e2e with fully synthetic mock data), CI, release packaging, issue forms.
 
 ### Changed
 - All rendering moved into a shadow root with a shared design system following Apple's HIG and WCAG 2.2 AA.
+- **Pin = favourite**: one pin control ("Vastzetten") instead of a separate pin and star. Pinned courses appear in the sidebar's "Vastgezet" group and first in lists. With "Vastgezette vakken als favoriet in Toledo" on, pinning also sets the course's Toledo favourite and your Toledo favourites count as pinned. Existing settings migrate automatically.
+- Settings: "Startpagina", "Overzicht-secties" and "Nieuw" are one **Overzicht** group; the "Bijgewerkt hh:mm" line is no longer shown on the settings page.
+- Course header shows "13 items · 3 nieuw" in secondary text (no coloured dot; the "nieuw" part only when there is something new).
+- Search: one centred empty state per view (magnifier, "Geen resultaten", "voor “x”") instead of a grey line, in every view.
+- Storage: your own deadlines are stored under their own sync key (`custom`, falling back to local storage when sync is full) so they can no longer push the settings over the sync quota; changes made in other tabs, including to the local fallback, now show up right away.
+
+### Fixed
+- Portal routing: Toledo's AngularJS router rewrote Toledo+ routes to `#/home`; routes now live in the query string (`#/home?tplus=<route>`), old `#/tplus/…` links are converted in place.
+- Sanitizer hardening for remote HTML: also drops `svg`, `math`, `template`, `noscript`, `textarea`/`select`, `frame`s; catches `javascript:` URLs hidden with tabs, newlines or leading control characters, in `srcset` and `xlink:href`; relative URLs are made absolute (Ultra's CDN `<base href>`); links get `rel="noopener noreferrer"`.
+- Contrast: secondary text (`--label-2`) raised to ≥ 4.5:1 on the page background, tint-coloured text contrast-checked per accent, stronger separators and controls under "increase contrast".
+- Settings stay within `storage.sync`'s 8 KB per-item limit: default per-course values are not stored, with a local fallback when sync refuses a write.
+- E2E: the "More" sheet screenshot waits for its opening animation.
 
 ## [0.2.1] - 2026-10-24
 

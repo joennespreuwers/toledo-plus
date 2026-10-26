@@ -7,7 +7,7 @@ Distilled from two research passes (sources at the bottom). Follow Apple's Human
 1. **Deadlines first, everywhere.** One chronological list with course + due date + time left. Urgency never by color alone (icon + word).
 2. **One "what changed" feed**, grouped per course, compact, with read/unread that syncs with Toledo. Ad Valvas (school notices) separate and quiet.
 3. **Current courses only by default**, readable names (nickname), course color, pin/hide. Archive (older years, communities) one click away.
-4. **Every course looks the same**: header (name, code, teachers), Recent, Content tree, Deadlines, Announcements.
+4. **Every course looks the same**: header (name, code, "13 items · 3 nieuw" in label-2, teachers), Recent, Content tree, Deadlines, Announcements.
 5. **Folders vs files clearly distinct**, file type visible, full names on hover/wrap, search across the course.
 6. **Fewer clicks**: deep links, "Continue where you left off" (recently opened items), search (⌘K).
 7. **Honest about gaps**: no grades, no submission status, schedule only today/tomorrow → say so in one line + link to KU Loket uurrooster. "Done" on a deadline is the student's own mark.
@@ -64,8 +64,9 @@ Over-engineering to avoid: drag-and-drop widget builders, themes beyond light/da
 - **Badge**: min 18px tall, padding 0 6, 12px 600, pill; tint for new, red for overdue, gray neutral; "99+"; `aria-label="3 nieuw"`.
 - **Segmented control**: track --fill, selected segment --bg-3 with shadow, 28/32px tall, ≤5 segments; radio inputs.
 - **Switch**: 38×22 desktop (51×31 comfortable), on = --tint; native checkbox with role=switch.
-- **Settings**: inset grouped; label leading, control trailing; changes apply instantly; group headers: Taal, Weergave, Startpagina, Overzicht-secties (reorder with ↑/↓ buttons + switch), Nieuw, Deadlines, Vakken (drill-in per course: nickname, color swatches, pin, hide), Synchronisatie met Toledo, Toledo-pagina's (portal/vakken/diepere pagina's), Gegevens (export/import/reset), Over (version, GitHub, report issue).
-- **Search**: filters the current view live; on Overview it also searches courses, feed, deadlines. Show "No results for “x”" empty state.
+- **Settings**: inset grouped; label leading, control trailing; changes apply instantly; no "Bijgewerkt" line; group headers: Taal, Weergave, Overzicht (start page, sections with switch + ↑/↓, announcements in Nieuw, courses in Nieuw), Deadlines, Vakken (drill-in per course: nickname, color swatches, pin, hide), Synchronisatie met Toledo (incl. "Vastgezette vakken als favoriet in Toledo"), Toledo-pagina's (portal/vakken/diepere pagina's), Gegevens (export/import/reset), Over (version, GitHub, report issue).
+- **Pin = favourite**: one pin control ("Vastzetten", icon pin/pinFill), no separate star. Pinned courses sit in the sidebar "Vastgezet" group and first in lists; with favourite sync on they are the Toledo favourites.
+- **Search**: filters the current view live; on Overview it also searches courses, feed, deadlines. Empty state, once per view, centred: magnifier icon (32px, label-3), "Geen resultaten" (headline), "voor “x”" (subhead, label-2).
 
 ## Compact "New" feed (Overview)
 - One row per course: color dot · course name · summary line in label-2 ("2 bestanden · 1 video · 1 opdracht") · trailing badge count + latest relative time. Collapsed by default.

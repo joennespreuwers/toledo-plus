@@ -101,21 +101,27 @@ TP.i18n.apiLang() → 'nl'|'en' (Toledo-Language header; fr → en)
 All three languages must be complete for every key you add. Dutch is the primary language; tone: short, plain, informal-polite ("je").
 
 ## TP.settings / TP.state (core)
-Settings live in `chrome.storage.sync` key `settings` (synced across the student's browsers); state in `chrome.storage.local` key `state`.
+Settings live in `chrome.storage.sync` key `settings` (synced across the student's browsers), **except** the custom deadlines:
+they are `settings.custom` in memory but stored under their own sync key `custom`, so they can't push the `settings` item over
+the 8 KB per-item quota. Each item falls back to `chrome.storage.local` (`settingsLocal` / `customLocal`) when sync refuses a
+write; on load the newer of sync/local wins (`settingsSavedAt` / `customSavedAt`). Default per-course values are not stored.
+v1 settings with `custom` inside `settings` are migrated on load (written to `custom`, removed from `settings`, `v` → 2).
+`storage.onChanged` handles `settings`/`custom` (sync) and `settingsLocal`/`customLocal` (local), so other tabs update live.
+State lives in `chrome.storage.local` key `state`.
 ```
 await TP.settings.load()           // called once by boot; merges DEFAULTS deeply
 TP.settings.get() → object (read-only snapshot)
 await TP.settings.set(patchObject) // deep-merge patch, persist, notify
 TP.settings.subscribe(fn(settings, changedTopKeys)) → unsubscribe
 TP.settings.reset(), TP.settings.export() → JSON string, TP.settings.import(json)
-TP.settings.course(luId) → { nickname:'', color:null, hidden:false, pinned:false }  (merged with defaults)
+TP.settings.course(luId) → { nickname:'', color:null, hidden:false, pinned:null }  (merged with defaults; pinned null = no explicit choice)
 await TP.settings.setCourse(luId, patch)
 TP.state.get(), await TP.state.set(patch), TP.state.subscribe(fn)
 ```
 DEFAULTS (exact):
 ```
 {
-  v: 1,
+  v: 2,
   language: 'system',                 // 'system'|'nl'|'en'|'fr'
   appearance: 'system',               // 'system'|'light'|'dark'
   accent: 'blue',                     // key of TP.util.PALETTE (not 'graphite' only… all allowed)
@@ -127,8 +133,8 @@ DEFAULTS (exact):
   feed: { includeAnnouncements: false, maxCourses: 5 },
   deadlines: { horizonDays: 42, urgentDays: 3, reminder: '1d' },   // reminder: 'none'|'1h'|'1d'|'2d' (ICS VALARM)
   courses: { sort: 'activity', showCommunities: false, items: {} },  // sort: 'activity'|'name'|'manual'; items[luId] = {nickname,color,hidden,pinned}; manual order in courses.order: [luId]
-  sync: { markReadInToledo: true, favoritesToToledo: true },
-  custom: [],                         // custom deadlines [{id, title, courseLuId|'', due:ms}]
+  sync: { markReadInToledo: true, favoritesToToledo: true },  // favoritesToToledo: pinned == Toledo favourite
+  custom: [],                         // custom deadlines [{id, title, courseLuId|'', due:ms}] — persisted under sync key 'custom'
 }
 ```
 State (local, not synced): `{ visits:{[courseId]:ms}, feedSeenAt:0, done:{[deadlineKey]:true}, recent:[{title,url,courseName,courseLuId,kind,ts}] (max 12), cache:{} }`.
@@ -158,6 +164,8 @@ TP.data.feed() → FeedGroup[]  (unread notifications, NOT subType 'due'|'course
                                announcements only if settings.feed.includeAnnouncements)
   FeedGroup = { luId, course: Course|null, name, color, items: Event[] (newest first), latest, counts:{file,video,page,assignment,announcement} }
   sorted: pinned courses first, then groups with a deadline ≤ 48h, then latest desc
+  Course.pinned: **pinned == Toledo favourite.** settings item pinned true/false wins; if unset (null) the course is pinned
+  when settings.sync.favoritesToToledo && enrollment.favorite.
 TP.data.kindOf(event|contentNode) → 'file'|'video'|'image'|'page'|'assignment'|'link'|'tool'|'folder'|'announcement'|'notice'
 TP.data.deadlines({includeDone, horizonDays}) → Deadline[] sorted by due
   Deadline = { key, title, courseName, courseLuId, color, due, url|null, source:'toledo'|'ultra'|'custom', done, customId? }
@@ -169,7 +177,8 @@ TP.data.link(label) → absolute url|null ; TP.data.quickLinks() → [{label, ti
 // mutations
 await TP.data.markRead(events[])      // optimistic local update; PATCH batch/events if settings.sync.markReadInToledo
 await TP.data.markFeedSeen()          // state.feedSeenAt = now (+ markRead of those events if sync enabled)
-await TP.data.setFavorite(luId, bool) // PATCH enrollments/{id} if settings.sync.favoritesToToledo
+await TP.data.setPinned(luId, bool)   // the one pin control: settings item pinned + (if sync.favoritesToToledo) setFavorite; → false if the Toledo sync failed
+await TP.data.setFavorite(luId, bool) // PATCH enrollments/{id} if settings.sync.favoritesToToledo (used by setPinned)
 await TP.data.toggleDone(deadlineKey)
 await TP.data.addCustomDeadline({title, courseLuId, due}) / removeCustomDeadline(id)
 await TP.data.addRecent({title,url,courseName,courseLuId,kind})
@@ -198,6 +207,7 @@ TP.ui.disclosure({id, open, summary:{leading,title,subtitle,trailing}, body, q?}
 TP.ui.badge(n, {tone:'tint'|'red'|'gray', label}) ; TP.ui.dot(color, label?)
 TP.ui.dateTile(ms, {tone:'normal'|'urgent'|'overdue'|'muted'})
 TP.ui.empty(text, {timestamp?}) ; TP.ui.skeleton(rows=3) ; TP.ui.errorRow(text, retryAction='retry')
+TP.ui.noResults(q) → search empty state (magnifier 32px label-3, "Geen resultaten" headline, "voor “x”" subhead); one per view
 TP.ui.button(label, {action, icon, kind:'filled'|'tinted'|'plain'|'gray', attrs})
 TP.ui.segmented(name, [{value,label}], value, {label})   → radiogroup of real <input type=radio>; listen for 'change' on root
 TP.ui.toggle(name, checked, label, {description})        → <label> with <input type=checkbox role=switch>
@@ -223,8 +233,10 @@ View contract:
 TP.shell.register('overview', {
   title: () => TP.t('nav.overview'),     // toolbar large title
   searchPlaceholder: () => TP.t('overview.search'),   // optional; if absent search hidden
+  showUpdated: false,                     // optional; hides the shell's "Bijgewerkt hh:mm" line (load errors still show)
   render(ctx) { … },                      // may be async; must be idempotent (called again on data/settings change)
-  onSearch(ctx, q) { … },                 // optional; q lowercase trimmed; default behaviour: hide [data-q] not matching and empty sections
+  onSearch(ctx, q) { … },                 // optional; q lowercase trimmed; default behaviour: hide [data-q] not matching and empty sections,
+                                          // then show TP.ui.noResults(q) once; custom handlers render TP.ui.noResults(q) in their own single slot
   destroy(ctx) { … }                      // optional
 });
 ctx = { root: HTMLElement (view container in shadow root), params, route, origin:'portal'|'ultra', setActions([{id,label,icon,onClick}]), setTitle(text), setSubtitle(html) }

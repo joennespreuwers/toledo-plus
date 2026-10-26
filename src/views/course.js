@@ -163,7 +163,7 @@
       else {
         const leaves = flatten(st.data.roots);
         const fresh = leaves.filter((x) => isNew(x.node)).length;
-        sub = `<span>${esc(t('course.items', { n: leaves.length }))}</span>${fresh ? `<span class="cv-sub-new">${TP.ui.dot('var(--tint)')}<strong>${esc(t('course.newSince', { n: fresh }))}</strong></span>` : ''}`;
+        sub = `<span>${esc(t('course.items', { n: leaves.length }))}${fresh ? ` · <span title="${esc(t('course.newSince', { n: fresh }))}">${esc(t('course.newCount', { n: fresh }))}</span>` : ''}</span>`;
       }
     }
     const pinned = !!(c && c.pinned);
@@ -174,7 +174,7 @@
     return `
       <header class="cv-head">
         <div class="cv-head-main">
-          <p class="cv-sub">${c && c.color ? TP.ui.dot(c.color) : ''}${sub || (st.error ? '' : `${spinner()}<span>${esc(t('course.loading'))}</span>`)}</p>
+          <p class="cv-sub">${sub || (st.error ? '' : `${spinner()}<span>${esc(t('course.loading'))}</span>`)}</p>
           ${teachers}
         </div>
         <div class="cv-actions">${actions}</div>
@@ -373,7 +373,7 @@
     } else {
       body = TP.ui.cols(recentHtml() + treeHtml(), deadlinesHtml() + announcementsHtml() + teachersHtml());
     }
-    root.innerHTML = `<div class="cv-view">${headerHtml()}${body}<p class="cv-noresults" hidden></p></div>`;
+    root.innerHTML = `<div class="cv-view">${headerHtml()}${body}<div class="cv-noresults" hidden></div></div>`;
     if (hadView) root.querySelectorAll('.cv-view details[data-keep]').forEach((d) => { d.open = keep.has(d.dataset.keep); });
     syncTitle();
     restoreFocus(root, focus);
@@ -437,7 +437,7 @@
       if (hit) any = true;
     });
     const nr = view.querySelector('.cv-noresults');
-    if (nr) { nr.hidden = any; nr.textContent = any ? '' : t('course.noResults', { q: st.q }); }
+    if (nr) { nr.hidden = any; nr.innerHTML = any ? '' : TP.ui.noResults(st.q); }
   }
 
   // ---------- interactions ----------
@@ -529,7 +529,10 @@
           ev.preventDefault();
           const c = courseModel();
           const lu = st.luId || (c && c.luId);
-          if (lu) { Promise.resolve(TP.settings.setCourse(lu, { pinned: !(c && c.pinned) })).catch(() => {}); paint(); }
+          if (lu) {
+            Promise.resolve(TP.data.setPinned(lu, !(c && c.pinned))).then((ok) => { if (ok === false) TP.shell.toast?.(t('common.pinFailed')); }, () => {});
+            paint();
+          }
           return;
         }
       }

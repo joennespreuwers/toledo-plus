@@ -477,13 +477,16 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
       // Non-blocking error state: keep cached data visible, offer a retry. On Ultra the portal data
       // arrives via the best-effort relay and isn't the view's primary data: stay silent there.
       const failed = origin === 'portal' && ['enrollments', 'events'].some((k) => safe(() => TP.data?.status?.(k)?.error, null));
-      const stamp = ms ? esc(t('common.updated', { time: TP.fmt.time(ms) })) : '';
+      // Views can opt out of the "Bijgewerkt hh:mm" line (view.showUpdated === false, e.g. settings);
+      // a load error is still shown.
+      const showStamp = current.view?.showUpdated !== false;
+      const stamp = ms && showStamp ? esc(t('common.updated', { time: TP.fmt.time(ms) })) : '';
       up.innerHTML = failed
         ? `${stamp ? stamp + ' · ' : ''}<span class="tp-updated-err">${icon('warning', { size: 13 })}${esc(t('shell.loadError'))}</span> · <button type="button" class="tp-link-btn" data-shell="refresh">${esc(t('common.retry'))}</button>`
         : stamp;
       // Views may already show the timestamp in their subtitle; don't repeat it.
       const dup = !failed && stamp && $('.tp-subtitle')?.textContent.includes(TP.fmt.time(ms));
-      up.hidden = (!failed && !ms) || !!dup;
+      up.hidden = (!failed && !stamp) || !!dup;
     }
     const acts = $('.tp-head-actions');
     if (acts) {
@@ -526,7 +529,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     const n = defaultFilter(current.root, q);
     if (nores) {
       nores.hidden = !q || n > 0;
-      nores.innerHTML = q && n === 0 ? TP.ui.empty(t('common.noResults', { q })) : '';
+      nores.innerHTML = q && n === 0 ? TP.ui.noResults(q) : '';
     }
     if (q) announceResults(n);
   }

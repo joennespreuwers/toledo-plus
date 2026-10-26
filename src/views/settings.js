@@ -80,12 +80,9 @@
       + ctlRow(t('settings.density'), (id) => labelled(den, id)));
   }
 
-  function start(s) {
-    const sel = TP.ui.select('s:startPage', opts(['overview', 'courses', 'deadlines', 'planning'].map((v) => [v, t('settings.page.' + v)])), s.startPage, { ariaLabel: t('settings.start.label') });
-    return block('start', t('settings.start'), ctlRow(t('settings.start.label'), sel));
-  }
-
-  function sections(s) {
+  // One "Overzicht" group: start page, overview blocks (switch + ↑/↓), and the "Nieuw" feed options.
+  function overview(s) {
+    const page = TP.ui.select('s:startPage', opts(['overview', 'courses', 'deadlines', 'planning'].map((v) => [v, t('settings.page.' + v)])), s.startPage, { ariaLabel: t('settings.start.label') });
     const list = (s.overview && s.overview.sections) || [];
     const rows = list.map((x, i) => {
       const name = t('settings.sec.' + x.id);
@@ -97,17 +94,16 @@
         </span>
       </div>`;
     }).join('');
-    return block('sections', t('settings.sections'), rows, t('settings.sections.foot'));
-  }
-
-  function feed(s) {
     const f = s.feed || {};
     const max = Number(f.maxCourses) || 5;
     const sel = TP.ui.select('n:feed.maxCourses', [3, 5, 8].map((n) => ({ value: n, label: String(n) })).concat({ value: ALL, label: t('settings.feed.all') }),
       [3, 5, 8].includes(max) ? max : ALL, { ariaLabel: t('settings.feed.max') });
-    return block('feed', t('settings.feed'),
-      toggleRow('s:feed.includeAnnouncements', f.includeAnnouncements, t('settings.feed.ann'), t('settings.feed.annDesc'))
-      + ctlRow(t('settings.feed.max'), sel));
+    return block('overview', t('settings.overview'),
+      ctlRow(t('settings.start.label'), page)
+      + rows
+      + toggleRow('s:feed.includeAnnouncements', f.includeAnnouncements, t('settings.feed.ann'), t('settings.feed.annDesc'))
+      + ctlRow(t('settings.feed.max'), sel),
+      t('settings.sections.foot'));
   }
 
   function deadlines(s) {
@@ -121,7 +117,7 @@
   function courseRow(c) {
     const cs = TP.settings.course(c.luId);
     const name = c.name || TP.util.courseName(c.title);
-    const tags = [cs.pinned ? t('settings.courses.pinned') : '', cs.hidden ? t('settings.courses.hidden') : ''].filter(Boolean).join(' · ');
+    const tags = [c.pinned ? t('settings.courses.pinned') : '', cs.hidden ? t('settings.courses.hidden') : ''].filter(Boolean).join(' · ');
     const inputId = nid('nick');
     const colId = nid('col');
     const body = `
@@ -139,7 +135,7 @@
           </div>
         </div>
         <div class="st-course-toggles">
-          ${TP.ui.toggle('pin' + SEP + c.luId, !!cs.pinned, t('settings.pin'))}
+          ${TP.ui.toggle('pin' + SEP + c.luId, !!c.pinned, t('settings.pin'))}
           ${TP.ui.toggle('hide' + SEP + c.luId, !!cs.hidden, t('settings.hide'))}
         </div>
       </div>`;
@@ -217,7 +213,7 @@
     try { ctx.setActions && ctx.setActions([]); } catch { /* ignore */ }
     const focus = snapFocus(root);
     const s = TP.settings.get();
-    root.innerHTML = `<div class="st-view">${language(s)}${look(s)}${start(s)}${sections(s)}${feed(s)}${deadlines(s)}${coursesBlock(s)}${sync(s)}${wrap(s)}${data()}${about()}</div>`;
+    root.innerHTML = `<div class="st-view">${language(s)}${look(s)}${overview(s)}${deadlines(s)}${coursesBlock(s)}${sync(s)}${wrap(s)}${data()}${about()}</div>`;
     restoreFocus(root, focus);
   }
   // Async callers only repaint while the settings view is still what the container shows.
@@ -319,7 +315,9 @@
           p = TP.settings.set({ overview: { sections: list } });
         } else if (kind === 'nick') p = TP.settings.setCourse(id, { nickname: String(value).trim() });
         else if (kind === 'color') p = TP.settings.setCourse(id, { color: value });
-        else if (kind === 'pin') p = TP.settings.setCourse(id, { pinned: !!value });
+        else if (kind === 'pin') {
+          p = Promise.resolve(TP.data.setPinned(id, !!value)).then((ok) => { if (ok === false) TP.shell.toast?.(t('common.pinFailed')); });
+        }
         else if (kind === 'hide') p = TP.settings.setCourse(id, { hidden: !!value });
       }
       if (!p) return;
@@ -345,6 +343,7 @@
 
   TP.shell.register('settings', {
     title: () => t('settings.title'),
+    showUpdated: false, // "Bijgewerkt hh:mm" means nothing here
     render,
     destroy() { clearTimeout(ui.resetTimer); ui.resetArmed = false; },
   });

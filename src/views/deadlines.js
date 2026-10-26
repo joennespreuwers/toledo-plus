@@ -146,10 +146,10 @@
       ${filtersHtml()}
       ${addFormHtml()}
       <div class="va-dl-list">${body}</div>
-      <p class="va-noresults" role="status" hidden></p>
+      <div class="va-noresults" hidden></div>
       ${footer}
     </div>`);
-    if (S.q) V.filter(ctx.root, S.q, 'deadlines.noResults');
+    if (S.q) V.filter(ctx.root, S.q);
   }
 
   function exportIcs() {
@@ -244,7 +244,7 @@
     render,
     onSearch(ctx, q) {
       S.q = (q || '').trim().toLowerCase();
-      VA().filter(ctx.root, S.q, 'deadlines.noResults');
+      VA().filter(ctx.root, S.q);
     },
     destroy() {
       S.doneKeep.clear();

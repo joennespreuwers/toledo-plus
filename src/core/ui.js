@@ -153,6 +153,13 @@
     return `<div class="tp-empty"><p>${esc(text)}</p>${ts}</div>`;
   }
 
+  /** Search empty state (Apple style): centered magnifier, "Geen resultaten", "voor “x”". One per view. */
+  function noResults(q) {
+    return `<div class="tp-noresults-state" role="status">${icon('search', { size: 32 })}`
+      + `<p class="tp-nr-title">${esc(t('common.noResults.title'))}</p>`
+      + `<p class="tp-nr-sub">${esc(t('common.noResults.for', { q }))}</p></div>`;
+  }
+
   function skeleton(rows = 3) {
     const r = Array.from({ length: Math.max(1, rows) }, (_, i) =>
       `<div class="tp-skel-row"><span class="tp-skel-lead"></span><span class="tp-skel-lines"><span class="tp-skel-line" style="width:${[72, 56, 64, 48, 60][i % 5]}%"></span><span class="tp-skel-line short"></span></span></div>`).join('');
@@ -209,7 +216,7 @@
     `<div class="tp-cols"><div class="tp-col-main">${mainHtml ?? ''}</div>${sideHtml ? `<div class="tp-col-side">${sideHtml}</div>` : ''}</div>`;
 
   TP.ui = {
-    icon, ICONS, attrs, section, group, row, disclosure, badge, dot, dateTile, empty, skeleton, errorRow,
+    icon, ICONS, attrs, section, group, row, disclosure, badge, dot, dateTile, empty, noResults, skeleton, errorRow,
     button, segmented, toggle, select, swatches, cols,
   };
 })();

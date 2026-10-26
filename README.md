@@ -8,10 +8,11 @@
 
 ## Screenshots
 
-| Overzicht | Vakpagina | Instellingen |
-|---|---|---|
-| ![Overzicht (licht)](docs/screenshots/overview-light.png) | ![Vak (licht)](docs/screenshots/course-light.png) | ![Instellingen (licht)](docs/screenshots/settings-light.png) |
-| ![Overzicht (donker)](docs/screenshots/overview-dark.png) | ![Vak (donker)](docs/screenshots/course-dark.png) | ![Instellingen (donker)](docs/screenshots/settings-dark.png) |
+| ![Overzicht (licht)](docs/screenshots/overview-light.png) | ![Overzicht (donker)](docs/screenshots/overview-dark.png) |
+|---|---|
+| ![Vak (licht)](docs/screenshots/course-light.png) | ![Instellingen (licht)](docs/screenshots/settings-light.png) |
+
+<p align="center"><img src="docs/screenshots/overview-phone.png" alt="Overzicht op een telefoon (licht)" width="300"></p>
 
 <sub>Screenshots met fictieve gegevens.</sub>
 

@@ -309,6 +309,11 @@
 .tp-head-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .tp-head-actions:empty { display: none; }
 .tp-noresults { margin-top: 8px; }
+/* search empty state (TP.ui.noResults): one per view, centered, Apple style */
+.tp-noresults-state { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 48px 16px; text-align: center; }
+.tp-noresults-state > .tp-ic, .tp-noresults-state > svg { color: var(--label-3); margin-bottom: 10px; }
+.tp-nr-title { margin: 0; color: var(--label); font-size: var(--fs-headline); line-height: var(--lh-headline); font-weight: 600; }
+.tp-nr-sub { margin: 0; color: var(--label-2); font-size: var(--fs-subhead); line-height: var(--lh-subhead); overflow-wrap: anywhere; }
 
 /* tab bar (mobile) */
 .tp-tabbar {

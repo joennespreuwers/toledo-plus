@@ -127,9 +127,9 @@
 
     /**
      * Search filter: hides [data-q] rows that don't match, hides sections with no
-     * visible rows, toggles the no-results line. Returns number of visible rows.
+     * visible rows, toggles the shared no-results state (TP.ui.noResults). Returns number of visible rows.
      */
-    filter(root, q, noResultsKey) {
+    filter(root, q) {
       q = (q || '').trim().toLowerCase();
       let visible = 0;
       root.querySelectorAll('[data-q]').forEach((el) => {
@@ -146,7 +146,7 @@
       const nr = root.querySelector('.va-noresults');
       if (nr) {
         nr.hidden = !q || visible > 0;
-        nr.textContent = q && !visible ? t(noResultsKey, { q }) : '';
+        nr.innerHTML = q && !visible ? TP.ui.noResults(q) : '';
       }
       return visible;
     },
@@ -550,7 +550,7 @@
     const feed = root.querySelector('.va-feed');
     // Feed: work on all groups (incl. ones beyond maxCourses) and all items (incl. beyond 3).
     if (feed) feed.setAttribute('data-va-nofilter', '');
-    VA.filter(root, q, 'overview.noResults');
+    VA.filter(root, q);
     let feedHits = 0;
     if (feed) {
       feed.querySelectorAll('details[data-lu]').forEach((d) => {
@@ -573,7 +573,7 @@
       const sec = feed.closest('[data-va-sec]');
       if (sec && q) sec.hidden = feedHits === 0;
       const nr = root.querySelector('.va-noresults');
-      if (nr && q && feedHits) { nr.hidden = true; nr.textContent = ''; }
+      if (nr && q && feedHits) { nr.hidden = true; nr.innerHTML = ''; }
     }
   }
 
@@ -663,7 +663,7 @@
       if (SIDE.has(s.id)) side += html; else main += html;
     }
     const layout = side ? TP.ui.cols(main, side) : main;
-    VA.paint(ctx.root, `<div class="va-view va-overview">${layout}<p class="va-noresults" role="status" hidden></p></div>`);
+    VA.paint(ctx.root, `<div class="va-view va-overview">${layout}<div class="va-noresults" hidden></div></div>`);
     if (S.q) applySearch(ctx.root, S.q);
   }
 

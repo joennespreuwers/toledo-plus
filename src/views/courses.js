@@ -1,6 +1,6 @@
 /* Toledo+ — Courses view (views-B).
    Grid of course cards with filter (current / semester / year / communities / archive), sort,
-   and an edit mode for nickname, colour, pin, hide, favourite and manual order. */
+   and an edit mode for nickname, colour, pin (= Toledo favourite), hide and manual order. */
 (() => {
   'use strict';
   const TP = (globalThis.TP ||= {});
@@ -99,7 +99,6 @@
     const q = [name, c.title, c.code].join(' ').toLowerCase();
     const flags = [
       c.pinned ? `<span class="cs-flag" title="${esc(t('courses.pinned'))}">${TP.ui.icon('pinFill', { size: 14 })}<span class="cs-sr">${esc(t('courses.pinned'))}</span></span>` : '',
-      c.favorite ? `<span class="cs-flag cs-flag-fav" title="${esc(t('courses.favorite'))}">${TP.ui.icon('starFill', { size: 14 })}<span class="cs-sr">${esc(t('courses.favorite'))}</span></span>` : '',
     ].join('');
     const badge = c.unread ? TP.ui.badge(c.unread, { tone: 'tint', label: t('courses.unread', { n: c.unread }) }) : '';
     const unavailable = c.available === false;
@@ -143,10 +142,8 @@
             </div>
           </div>
           <div class="cs-toggles">
-            ${TP.ui.toggle(`pin${SEP}${c.luId}`, !!cs.pinned, t('courses.pin'))}
+            ${TP.ui.toggle(`pin${SEP}${c.luId}`, !!c.pinned, t('courses.pin'))}
             ${TP.ui.toggle(`hide${SEP}${c.luId}`, !!cs.hidden, t('courses.hide'))}
-            <button type="button" class="cs-fav-btn" data-action="fav" data-lu="${esc(c.luId)}" data-fk="fav:${esc(c.luId)}" aria-pressed="${c.favorite ? 'true' : 'false'}"
-              aria-label="${esc(t(c.favorite ? 'courses.favRemove' : 'courses.favAdd', { name }))}">${TP.ui.icon(c.favorite ? 'starFill' : 'star', { size: 18 })}<span aria-hidden="true">${esc(t('courses.favorite'))}</span></button>
           </div>
         </div>
       </li>`;
@@ -205,7 +202,7 @@
         </div>
         ${ui.edit ? `<p class="cs-hint">${esc(t('courses.editHint'))}${(s.courses?.sort === 'manual') ? ' ' + esc(t('courses.manualHint')) : ''}</p>` : ''}
         <div class="cs-body">${body}</div>
-        <p class="cs-noresults" hidden></p>
+        <div class="cs-noresults" hidden></div>
       </div>`;
     restoreFocus(root, focus);
     if (ui.q) applySearch(root, ui.q);
@@ -237,7 +234,7 @@
     if (nr) {
       const none = !!ui.q && shown === 0 && root.querySelector('.cs-card, .cs-hidden-row');
       nr.hidden = !none;
-      nr.textContent = none ? t('courses.noResults', { q: ui.q }) : '';
+      nr.innerHTML = none ? TP.ui.noResults(ui.q) : '';
     }
   }
 
@@ -258,6 +255,10 @@
     if (live()) render(cur);
   }
 
+  function pin(luId, on) {
+    Promise.resolve(TP.data.setPinned(luId, on)).then((ok) => { if (ok === false) TP.shell.toast?.(t('common.pinFailed')); }, () => {});
+  }
+
   function bind(root) {
     if (root.__tpCoursesBound) return;
     root.__tpCoursesBound = true;
@@ -272,15 +273,6 @@
         case 'move-down': return move(lu, 1);
         case 'color-reset': save(TP.settings.setCourse(lu, { color: null })); break;
         case 'unhide': save(TP.settings.setCourse(lu, { hidden: false })); break;
-        case 'fav': {
-          const c = TP.data.course(lu);
-          b.disabled = true;
-          let ok = true;
-          try { ok = await TP.data.setFavorite(lu, !(c && c.favorite)); } catch { ok = false; }
-          if (ok === false) TP.shell.toast?.(t('courses.favFailed'));
-          b.disabled = false;
-          break;
-        }
         default: return;
       }
       if (live()) render(cur);
@@ -296,7 +288,7 @@
       const kind = el.name.slice(0, k), lu = el.name.slice(k + SEP.length);
       if (kind === 'nick') save(TP.settings.setCourse(lu, { nickname: el.value.trim() }));
       else if (kind === 'color') save(TP.settings.setCourse(lu, { color: el.value }));
-      else if (kind === 'pin') save(TP.settings.setCourse(lu, { pinned: el.checked }));
+      else if (kind === 'pin') pin(lu, el.checked);
       else if (kind === 'hide') save(TP.settings.setCourse(lu, { hidden: el.checked }));
       else return;
       // A nickname commits on blur: repaint after focus has moved on, so it lands on the next control.

@@ -25,7 +25,6 @@
       'announcements.count.other': '{n} mededelingen',
       'announcements.unreadCount.one': '{n} ongelezen',
       'announcements.unreadCount.other': '{n} ongelezen',
-      'announcements.noResults': 'Geen resultaten voor “{q}”',
     },
     en: {
       'announcements.search': 'Search announcements',
@@ -49,7 +48,6 @@
       'announcements.count.other': '{n} announcements',
       'announcements.unreadCount.one': '{n} unread',
       'announcements.unreadCount.other': '{n} unread',
-      'announcements.noResults': 'No results for “{q}”',
     },
     fr: {
       'announcements.search': 'Rechercher des annonces',
@@ -73,7 +71,6 @@
       'announcements.count.other': '{n} annonces',
       'announcements.unreadCount.one': '{n} non lue',
       'announcements.unreadCount.other': '{n} non lues',
-      'announcements.noResults': 'Aucun résultat pour « {q} »',
     },
   });
   if (TP.i18n && TP.i18n.add) add();
