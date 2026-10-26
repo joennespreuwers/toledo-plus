@@ -291,21 +291,27 @@ describe('portal shell', () => {
     assert.equal(await page.evaluate(() => document.querySelector('#tplus-root').shadowRoot.querySelector('dialog.tp-palette').open), false);
   });
 
-  it('consistent unread style; "Ad Valvas" segment; new badges are tint-soft (never solid like overdue)', async () => {
+  it('consistent unread style; one filter list with "Ad Valvas"; ⌄ expands, ↗ leaves; new badges are tint-soft', async () => {
     await openPortal(h, 'announcements');
     const nl = strings('nl');
     const r = await sr(page, (root) => {
       const rows = [...root.querySelectorAll('.va-ann-list > *')];
       const bad = rows.filter((el) => {
-        const unread = !!el.querySelector('.va-unread:not(.va-unread-off)');
+        const unread = !!el.querySelector('.tp-badge-tint:not(.va-new-slot)');
         const title = el.querySelector('.tp-row-title');
         return unread !== !!(title && title.classList.contains('strong'));
       }).length;
-      return { rows: rows.length, bad };
+      // what a row does: course announcements expand here, Ad Valvas opens another site (↗, new tab)
+      const wrong = rows.filter((el) => (el.tagName === 'DETAILS') === (el.getAttribute('target') === '_blank') || (el.getAttribute('target') === '_blank') !== !!el.querySelector('.va-ann-ext')).length;
+      return { rows: rows.length, bad, wrong };
     });
-    assert.ok(r.rows >= 3 && r.bad === 0, `every unread row = dot + 600 (${JSON.stringify(r)})`);
-    const segs = await page.locator('#tplus-root input[name="an-filter"] + span').allInnerTexts();
-    assert.ok(segs.includes('Ad Valvas') && !segs.includes('School'), `segments: ${segs}`);
+    assert.ok(r.rows >= 3 && r.bad === 0, `every unread row = "Nieuw" + 600 (${JSON.stringify(r)})`);
+    assert.equal(r.wrong, 0, `⌄ rows expand, ↗ rows open a new tab (${JSON.stringify(r)})`);
+    const filters = await page.locator('#tplus-root .va-src-row .tp-row-title').allInnerTexts();
+    assert.ok(filters.includes('Ad Valvas') && filters.includes(nl['announcements.filter.unread']), `filters: ${filters}`);
+    await page.locator('#tplus-root .va-src-row[data-key="advalvas"]').click();
+    await page.waitForFunction(() => { const s = document.querySelector('#tplus-root').shadowRoot; const rows = [...s.querySelectorAll('.va-ann-list > *')]; return rows.length > 0 && rows.every((x) => x.getAttribute('target') === '_blank'); }, null, { timeout: 4000 });
+    await page.locator('#tplus-root .va-src-row[data-key=":all"]').click();
     assert.equal(nl['announcements.filter.school'], 'Ad Valvas');
     await openPortal(h);
     const badge = await sr(page, (root) => {

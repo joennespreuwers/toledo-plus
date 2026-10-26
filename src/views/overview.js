@@ -42,6 +42,21 @@
     },
 
     /** Unread marker: dot with label, or an invisible spacer of the same size. */
+    /** One look for an announcement row (Mededelingen + Overview card), built only from standard row parts:
+     *  title (600 when unread) · meta "● course" like a deadline row · trailing [Nieuw] time ›. */
+    annParts(e, unread) {
+      const school = e.subType === 'advalvas';
+      let color = 'var(--label-3)';
+      if (!school) { try { const c = e.sourceId && TP.data.course ? TP.data.course(e.sourceId) : null; if (c && c.color) color = c.color; } catch { /* no course */ } }
+      const src = school ? t('announcements.school') : TP.util.courseName(e.source || '');
+      return {
+        src,
+        subtitle: `${TP.ui.dot(color)}<span>${esc(src)}</span>${school ? `<span class="va-sr"> ${esc(t('va.newTab'))}</span>` : ''}`,
+        // time first, "Nieuw" last (an invisible copy on read rows): pills and times line up whatever the time says
+        trailing: `${VA.daysAgo(e.date)}${unread ? TP.ui.badge(t('course.new'), { tone: 'tint', label: t('va.unread') })
+          : `<span class="tp-badge tp-badge-tint va-new-slot" aria-hidden="true">${esc(t('course.new'))}</span>`}`,
+      };
+    },
     unreadDot(unread) {
       return unread
         ? `<span class="va-unread" role="img" aria-label="${esc(t('va.unread'))}"></span>`
@@ -104,6 +119,17 @@
       return Number.isFinite(n) ? n : 0;
     },
     /** <time> element with relative "ago" text. */
+    /** One date format for announcements, worded like deadlines ("in 9 d" / "5 d te laat"): vandaag · gisteren · 3 d geleden.
+     *  The exact date and time are in the tooltip. */
+    daysAgo(v) {
+      const n = VA.ms(v);
+      if (!n) return '';
+      const sod = (ms) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };
+      const days = Math.max(0, Math.round((sod(Date.now()) - sod(n)) / 864e5));
+      const txt = days === 0 ? t('fmt.today') : days === 1 ? t('fmt.yesterday') : t('fmt.daysAgo', { n: days });
+      const full = `${TP.fmt.date(n, { weekday: 'long', day: 'numeric', month: 'long' })} ${TP.fmt.time(n)}`;
+      return `<time datetime="${esc(new Date(n).toISOString())}" title="${esc(full)}">${esc(txt)}</time>`;
+    },
     timeAgo(v) {
       const n = VA.ms(v);
       if (!n) return '';
@@ -717,16 +743,17 @@
   function annRow(e) {
     S.events.set(String(e.id), e);
     const school = e.subType === 'advalvas';
-    const src = school ? t('announcements.school') : TP.util.courseName(e.source || '');
+    const p = VA.annParts(e, !e.read);
     return TP.ui.row({
       href: e.url ? TP.util.abs(e.url) : undefined,
       attrs: { 'data-action': 'ov-open', 'data-eid': String(e.id), ...(school ? { target: '_blank', rel: 'noopener' } : {}) },
-      leading: VA.unreadDot(!e.read),
       title: esc(e.title),
-      subtitle: `${esc(src)}<span aria-hidden="true"> · </span>${VA.timeAgo(e.date)}${school ? `<span class="va-sr"> ${esc(t('va.newTab'))}</span>` : ''}`,
+      subtitle: p.subtitle,
+      trailing: p.trailing + (school ? `<span class="va-ann-ext">${TP.ui.icon('external', { size: 14 })}</span>` : ''),
+      chevron: !school, // ↗ = opens Ad Valvas in a new tab
       strong: !e.read,
-      q: `${e.title} ${src}`.toLowerCase(),
-      cls: 'va-ann' + (e.read ? ' is-read' : ''),
+      q: `${e.title} ${p.src}`.toLowerCase(),
+      cls: 'va-ann va-ann-row' + (e.read ? ' is-read' : ''),
     });
   }
 

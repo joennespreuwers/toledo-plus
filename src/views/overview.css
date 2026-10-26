@@ -74,7 +74,8 @@
 .va-dl .tp-row-title { display: block; }
 /* one line, ellipsis (flex-wrap orphaned the colour dot on phones) */
 .va-dl .tp-row-sub { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.va-dl .tp-row-sub .tp-dot { width: 8px; height: 8px; margin-right: 5px; vertical-align: 0; }
+.va-new-slot { visibility: hidden; } /* invisible copy of the "Nieuw" pill on read rows, so times line up */
+.va-dl .tp-row-sub .tp-dot, .va-ann-row .tp-row-sub .tp-dot { width: 8px; height: 8px; margin-right: 5px; vertical-align: 0; }
 .va-urg-under { display: none; }
 /* phones: the subtitle already carries the date and the trailing word the urgency → drop the tile, give the title room */
 @media (max-width: 480px) { .va-dl .tp-datetile { display: none; } }

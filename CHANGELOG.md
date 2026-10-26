@@ -15,6 +15,7 @@ Het formaat volgt [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) en he
 - Agenda: "vandaag" (datum, minikalender, kolom, tijdlijn) is oranje in plaats van rood, en "Examen" in de details is niet meer rood: rood betekent alleen nog "te laat".
 - De scheidingslijnen tussen rijen lopen overal over de volle breedte van de kaart (ze begonnen op wisselende plekken).
 - Overzicht › Nieuw: de aantallen staan nu rechts onder elkaar, ook als de tijd ernaast "16:21", "gisteren" of "donderdag" is.
+- Mededelingen: één filterlijst naast de lijst (Alles, Ongelezen en per vak of Ad Valvas, met aantallen; op de telefoon gewoon Alles | Ongelezen) in plaats van tabs; rijen tonen het vak met zijn kleur, de tijd rechts ("vandaag", "gisteren", "3 d geleden", exacte tijd bij hover) en "Nieuw" als pil in plaats van een oranje stip; titels blijven één regel; "Alles gelezen" staat bij de lijst. ⌄ leest een mededeling hier, ↗ opent Ad Valvas in een nieuw tabblad. Ook de kaart op het Overzicht.
 - Paginaknoppen staan overal op dezelfde plek in dezelfde stijl: op de vakpagina staan "Zet in zijbalk" en "Klassieke Toledo" nu rechts van de titel zoals op de andere pagina's; "Doorzoek alle bestanden" is een gewone knop.
 
 ### Fixed

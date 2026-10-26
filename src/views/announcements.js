@@ -9,23 +9,66 @@
   const S = {
     ctx: null,
     q: '',
-    filter: 'all',          // 'all'|'courses'|'school'|'unread'
+    filter: 'all',          // 'all'|'unread'  — one filter list on the side (like mail folders):
+    source: null,           // … or one course luId / 'advalvas' (then filter = 'all')
     open: new Set(),        // ids of expanded announcements
     bodies: new Map(),      // id -> {state:'loading'|'ok'|'err', html}
     keepRead: new Set(),    // ids read this session (stay listed under "Ongelezen")
     events: new Map(),      // id -> event
   };
 
-  function list() {
-    let all = [];
-    try {
-      if (S.filter === 'unread') {
-        all = (TP.data.announcements({ filter: 'all' }) || []).filter((e) => !e.read || S.keepRead.has(String(e.id)));
-      } else {
-        all = TP.data.announcements({ filter: S.filter }) || [];
-      }
-    } catch { all = []; }
-    return all;
+  function everything() {
+    try { return TP.data.announcements({ filter: 'all' }) || []; } catch { return []; }
+  }
+
+  const sourceKey = (e) => (e.subType === 'advalvas' ? 'advalvas' : String(e.sourceId || e.source || ''));
+
+  /** Filter choices: Alles · Ongelezen, then every course and Ad Valvas (unread first, then most recent). */
+  function choices(all) {
+    const by = new Map();
+    for (const e of all) {
+      const k = sourceKey(e);
+      if (!by.has(k)) by.set(k, { k, e, n: 0, unread: 0, latest: 0 });
+      const g = by.get(k);
+      g.n++; if (!e.read) g.unread++;
+      g.latest = Math.max(g.latest, VA().ms(e.date) || 0);
+    }
+    const unreadN = all.filter((e) => !e.read).length;
+    const top = [
+      { key: ':all', name: t('announcements.filter.all'), icon: 'announcements', n: all.length, on: !S.source && S.filter === 'all' },
+      { key: ':unread', name: t('announcements.filter.unread'), icon: 'bell', n: unreadN, on: !S.source && S.filter === 'unread' },
+    ];
+    const courses = [...by.values()].sort((a, b) => (b.unread > 0) - (a.unread > 0) || b.latest - a.latest).map((g) => {
+      const school = g.k === 'advalvas';
+      let color = 'var(--label-3)';
+      if (!school) { try { const c = TP.data.course ? TP.data.course(g.e.sourceId) : null; if (c && c.color) color = c.color; } catch { /* no course */ } }
+      return { key: g.k, name: school ? t('announcements.school') : TP.util.courseName(g.e.source || ''), color, n: g.n, unread: g.unread, on: S.source === g.k };
+    });
+    return { top, courses };
+  }
+
+  /** Wide screens: the filter list in the side column (like mail folders). */
+  function sourcesHtml(c) {
+    const row = (x, leading) => TP.ui.row({
+      action: 'an-source', attrs: { 'data-key': x.key, 'aria-current': x.on ? 'true' : null },
+      leading, title: esc(x.name),
+      trailing: `<span class="tp-count">${x.n}</span>`, // the same plain number in every row (like the sidebar); unread = bold name
+      strong: x.unread > 0,
+      cls: 'va-src-row' + (x.on ? ' is-on' : ''),
+    });
+    return TP.ui.section({ id: 'an-sources', title: esc(t('announcements.filter.label')),
+      body: TP.ui.group(c.top.map((x) => row(x, TP.ui.icon(x.icon, { size: 16 }))).join('')) + TP.ui.group(c.courses.map((x) => row(x, TP.ui.dot(x.color))).join('')) });
+  }
+
+  /** Phones / narrow windows: just Alles | Ongelezen (the standard segmented control); per course is a wide-screen extra. */
+  function sourcesSeg(c) {
+    const seg = TP.ui.segmented('an-seg', c.top.map((x) => ({ value: x.key, label: `${x.name} ${x.n}` })),
+      S.source ? null : ':' + S.filter, { label: t('announcements.filter.label') });
+    return `<div class="va-filters va-src-seg">${seg}</div>`;
+  }
+
+  function pick(k) {
+    if (!k || k.startsWith(':')) { S.filter = (k || ':all').slice(1); S.source = null; } else { S.filter = 'all'; S.source = k; }
   }
 
   function allUnread() {
@@ -55,26 +98,27 @@
     const school = e.subType === 'advalvas';
     const src = school ? t('announcements.school') : TP.util.courseName(e.source || '');
     const q = `${e.title} ${src} ${e.author || ''}`.toLowerCase();
-    const sub = `${esc(src)}<span aria-hidden="true"> · </span>${VA().timeAgo(e.date)}`;
+    const p = VA().annParts(e, unread); // same row as the Overview card: one chevron for every row (expand or open)
     if (school || !e.url) {
       return TP.ui.row({
         href: e.url ? TP.util.abs(e.url) : undefined,
         attrs: { 'data-action': 'an-open', 'data-eid': id, ...(school ? { target: '_blank', rel: 'noopener' } : {}) },
-        leading: VA().unreadDot(unread),
         title: esc(e.title),
-        subtitle: sub + (school ? `<span class="va-sr"> ${esc(t('va.newTab'))}</span>` : ''),
-        trailing: school ? TP.ui.icon('external', { size: 15 }) : '',
+        subtitle: p.subtitle,
+        trailing: p.trailing + (school ? `<span class="va-ann-ext">${TP.ui.icon('external', { size: 14 })}</span>` : ''),
+        chevron: !school, // ↗ = opens another site in a new tab; ⌄ (course announcements) = reads here
         strong: unread,
         q,
-        cls: 'va-ann' + (unread ? '' : ' is-read'),
+        cls: 'va-ann va-ann-row' + (unread ? '' : ' is-read'),
       });
     }
     const html = TP.ui.disclosure({
       id: 'an-' + id,
       open: S.open.has(id),
-      summary: { leading: VA().unreadDot(unread), title: esc(e.title), subtitle: sub, strong: unread }, // B12: dot + 600 for every unread item
+      summary: { title: esc(e.title), subtitle: p.subtitle, trailing: p.trailing, strong: unread }, // B12: every unread item = 600 + "Nieuw" 
       body: `<div class="va-ann-slot">${S.open.has(id) ? bodyHtml(e) : ''}</div>`,
       q,
+      cls: 'va-ann-row',
     });
     return VA().addAttrs(html, { 'data-eid': id, 'data-unread': unread ? '1' : null });
   }
@@ -85,34 +129,37 @@
     V.bind(ctx.root, 'announcements', { click: onClick, change: onChange, toggle: onToggle });
     const unreadN = allUnread().length;
     try {
-      ctx.setActions && ctx.setActions(unreadN
-        ? [{ id: 'an-readall', label: t('announcements.readAll'), icon: 'check', onClick: readAll }]
-        : []);
+      ctx.setActions && ctx.setActions([]); // "Alles gelezen" sits in the list's section header (like Overzicht › Nieuw)
     } catch { /* ignore */ }
     const loadedOk = V.state('events') === 'ok';
     try { ctx.setSubtitle && ctx.setSubtitle(unreadN ? esc(t('announcements.unreadCount', { n: unreadN })) : loadedOk ? esc(t('announcements.empty.unread')) : ''); } catch { /* ignore */ }
 
     S.events.clear();
-    const items = list();
-    const seg = TP.ui.segmented('an-filter', [
-      { value: 'all', label: t('announcements.filter.all') },
-      { value: 'courses', label: t('announcements.filter.courses') },
-      { value: 'school', label: t('announcements.filter.school') },
-      { value: 'unread', label: t('announcements.filter.unread') },
-    ], S.filter, { label: t('announcements.filter.label') });
+    const all = everything();
+    if (S.source && !all.some((e) => sourceKey(e) === S.source)) S.source = null;
+    const items = S.source ? all.filter((e) => sourceKey(e) === S.source)
+      : S.filter === 'unread' ? all.filter((e) => !e.read || S.keepRead.has(String(e.id))) : all;
 
     const state = V.state('events');
     let body = state === 'error' || state === 'stale-error' ? V.errorBlock(t('announcements.error'), 'events') : '';
     if (!items.length && state === 'loading') body += V.skeleton(5, { lead: 'dot' });
     else if (!items.length && state === 'error') { /* the error row says it all; no false "Alles gelezen" */ }
     else if (!items.length) body += TP.ui.group(TP.ui.empty(t('announcements.empty.' + S.filter)));
-    else body += V.addAttrs(TP.ui.group(items.map(rowHtml).join(''), { cls: 'va-ann-list' }), { 'data-va-sec': 'list' });
+    else {
+      // A section heading like "Per vak" next to it, so both columns' headings and cards start at the same height.
+      const src = S.source && items[0] ? (items[0].subType === 'advalvas' ? t('announcements.school') : TP.util.courseName(items[0].source || '')) : '';
+      body += V.addAttrs(TP.ui.section({
+        id: 'an-list', title: esc(src || t('announcements.filter.' + S.filter)), count: items.length,
+        actions: unreadN ? [{ action: 'an-readall', label: t('announcements.readAll'), icon: 'check' }] : [],
+        body: TP.ui.group(items.map(rowHtml).join(''), { cls: 'va-ann-list' }),
+      }), { 'data-va-sec': 'list' });
+    }
 
-    V.paint(ctx.root, `<div class="va-view va-announcements tp-narrow">
-      <div class="va-filters">${seg}</div>
-      ${body}
-      <div class="va-noresults" hidden></div>
-    </div>`);
+    // Same two columns as Overzicht and the course page: the list, and "Per vak" on the side.
+    // The list and its filter list start level, like Overzicht; below 1100px the filters come first (CSS).
+    const c = all.length ? choices(all) : null;
+    const main = `${c ? sourcesSeg(c) : ''}${body}<div class="va-noresults" hidden></div>`;
+    V.paint(ctx.root, `<div class="va-view va-announcements tp-narrow">${c ? TP.ui.cols(main, sourcesHtml(c)) : main}</div>`);
     if (S.q) V.filter(ctx.root, S.q);
   }
 
@@ -169,6 +216,13 @@
     } else if (act === 'an-open' && e) {
       if (!e.read) S.keepRead.add(String(e.id));
       await VA().openEvent(ev, el, e, { recent: false });
+    } else if (act === 'an-readall') {
+      ev.preventDefault();
+      await readAll();
+    } else if (act === 'an-source') {
+      ev.preventDefault();
+      pick(el.getAttribute('data-key') || ':all');
+      render(ctx);
     } else if (act === 'an-link' && e) {
       markOne(e);
     }
@@ -176,10 +230,7 @@
 
   function onChange(ev) {
     const el = ev.target;
-    if (el && el.name === 'an-filter' && S.ctx) {
-      S.filter = el.value;
-      render(S.ctx);
-    }
+    if (el && el.name === 'an-seg' && S.ctx) { pick(el.value); render(S.ctx); }
   }
 
   function onToggle(ev) {
