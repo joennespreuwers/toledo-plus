@@ -9,6 +9,10 @@
 //   https://icts-p-toledo-journey.cloud.icts.kuleuven.be   ultraLink → 302 to the course outline
 //   https://ultra.edu.kuleuven.cloud               Ultra HTML (with <base href> to a CDN!) + /learn/api/public/*
 //   https://files.mock-storage.test                "S3": signed file downloads with ACAO:*
+//
+// NOTE: Playwright does not intercept the follow-up request of a 3xx produced by route.fulfill().
+//  - download 302s therefore land on a real local HTTPS server (files-server.js, mapped via --host-resolver-rules);
+//  - the journey ultraLink "redirect" is a tiny HTML page doing location.replace() instead of a 302.
 //   https://cdn.example.invalid                    the <base href> target – any hit here is a relative-URL bug
 // Any other http(s) request is recorded as `foreign` and aborted (privacy: no third-party calls).
 
@@ -27,8 +31,8 @@ const ultraHtml = (title) => `<!doctype html><html lang="nl"><head><meta charset
 <title>${title}</title>
 <style>html,body{overflow:hidden;height:100%;margin:0}#site-wrap{height:100%;background:#eee}</style></head>
 <body><div id="site-wrap"><h1 id="ultra-classic">ULTRA KLASSIEK</h1>
-<a id="go-item" href="#" onclick="history.pushState({},'','/ultra/courses/_200661_1/outline/file/_5000_1');return false">open item</a>
-<a id="go-stream" href="#" onclick="history.pushState({},'','/ultra/stream');return false">stream</a></div></body></html>`;
+<a id="go-item" href="#" onclick="history.pushState({},'',location.origin+'/ultra/courses/_200661_1/outline/file/_5000_1');return false">open item</a>
+<a id="go-stream" href="#" onclick="history.pushState({},'',location.origin+'/ultra/stream');return false">stream</a></div></body></html>`;
 
 const json = (route, data, status = 200) => route.fulfill({ status, contentType: 'application/json; charset=utf-8', body: JSON.stringify(data) });
 
@@ -44,11 +48,14 @@ const strip = (l) => l.map(({ _kids, _attachments, ...r }) => r);
  * Install all routes on a BrowserContext.
  * @param ctx  Playwright BrowserContext
  * @param fx   result of fixtures.load()
- * @param opts { ultraDown?: boolean (Ultra API answers 401), portalDown?: boolean (portal API 500), latency?: ms }
+ * @param opts { ultraDown?: boolean (Ultra API answers 401), portalDown?: boolean (portal API 500), latency?: ms,
+ *               files?: files-server instance (set by launch) }
  * @returns recorder { requests, patches, foreign, cdn, downloads, unknown, find(fn), reset() }
  */
 async function install(ctx, fx, opts = {}) {
   const rec = { requests: [], patches: [], foreign: [], cdn: [], downloads: [], unknown: [] };
+  // Redirect targets are served by a real local HTTPS server (see files-server.js).
+  if (opts.files) opts.files.onRequest((d) => { rec.downloads.push(d); rec.requests.push({ method: 'GET', url: d.url, headers: d.headers, body: null }); });
   rec.find = (fn) => rec.requests.filter(fn);
   rec.reset = () => { for (const k of ['requests', 'patches', 'foreign', 'cdn', 'downloads', 'unknown']) rec[k].length = 0; };
   const P = fx.portal; const U = fx.ultra;
@@ -91,7 +98,8 @@ async function install(ctx, fx, opts = {}) {
     const lu = new URL(req.url()).searchParams.get('batchUid');
     const course = Object.values(U.courses).find((c) => c.courseId === lu);
     if (!course) return route.fulfill({ status: 404, contentType: 'text/plain', body: 'unknown course' });
-    return route.fulfill({ status: 302, headers: { location: `${ULTRA}/ultra/courses/${course.id}/outline` } });
+    const to = `${ULTRA}/ultra/courses/${course.id}/outline`;
+    return route.fulfill({ contentType: 'text/html', body: `<!doctype html><meta http-equiv="refresh" content="0;url=${to}"><script>location.replace(${JSON.stringify(to)})</script>` });
   });
 
   // ---- Ultra
@@ -101,6 +109,11 @@ async function install(ctx, fx, opts = {}) {
     if (path.startsWith('/learn/api/')) {
       if (opts.ultraDown) return json(route, { status: 401, message: 'Unauthorized' }, 401);
       const r = ultraApi(U, path, u, rec);
+      if (r && r.redirect && !opts.files) { // no local storage server: serve the file inline
+        const t = new URL(r.redirect); const fileName = decodeURIComponent(t.pathname.split('/').pop());
+        rec.downloads.push({ url: r.redirect, fileName, headers: {}, via: 'inline' });
+        return route.fulfill({ status: 200, headers: { 'content-type': t.searchParams.get('type') || 'application/octet-stream' }, body: Buffer.from(`MOCK FILE ${fileName}\n`) });
+      }
       if (r && r.redirect) return route.fulfill({ status: 302, headers: { location: r.redirect, 'cache-control': 'no-store' } });
       if (r === null) { rec.unknown.push(e); return json(route, { status: 404, message: 'not mocked' }, 404); }
       return json(route, r);

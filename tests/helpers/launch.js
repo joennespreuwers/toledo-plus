@@ -11,6 +11,7 @@ const path = require('path');
 const { chromium } = require('./pw');
 const fixtures = require('./fixtures');
 const mock = require('./mock');
+const filesServer = require('./files-server');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 // EXT_DIR lets you run the suite against another unpacked build (e.g. an extracted release zip).
@@ -35,10 +36,12 @@ const IGNORED_ERRORS = [
  */
 async function launch(o = {}) {
   const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tplus-e2e-'));
+  const files = await filesServer.start();
   const ctx = await chromium.launchPersistentContext(userDataDir, {
     channel: 'chromium', // "new" headless – required for extensions
     headless: HEADLESS,
-    args: [`--disable-extensions-except=${EXT}`, `--load-extension=${EXT}`, '--no-first-run', '--no-default-browser-check'],
+    args: [`--disable-extensions-except=${EXT}`, `--load-extension=${EXT}`, '--no-first-run', '--no-default-browser-check', ...(files ? files.chromeArgs : [])],
+    ignoreHTTPSErrors: !!files,
     viewport: o.viewport || DESKTOP,
     colorScheme: o.colorScheme || 'light',
     locale: o.locale || 'nl-BE',
@@ -47,7 +50,7 @@ async function launch(o = {}) {
     serviceWorkers: 'allow',
   });
   const fx = fixtures.load();
-  const rec = await mock.install(ctx, fx, o.mock || {});
+  const rec = await mock.install(ctx, fx, { ...(o.mock || {}), files });
   const errors = [];
   const watch = (page) => {
     page.on('console', (m) => { if (m.type() === 'error' && !IGNORED_ERRORS.some((r) => r.test(m.text()))) errors.push(`[console] ${page.url()} ${m.text()}`); });
@@ -67,6 +70,7 @@ async function launch(o = {}) {
     async getState() { return storageGet(h, 'local', 'state'); },
     async close() {
       await ctx.close().catch(() => {});
+      await files?.close().catch(() => {});
       try { fs.rmSync(userDataDir, { recursive: true, force: true }); } catch (_) { /* ignore */ }
     },
   };
@@ -128,6 +132,19 @@ async function waitForIdle(page, { timeout = 10000 } = {}) {
   }, null, { timeout, polling: 100 }).catch(() => { /* views may keep a busy marker for background refresh; not fatal */ });
 }
 
+/** Resolve once the shell's shadow DOM has had no mutations for `quiet` ms (data loaded + rendered). */
+async function waitForQuiet(page, { quiet = 400, timeout = 8000 } = {}) {
+  await page.evaluate(({ quiet, timeout }) => new Promise((resolve) => {
+    const sr = document.querySelector('#tplus-root')?.shadowRoot;
+    if (!sr) return resolve(false);
+    let timer = setTimeout(done, quiet);
+    const hard = setTimeout(done, timeout);
+    const mo = new MutationObserver(() => { clearTimeout(timer); timer = setTimeout(done, quiet); });
+    mo.observe(sr, { subtree: true, childList: true, attributes: true, characterData: true });
+    function done() { mo.disconnect(); clearTimeout(timer); clearTimeout(hard); resolve(true); }
+  }), { quiet, timeout });
+}
+
 /** Evaluate inside the shadow root: fn(shadowRoot, arg). */
 function inShadow(page, fn, arg) {
   return page.evaluate(([src, a]) => {
@@ -154,7 +171,7 @@ async function waitFor(pred, { timeout = 5000, interval = 50 } = {}) {
   return pred();
 }
 
-module.exports = { EXT, launch, waitForShell, waitForIdle, inShadow, shell, screenshot, waitFor, ROOT, ARTIFACTS, DESKTOP, PHONE,
+module.exports = { EXT, launch, waitForShell, waitForIdle, waitForQuiet, inShadow, shell, screenshot, waitFor, ROOT, ARTIFACTS, DESKTOP, PHONE,
   PORTAL_HOME: 'https://toledo.kuleuven.be/portal/#/home',
   portalRoute: (r, p) => `https://toledo.kuleuven.be/portal/#/tplus/${r}${p ? '/' + encodeURIComponent(p) : ''}`,
   COURSE_URL: 'https://ultra.edu.kuleuven.cloud/ultra/courses/_200661_1/outline',

@@ -56,7 +56,7 @@ test('content scripts follow the documented load order and exist', () => {
 test('shadow-root CSS: every view has a stylesheet, listed in TP.shell.CSS and web-accessible', () => {
   assert.ok(exists('src/core/shell.js'), 'src/core/shell.js missing');
   const shell = read('src/core/shell.js');
-  const m = shell.match(/CSS\s*=\s*\[([\s\S]*?)\]/);
+  const m = shell.match(/\bCSS(?:_FILES)?\s*=\s*\[([\s\S]*?)\]/);
   assert.ok(m, 'TP.shell.CSS list not found in shell.js');
   const css = [...m[1].matchAll(/['"`]([^'"`]+\.css)['"`]/g)].map((x) => x[1]);
   assert.equal(css[0], 'ui.css', 'ui.css must be first');

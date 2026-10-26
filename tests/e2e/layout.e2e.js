@@ -3,7 +3,7 @@
 // Screenshots go to tests/artifacts/ (git-ignored; uploaded by CI).
 const { describe, it, after } = require('node:test');
 const assert = require('node:assert/strict');
-const { launch, waitForShell, waitForIdle, screenshot, PHONE, DESKTOP, COURSE_URL, portalRoute } = require('../helpers/launch');
+const { launch, waitForShell, waitForIdle, waitForQuiet, screenshot, PHONE, DESKTOP, COURSE_URL, portalRoute } = require('../helpers/launch');
 const { S } = require('../helpers/app');
 
 const PAGES = [
@@ -23,6 +23,7 @@ for (const scheme of ['light', 'dark']) {
         await h.page.goto(url);
         await waitForShell(h.page);
         await waitForIdle(h.page);
+        await waitForQuiet(h.page);
         await h.page.waitForTimeout(300);
         assert.ok(await h.page.locator(S.sidebar).isVisible(), `${name}: sidebar`);
         assert.equal(await h.page.locator(S.tabbar).isVisible(), false, `${name}: tab bar hidden on desktop`);
@@ -37,6 +38,7 @@ for (const scheme of ['light', 'dark']) {
         await h.page.goto(url);
         await waitForShell(h.page);
         await waitForIdle(h.page);
+        await waitForQuiet(h.page);
         await h.page.waitForTimeout(300);
         assert.ok(await h.page.locator(S.tabbar).isVisible(), `${name}: tab bar visible at 390px`);
         assert.equal(await h.page.locator(S.sidebar).isVisible(), false, `${name}: sidebar hidden at 390px`);

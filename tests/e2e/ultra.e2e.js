@@ -3,8 +3,8 @@
 // deep bar, classic mode.
 const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert/strict');
-const { launch, waitForShell, waitForIdle, screenshot, waitFor, COURSE_URL } = require('../helpers/launch');
-const { S, mainText } = require('../helpers/app');
+const { launch, waitForShell, waitForIdle, waitForQuiet, screenshot, waitFor, COURSE_URL } = require('../helpers/launch');
+const { S, mainText, waitSettings } = require('../helpers/app');
 
 const folder = (title) => `#tplus-root details.cv-folder:has(> summary :text-is("${title}"))`;
 
@@ -21,6 +21,7 @@ describe('ultra course page', () => {
     await waitForShell(page);
     await page.waitForFunction(() => !!document.querySelector('#tplus-root').shadowRoot.querySelector('details.cv-folder'), null, { timeout: 15000 });
     await waitForIdle(page);
+    await waitForQuiet(page);
   }
 
   it('renders the course view over Ultra (overflow:hidden + base href page)', async () => {
@@ -121,7 +122,7 @@ describe('ultra course page', () => {
   });
 
   it('shows a deep bar with a back link on a non-outline Ultra page (SPA navigation)', async () => {
-    await page.evaluate(() => history.pushState({}, '', '/ultra/courses/_200661_1/outline/file/_5000_1'));
+    await page.evaluate(() => history.pushState({}, '', location.origin + '/ultra/courses/_200661_1/outline/file/_5000_1'));
     await page.waitForFunction(() => !!document.querySelector('#tplus-deep')?.shadowRoot?.querySelector('nav'), null, { timeout: 5000 });
     assert.equal(await page.evaluate(() => document.documentElement.classList.contains('tplus-on')), false, 'shell should step aside on item pages');
     assert.ok(await page.locator('#site-wrap').isVisible(), 'original Ultra page visible');
@@ -147,7 +148,7 @@ describe('ultra course page', () => {
     await page.waitForFunction(() => !document.documentElement.classList.contains('tplus-on'), null, { timeout: 5000 });
     assert.ok(await page.locator('#site-wrap').isVisible());
     await page.locator(S.pill).waitFor({ state: 'visible' });
-    assert.equal((await h.getSettings()).wrap.courses, false);
+    assert.equal((await waitSettings(h, (x) => x.wrap && x.wrap.courses === false))?.wrap.courses, false);
     await page.locator(S.pill).click();
     await page.waitForFunction(() => document.documentElement.classList.contains('tplus-on'), null, { timeout: 5000 });
     await waitForShell(page);

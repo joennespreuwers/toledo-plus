@@ -83,15 +83,19 @@
     notify(keys);
   }
 
-  // Debounced persist. Falls back to storage.local when sync is over quota.
-  let pending = null, timer = null;
+  // Throttled persist (leading edge, then at most once per second) to respect storage.sync
+  // write quotas while keeping the first write immediate. Falls back to storage.local when sync fails.
+  let pending = null, timer = null, lastWriteAt = 0;
   function persist() {
     if (!pending) {
       let resolve;
       pending = { promise: new Promise((r) => { resolve = r; }), resolve };
     }
-    clearTimeout(timer);
+    if (timer) return pending.promise; // a write is already scheduled; it will pick up the latest settings
+    const wait = Math.max(0, lastWriteAt + 1000 - Date.now());
     timer = setTimeout(async () => {
+      timer = null;
+      lastWriteAt = Date.now();
       const p = pending; pending = null;
       const data = clone(settings);
       const savedAt = Date.now();
@@ -103,7 +107,7 @@
         try { await sset('local', { settingsLocal: data, settingsSavedAt: savedAt }); } catch (_) { /* nothing else to try */ }
       }
       p.resolve();
-    }, 250);
+    }, wait);
     return pending.promise;
   }
 

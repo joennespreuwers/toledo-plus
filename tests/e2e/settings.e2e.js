@@ -33,7 +33,7 @@ describe('settings', () => {
     const en = strings('en');
     const side = await page.locator(S.sidebar).innerText();
     assert.ok(side.includes(en['nav.overview']) && side.includes(en['nav.courses']), `sidebar in English: ${side.slice(0, 120)}`);
-    assert.equal((await h.getSettings()).language, 'en');
+    assert.equal((await waitSettings(h, (s) => s.language === 'en'))?.language, 'en', 'language persisted');
     // other views follow
     await openPortal(h, 'overview');
     assert.equal(await page.locator(S.app).getAttribute('lang'), 'en');

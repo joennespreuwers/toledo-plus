@@ -19,6 +19,7 @@
   // everything active or layout-breaking before the result is inserted anywhere.
   const DROP = 'script,style,iframe,frame,frameset,object,embed,applet,form,input,button,textarea,select,option,link,meta,base,svg,math,template,noscript,portal';
   const BAD_URL = /^\s*(javascript|vbscript|data):/i;
+  const REL_OK = /^\s*([a-z][a-z0-9+.-]*:|#)/i; // already absolute (any scheme) or in-page anchor
   const IMG_DATA = /^\s*data:image\/(png|jpe?g|gif|webp);/i;
   function sanitize(html) {
     if (!html) return '';
@@ -32,6 +33,10 @@
           el.removeAttribute(a.name);
         } else if (n === 'href' || n === 'src' || n === 'xlink:href' || n === 'action' || n === 'poster' || n === 'background') {
           if (BAD_URL.test(v) && !(n === 'src' && el.tagName === 'IMG' && IMG_DATA.test(v))) el.removeAttribute(a.name);
+          else if ((n === 'href' || n === 'src') && v && !REL_OK.test(v)) {
+            // Absolutize relative URLs: on Ultra a relative src would resolve against the CDN <base href>.
+            try { el.setAttribute(a.name, new URL(v, location.href).href); } catch (_) { el.removeAttribute(a.name); }
+          }
         } else if (n === 'srcset' && BAD_URL.test(v)) {
           el.removeAttribute(a.name);
         }

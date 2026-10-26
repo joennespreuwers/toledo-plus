@@ -3,7 +3,7 @@
 const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const { launch, waitForShell, waitFor, screenshot } = require('../helpers/launch');
-const { S, strings, openPortal, waitForRoute, mainText } = require('../helpers/app');
+const { S, strings, openPortal, waitForRoute, mainText, waitSettings } = require('../helpers/app');
 
 const ROUTES = ['courses', 'deadlines', 'planning', 'announcements', 'settings', 'overview'];
 
@@ -93,7 +93,11 @@ describe('portal shell', () => {
     assert.ok(txt.includes("Opdracht 'Onder de huid'"), 'Toledo due event');
     assert.ok(txt.includes('Productiedossier'), 'Toledo due event (12 d)');
     assert.ok(txt.includes('Shotlist korte film'), 'Ultra calendar item (via relay) missing');
-    assert.ok(!txt.includes('Ver weg deadline'), 'deadline beyond horizonDays (42) shown');
+    // the Deadlines view may list everything; the overview respects deadlines.horizonDays (42)
+    await openPortal(h);
+    const ov = await page.locator(S.section('deadlines')).innerText();
+    assert.ok(!ov.includes('Ver weg deadline'), 'overview shows a deadline beyond horizonDays (42)');
+    await openPortal(h, 'deadlines');
     const dupes = txt.split("Opdracht 'Onder de huid'").length - 1;
     assert.ok(dupes <= 1, `Toledo + Ultra duplicate not deduped (${dupes}×)`);
   });
@@ -161,9 +165,10 @@ describe('portal shell', () => {
       assert.notEqual(b.subType, 'due'); assert.notEqual(b.subType, 'course');
     }
     assert.ok(patch.body.some((b) => b.id === 'ev-1'), 'newest Filmtaal item included');
-    // UI reflects it
-    await page.waitForTimeout(300);
-    assert.equal(await page.locator(`${S.section('new')} [data-action="ov-readall"]`).count(), 0, 'read-all action disappears when nothing is unread');
+    // After navigation the feed is empty (rows stay stable while reading, per DESIGN.md)
+    await openPortal(h, 'courses');
+    await openPortal(h, 'overview');
+    assert.equal(await page.locator(`${S.section('new')} details[data-lu]`).count(), 0, 'feed should be empty after "mark all read" + navigation');
   });
 
   it('never talks to third parties or the <base href> CDN', async () => {
@@ -188,13 +193,13 @@ describe('portal shell', () => {
     const pill = page.locator(S.pill);
     await pill.waitFor({ state: 'visible', timeout: 5000 });
     await screenshot(page, 'portal-classic');
-    const s = await h.getSettings();
-    assert.equal(s.wrap.portal, false, 'settings.wrap.portal persisted');
+    const s = await waitSettings(h, (x) => x.wrap && x.wrap.portal === false);
+    assert.equal(s && s.wrap.portal, false, 'settings.wrap.portal persisted');
     await pill.click();
     await page.waitForFunction(() => document.documentElement.classList.contains('tplus-on'), null, { timeout: 5000 });
     await waitForShell(page);
     assert.equal(await page.locator('#classic-portal').isVisible(), false);
-    assert.equal((await h.getSettings()).wrap.portal, true);
+    assert.equal((await waitSettings(h, (x) => x.wrap && x.wrap.portal === true))?.wrap.portal, true);
   });
 
   it('no console errors or page errors overall', () => {

@@ -1,7 +1,7 @@
 'use strict';
 // App-level helpers shared by the e2e tests (selectors follow src/core/shell.js + src/core/ui.js).
 const { sandbox, list } = require('./sandbox');
-const { waitForShell, waitForIdle, portalRoute, PORTAL_HOME } = require('./launch');
+const { waitForShell, waitForIdle, waitForQuiet, portalRoute, PORTAL_HOME } = require('./launch');
 
 let table = null;
 /** The registered UI strings, loaded in Node so tests can assert translated text. */
@@ -25,7 +25,7 @@ const S = {
   tabbar: '#tplus-root nav.tp-tabbar',
   search: '#tplus-root input[data-shell="search"]',
   section: (id) => `#tplus-root section[data-section="ov-${id}"]`,
-  navLink: (route) => `#tplus-root nav.tp-sidebar a[data-route="${route}"]`,
+  navLink: (route) => `#tplus-root nav.tp-sidebar a.tp-sb-item[data-route="${route}"]`,
   menuBtn: '#tplus-root [data-shell="menu"]',
   classicBtn: '#tplus-root [data-shell="classic"]',
   pill: '#tplus-switch',
@@ -39,6 +39,7 @@ async function openPortal(h, route, param) {
   await page.goto(url);
   await waitForShell(page);
   await waitForIdle(page);
+  await waitForQuiet(page);
   return page;
 }
 
@@ -47,6 +48,7 @@ async function waitForRoute(page, route) {
   await page.waitForFunction((r) => location.hash.startsWith(`#/tplus/${r}`), route, { timeout: 8000 });
   await waitForShell(page);
   await waitForIdle(page);
+  await waitForQuiet(page);
 }
 
 /** Visible text of the main view (innerText skips hidden elements). */

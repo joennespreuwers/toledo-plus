@@ -17,7 +17,7 @@
   const TABS = ['overview', 'courses', 'deadlines', 'planning'];
   const OUTLINE = /^\/ultra\/courses\/(_\d+_\d+)\/outline\/?$/;
   const ULTRA_CID = /^\/ultra\/courses\/(_\d+_\d+)(\/|$)/;
-  const CSS = ['ui.css', 'src/views/overview.css', 'src/views/deadlines.css', 'src/views/planning.css',
+  const CSS_FILES = ['ui.css', 'src/views/overview.css', 'src/views/deadlines.css', 'src/views/planning.css',
     'src/views/announcements.css', 'src/views/courses.css', 'src/views/course.css', 'src/views/settings.css'];
 
   const views = {};
@@ -202,7 +202,7 @@
     shadow.appendChild(app);
     buildChrome();
     applyThemeAll();
-    styleRoot(shadow, CSS).then(() => { app.hidden = false; });
+    styleRoot(shadow, CSS_FILES).then(() => { app.hidden = false; });
     shadow.addEventListener('click', onShellClick);
     shadow.addEventListener('input', onShellInput);
     shadow.addEventListener('keydown', onShellKeydown);
@@ -602,7 +602,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
       updateHead();
       return;
     }
-    const focus = captureFocus();
+    const focus = safe(captureFocus, null);
     try {
       await cur.view.render(cur.ctx);
     } catch (e) {
@@ -737,6 +737,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     setPill(mode === 'classic');
     if (mode === 'deep') renderDeep(); else removeDeep();
     if (mode !== 'shell') return;
+    backgroundRefresh();
     whenBody(() => {
       mount();
       const key = r.route + JSON.stringify(r.params || {});
@@ -854,6 +855,21 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     }
   }
 
+  // Stale-while-revalidate: views render from cache immediately; refresh silently when stale.
+  let bgAt = 0;
+  function backgroundRefresh() {
+    if (refreshing || !TP.data?.refresh) return;
+    const last = safe(() => TP.data.lastUpdated?.(), null) || 0;
+    const now = Date.now();
+    if (now - last < 60000 || now - bgAt < 60000) return;
+    bgAt = now;
+    refreshing = true;
+    $('.tp-refresh')?.classList.add('spinning');
+    Promise.resolve().then(() => TP.data.refresh())
+      .catch((e) => console.warn('[Toledo+] background refresh failed', e))
+      .finally(() => { refreshing = false; $('.tp-refresh')?.classList.remove('spinning'); rerender(); });
+  }
+
   async function doRefresh() {
     if (refreshing || !TP.data?.refresh) return;
     refreshing = true;
@@ -900,8 +916,8 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
       if (mode === 'shell') rerender();
     }));
     safe(() => TP.state?.subscribe?.((st, keys = []) => {
-      // visits/cache/ui are written during renders; reacting to them would loop.
-      if (mode === 'shell' && keys.some((k) => !['ui', 'cache', 'visits'].includes(k))) rerender();
+      // These keys are written during renders/interaction inside a view; reacting to them would loop or reset UI.
+      if (mode === 'shell' && keys.some((k) => !['ui', 'cache', 'visits', 'openFolders', 'recent'].includes(k))) rerender();
     }));
     safe(() => TP.data?.on?.('change', () => { if (mode === 'shell') rerender(); }));
     let lastErrToast = 0;
@@ -928,7 +944,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
   }
 
   TP.shell = {
-    CSS, ROUTES,
+    CSS: CSS_FILES, ROUTES,
     register, navigate, href, toast, announce,
     rerender: () => rerender(),
     start, preflight,
