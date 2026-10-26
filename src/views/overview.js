@@ -51,7 +51,7 @@
       const src = school ? t('announcements.school') : TP.util.courseName(e.source || '');
       return {
         src,
-        subtitle: `${TP.ui.dot(color)}<span>${esc(src)}</span>${school ? `<span class="va-sr"> ${esc(t('va.newTab'))}</span>` : ''}`,
+        subtitle: `${TP.ui.dot(color)}<span>${esc(src)}</span>`, // every row opens the announcement sheet (no new tab)
         // time first, "Nieuw" last (an invisible copy on read rows): pills and times line up whatever the time says
         trailing: `${VA.daysAgo(e.date)}${unread ? TP.ui.badge(t('course.new'), { tone: 'tint', label: t('va.unread') })
           : `<span class="tp-badge tp-badge-tint va-new-slot" aria-hidden="true">${esc(t('course.new'))}</span>`}`,
@@ -742,15 +742,14 @@
   /* ---------- Announcements ---------- */
   function annRow(e) {
     S.events.set(String(e.id), e);
-    const school = e.subType === 'advalvas';
     const p = VA.annParts(e, !e.read);
     return TP.ui.row({
-      href: e.url ? TP.util.abs(e.url) : undefined,
-      attrs: { 'data-action': 'ov-open', 'data-eid': String(e.id), ...(school ? { target: '_blank', rel: 'noopener' } : {}) },
+      href: e.url ? TP.util.abs(e.url) : '#',
+      attrs: { 'data-action': 'ov-ann', 'data-eid': String(e.id), 'aria-haspopup': 'dialog' }, // opens TP.annSheet (Ad Valvas too)
       title: esc(e.title),
       subtitle: p.subtitle,
-      trailing: p.trailing + (school ? `<span class="va-ann-ext">${TP.ui.icon('external', { size: 14 })}</span>` : ''),
-      chevron: !school, // ↗ = opens Ad Valvas in a new tab
+      trailing: p.trailing,
+      chevron: true,
       strong: !e.read,
       q: `${e.title} ${p.src}`.toLowerCase(),
       cls: 'va-ann va-ann-row' + (e.read ? ' is-read' : ''),
@@ -835,6 +834,7 @@
     if (!el || !ctx || !ctx.root.contains(el)) return;
     const act = el.getAttribute('data-action');
     switch (act) {
+      case 'ov-ann': // announcements section → the announcement sheet, stepping through that section's rows
       case 'ov-open': {
         const e = S.events.get(el.getAttribute('data-eid'));
         if (!e) return;
@@ -845,6 +845,18 @@
             S.kept.set(String(e.id), { e: { ...e, read: true }, luId: meta.luId, meta });
             S.keptStamp = TP.data.lastUpdated && TP.data.lastUpdated();
           }
+        }
+        const isAnn = e.subType === 'announcement' || e.subType === 'advalvas' || e.type === 'advalvas';
+        if (isAnn && TP.annSheet && !(ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey || ev.button > 0)) {
+          ev.preventDefault();
+          const sec = el.closest('[data-va-sec], section') || ctx.root;
+          const rows = act === 'ov-ann' ? [...sec.querySelectorAll('[data-action="ov-ann"][data-eid]')] : [el];
+          TP.annSheet.open(e, {
+            list: rows.map((r) => S.events.get(r.getAttribute('data-eid'))).filter(Boolean),
+            opener: el,
+            rowFor: (it) => { try { return S.ctx && S.ctx.root.querySelector(`[data-action="${act}"][data-eid="${VA.cssEsc(it.key)}"]`); } catch { return null; } },
+          });
+          return;
         }
         await VA.openEvent(ev, el, e);
         break;

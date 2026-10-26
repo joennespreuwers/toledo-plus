@@ -1,17 +1,4 @@
-/* Toledo+ — Announcements view (shared va-* pieces live in overview.css). */
-.va-ann-list .tp-summary .tp-row-title { white-space: nowrap; } /* one line with …, like every list row; the full title is in the opened item */
-.va-ann-slot { padding: 0 16px 14px 44px; }
-.va-ann-body {
-  color: var(--label); font-size: var(--fs-body, .9375rem); line-height: 1.45;
-  overflow-wrap: anywhere; max-width: 68ch;
-}
-.va-ann-body img, .va-ann-body video { max-width: 100%; height: auto; border-radius: 8px; }
-.va-ann-body table { border-collapse: collapse; max-width: 100%; display: block; overflow-x: auto; }
-.va-ann-body td, .va-ann-body th { border: 1px solid var(--separator); padding: 4px 8px; }
-.va-ann-body a { color: var(--tint-text, var(--tint)); text-decoration: underline; }
-.va-ann-body p { margin: 0 0 .7em; }
-.va-ann-open { margin: 10px 0 0; font-size: var(--fs-subhead, .8125rem); }
-.va-ann-open a { color: var(--tint-text, var(--tint)); font-weight: 600; }
+/* Toledo+ — Announcements view (shared va-* pieces live in overview.css) + the announcement sheet (TP.annSheet). */
 .va-ann .tp-row-trail { color: var(--label-2); }
 
 /* the filter list (side column): the selection reads like a selected sidebar item; below 1100px it comes first */
@@ -27,7 +14,31 @@
 @media (max-width: 1099px) { .va-announcements .tp-col-side { display: none; } }
 .va-src-row .tp-row-lead { color: var(--tint-text); }
 .va-src-row .tp-count { min-width: 2ch; text-align: right; font-weight: 400; }
-/* what a row does, at a glance: ⌄ expands here (flips up when open), ↗ opens another site; same 14px box so times line up */
-.va-ann-list .tp-disc .tp-ic { transform: rotate(90deg); }
-.va-ann-list .tp-disclosure[open] > summary .tp-disc .tp-ic { transform: rotate(-90deg); }
-.va-ann-ext { display: grid; place-items: center; width: 14px; margin-left: 4px; color: var(--label-3); }
+/* every row opens the announcement sheet (›); "Open in Ultra / Ad Valvas" (↗) lives inside the sheet */
+
+
+/* ---------- announcement sheet: the shell's .tp-detail, a bit wider for reading ---------- */
+.tp-detail[data-sheet="announcement"] { width: min(calc(100% - 32px), 640px); max-height: min(82vh, 820px); inset-block-start: 9vh; }
+@media (max-width: 699px) {
+  .tp-detail[data-sheet="announcement"] { width: 100%; max-height: 92vh; inset-block-start: auto; }
+}
+/* Long messages scroll the body: max-content rows (auto rows would squeeze the overflow:hidden groups instead). */
+.tp-detail[data-sheet="announcement"] .tp-detail-body { grid-auto-rows: max-content; gap: 14px; }
+.tp-detail[data-sheet="announcement"] .tp-detail-body > .tp-group + .tp-group { margin-top: 0; }
+.an-nav { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin: -4px 0 -6px; }
+.an-pos { min-width: 5.5em; text-align: center; color: var(--label-2); font-size: var(--fs-footnote, .8125rem); font-variant-numeric: tabular-nums; }
+.an-nav .tp-btn { min-height: 32px; }
+.an-nav .tp-btn[aria-disabled="true"] { opacity: .4; cursor: default; }
+.an-body { color: var(--label); max-width: 68ch; }
+.an-body a[href] { color: var(--tint-text, var(--tint)); text-decoration: underline; }
+.an-body h1, .an-body h2, .an-body h3, .an-body h4 { font-size: var(--fs-headline, 1rem); font-weight: 600; margin: .9em 0 .4em; }
+.an-body blockquote { margin: 0 0 .7em; padding-left: 12px; border-left: 3px solid var(--separator); color: var(--label-2); }
+.an-body > :last-child { margin-bottom: 0; }
+.an-h { margin: 0 0 6px 16px; font-size: var(--fs-footnote, .8125rem); font-weight: 600; color: var(--label-2); text-transform: uppercase; letter-spacing: .02em; }
+.an-atts .tp-row-title { white-space: normal; overflow-wrap: anywhere; }
+.tp-detail .an-ext { flex: none; margin-left: auto; color: var(--label-3); }
+.an-state p { margin: 0 0 8px; }
+.an-state-title { display: flex; align-items: center; gap: 8px; }
+.an-state-title .tp-ic { flex: none; color: var(--tint-text); }
+.an-state-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0 !important; }
+.an-loading .tp-skeleton { box-shadow: none; }

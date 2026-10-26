@@ -6,8 +6,14 @@ Het formaat volgt [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) en he
 
 ## [Unreleased]
 
+### Added
+- **Ad Valvas in Toledo+**: an Ad Valvas notice now opens with its full text, sender, recipients, date and attachments inside Toledo+ instead of only a link. The first time in a browser session Ad Valvas may ask you to sign in once: "Open en meld aan" opens the notice in a new tab (KU Leuven sign-in completes there) and when you come back Toledo+ loads it by itself. Needs one new read-only site permission (`icts-p-toledo-valvas.cloud.icts.kuleuven.be`, only the message page of a notice); the text stays in memory only (≤ 30 min), images in the message are not loaded.
+- **Mededeling openen = een venster**: every announcement (Mededelingen, Overzicht, the course page, ⌘K) opens in a sheet with title, course/source and colour dot, author, date, the full text, attachments, "Open in Ultra"/"Open in Ad Valvas" and "Markeer als ongelezen". Step through the current (filtered/searched) list with ↑/↓ or j/k or the arrow buttons; Esc returns to the row. Scale/fade on desktop, slides up from the bottom on phones. Opening marks it read (as before).
+
 ### Changed
 - "Binnenkort" (morgen, over 3 d) volgt hetzelfde patroon als "te laat", in amber: de rij krijgt een lichtgele achtergrond en de tijd staat in dezelfde stijl als de andere tijden (geen klok-icoon). Overzicht, Deadlines (ook examens binnen 3 dagen) en de vakpagina.
+- Announcements no longer expand inline (Mededelingen and course page); Ad Valvas rows no longer leave Toledo+ on a plain click (⌘/Ctrl-click still opens the original page in a new tab).
+- Course announcements from the portal now find their text also when the event links to a generic Ultra page (by id from the event, else by title in the course's announcements).
 
 ## [1.6.0] - 2026-10-27
 

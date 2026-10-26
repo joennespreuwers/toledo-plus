@@ -66,7 +66,8 @@ details[open] > summary .cv-chev svg { transform: rotate(90deg); }
 
 /* documents / announcements expanded inline */
 .cv-doc-body { padding: 4px 16px 14px calc(12px + var(--depth, 0) * 20px + 46px); }
-.cv-ann .cv-doc-body { padding-left: 30px; }
+button.cv-row.cv-ann { width: 100%; border: 0; background: none; font: inherit; text-align: left; color: var(--label); cursor: pointer; }
+button.cv-row.cv-ann:hover { background: var(--fill); }
 .cv-prose { color: var(--label); font-size: var(--fs-body, .9375rem); line-height: 1.5; overflow-wrap: anywhere; }
 .cv-prose :where(p, ul, ol) { margin: 0 0 .6em; }
 .cv-prose img, .cv-prose video { max-width: 100%; height: auto; }

@@ -253,6 +253,14 @@
       else TP.fulltext.open(it.hit);
       return;
     }
+    if (it.type === 'announcement' && it.ev && TP.annSheet && !mod) {
+      // The announcement sheet (src/views/announcements.js), stepping through this result group; it marks read itself.
+      const list = items.filter((x) => x.type === 'announcement' && x.ev).map((x) => x.ev);
+      const op = opener;
+      close(false);
+      TP.annSheet.open(it.ev, { list, opener: op });
+      return;
+    }
     if (it.type === 'announcement' && it.ev) safe(() => Promise.resolve(TP.data.markRead([it.ev])).catch(() => {}));
     if (it.type === 'deadline' || it.type === 'announcement' || it.type === 'recent') {
       close(false);

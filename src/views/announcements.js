@@ -1,18 +1,288 @@
-/* Toledo+ — Announcements view: course announcements (expand inline) + Ad Valvas (open in new tab). */
+/* Toledo+ — Announcements view (course announcements + Ad Valvas) and the announcement sheet (TP.annSheet).
+   Every announcement row in Toledo+ (this view, the overview, the course page, ⌘K) opens TP.annSheet: the shell's
+   detail sheet with the full text, prev/next through the list it came from, "open in Ultra/Ad Valvas" and read state. */
 (() => {
   'use strict';
   const TP = (globalThis.TP ||= {});
   const t = (k, v) => TP.t(k, v);
   const esc = (s) => TP.util.esc(s == null ? '' : String(s));
+  const icon = (n, o) => TP.ui.icon(n, o);
   const VA = () => TP.viewsA;
+  const safe = (fn, fb) => { try { return fn(); } catch { return fb; } };
 
+  /* ------------------------------------------------------------------ */
+  /* TP.annSheet                                                          */
+  /* ------------------------------------------------------------------ */
+  // Item = { key, kind:'course'|'school', title, source, color, author, date, url, event|null, html|null, cid, aid, read }
+  const isSchool = (e) => !!e && (e.subType === 'advalvas' || e.type === 'advalvas');
+
+  /** Portal announcement event → sheet item. */
+  function fromEvent(e) {
+    const school = isSchool(e);
+    const course = !school && e.sourceId ? safe(() => TP.data.course(e.sourceId), null) : null;
+    return {
+      key: String(e.id),
+      kind: school ? 'school' : 'course',
+      title: e.title || '',
+      source: school ? t('announcements.school') : (course ? course.name : TP.util.courseName(e.source || '')),
+      color: school ? 'var(--label-3)' : (course ? course.color : safe(() => TP.util.colorForIndex(e.color), null)),
+      author: e.author || '',
+      date: VA() ? VA().ms(e.date) : Number(e.date) || 0,
+      url: e.url ? TP.util.abs(e.url) : null,
+      event: e,
+      html: null,
+      read: !!e.read,
+    };
+  }
+
+  /** Ultra REST announcement of a course ({id, title, body, created}) → sheet item (matched to its portal event when known). */
+  function fromUltra(a, c = {}) {
+    const ms = VA() ? VA().ms(a.created) : 0;
+    const norm = (s) => String(s || '').toLowerCase().normalize('NFKD').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+    const ev = safe(() => (TP.data.announcements({ filter: 'all' }) || []).find((e) => !isSchool(e) && (
+      (TP.data.annIds && TP.data.annIds(e).aid === a.id) || (c.luId && e.sourceId === c.luId && norm(e.title) === norm(a.title)))), null);
+    const url = `${TP.net && TP.net.ULTRA || 'https://ultra.edu.kuleuven.cloud'}/ultra/courses/${encodeURIComponent(c.cid)}/announcements/announcement-detail?courseId=${encodeURIComponent(c.cid)}&announcementId=${encodeURIComponent(a.id)}`;
+    return {
+      key: ev ? String(ev.id) : 'cv:' + a.id,
+      kind: 'course',
+      title: a.title || '',
+      source: c.name || '',
+      color: c.color || null,
+      author: ev ? ev.author || '' : '',
+      date: ms,
+      url: ev && ev.url ? TP.util.abs(ev.url) : url,
+      event: ev,
+      html: a.body || '',
+      cid: c.cid, aid: a.id,
+      read: ev ? !!ev.read : true,
+    };
+  }
+
+  const SH = {
+    list: [],          // items
+    i: 0,
+    opener: null,
+    hooks: {},         // {onRead(item), onUnread(item), rowFor(item) → element|null}
+    body: new Map(),   // key → {state:'loading'|'ok'|'login'|'error'|'noid', data?}
+    seq: 0,
+  };
+
+  const cur = () => SH.list[SH.i] || null;
+
+  function metaRow(ic, label, valueHtml) {
+    return TP.ui.row({ leading: `<span class="tp-tile">${icon(ic, { size: 16 })}</span>`, title: valueHtml, subtitle: esc(label) });
+  }
+  function actionRow(action, ic, label, extra = '') {
+    return `<button type="button" class="tp-row has-lead" data-detail-action="${esc(action)}"${extra}><span class="tp-row-lead"><span class="tp-tile">${icon(ic, { size: 16 })}</span></span><span class="tp-row-main"><span class="tp-row-title">${esc(label)}</span></span></button>`;
+  }
+  function linkRow(href, ic, label, action) {
+    return `<a class="tp-row has-lead" href="${esc(href)}" target="_blank" rel="noopener"${action ? ` data-detail-action="${esc(action)}"` : ''}><span class="tp-row-lead"><span class="tp-tile">${icon(ic, { size: 16 })}</span></span><span class="tp-row-main"><span class="tp-row-title">${esc(label)}</span></span><span class="va-sr">${esc(t('va.newTab'))}</span>${icon('external', { size: 14, cls: 'an-ext' })}</a>`;
+  }
+  const fullDate = (ms) => (ms ? `${VA().capitalize(TP.fmt.date(ms, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))} · ${TP.fmt.time(ms)}` : '');
+
+  function sheetHtml() {
+    const it = cur();
+    if (!it) return '';
+    const b = SH.body.get(it.key) || { state: 'loading' };
+    const d = b.state === 'ok' ? b.data || {} : {};
+    const n = SH.list.length;
+    const nav = n > 1 ? `<div class="an-nav" role="group" aria-label="${esc(t('annsheet.nav'))}">
+        <button type="button" class="tp-btn tp-btn-gray tp-btn-icon" data-detail-action="an-prev" aria-label="${esc(t('annsheet.prev'))}" title="${esc(t('annsheet.prev'))} (k)"${SH.i <= 0 ? ' aria-disabled="true"' : ''}>${icon('arrowUp', { size: 16 })}</button>
+        <span class="an-pos">${esc(t('annsheet.pos', { i: SH.i + 1, n }))}</span>
+        <button type="button" class="tp-btn tp-btn-gray tp-btn-icon" data-detail-action="an-next" aria-label="${esc(t('annsheet.next'))}" title="${esc(t('annsheet.next'))} (j)"${SH.i >= n - 1 ? ' aria-disabled="true"' : ''}>${icon('arrowDown', { size: 16 })}</button>
+      </div>` : '';
+
+    const school = it.kind === 'school';
+    const meta = [
+      metaRow(school ? 'bell' : 'courses', t(school ? 'annsheet.source' : 'annsheet.course'), `${TP.ui.dot(it.color || 'var(--label-3)')} ${esc(it.source || t('va.noCourse'))}`),
+      (d.from || it.author) ? metaRow('person', t('annsheet.from'), esc(d.from || it.author)) : '',
+      d.to ? metaRow('mail', t('annsheet.to'), esc(d.to)) : '',
+      (d.date || it.date) ? metaRow('clock', t('annsheet.date'), esc(fullDate(d.date || it.date))) : '',
+    ].filter(Boolean).join('');
+
+    let body;
+    if (b.state === 'ok') {
+      body = d.html && TP.util.plain(d.html).trim()
+        ? TP.ui.group(`<div class="tp-detail-desc tp-prose an-body">${TP.util.sanitize(d.html)}</div>`)
+        : TP.ui.group(`<p class="tp-detail-desc va-muted">${esc(t('annsheet.noText'))}</p>`);
+    } else if (b.state === 'login') {
+      body = TP.ui.group(`<div class="tp-detail-desc an-state" role="status">
+        <p class="an-state-title">${icon('person', { size: 16 })}<strong>${esc(t('annsheet.login.title'))}</strong></p>
+        <p class="va-muted">${esc(t('annsheet.login.text'))}</p>
+        <p class="an-state-actions">${TP.ui.button(t('annsheet.login.open'), { kind: 'filled', icon: 'external', attrs: { href: it.url || '#', target: '_blank', rel: 'noopener', 'data-detail-action': 'an-login' } })}
+        ${TP.ui.button(t('annsheet.retry'), { kind: 'gray', attrs: { type: 'button', 'data-detail-action': 'an-retry' } })}</p></div>`);
+    } else if (b.state === 'error') {
+      body = TP.ui.group(`<div class="tp-detail-desc an-state" role="status"><p>${esc(t('announcements.bodyFailed'))}</p>
+        <p class="an-state-actions">${TP.ui.button(t('annsheet.retry'), { kind: 'gray', attrs: { type: 'button', 'data-detail-action': 'an-retry' } })}</p></div>`);
+    } else if (b.state === 'noid') {
+      body = TP.ui.group(`<p class="tp-detail-desc va-muted">${esc(t(school ? 'annsheet.noid.school' : 'annsheet.noid.course'))}</p>`);
+    } else {
+      body = `<div class="an-loading" aria-busy="true">${TP.ui.skeleton(3, { lead: 'none' })}</div>`;
+    }
+
+    const att = (d.attachments || []).map((a) => linkRow(a.url, 'doc', a.name)).join('');
+    const atts = att ? `<section class="an-atts" aria-label="${esc(t('annsheet.attachments'))}"><h3 class="an-h">${esc(t('annsheet.attachments'))}</h3>${TP.ui.group(att)}</section>` : '';
+
+    const actions = [
+      it.url ? linkRow(it.url, 'external', t(school ? 'annsheet.openValvas' : TP.shell.origin === 'ultra' || /ultra\.edu/.test(it.url) ? 'annsheet.openUltra' : 'announcements.openInToledo'), 'an-ext') : '',
+      it.event ? actionRow(it.read ? 'an-unread' : 'an-read', it.read ? 'circle' : 'checkCircle', t(it.read ? 'annsheet.markUnread' : 'annsheet.markRead')) : '',
+    ].filter(Boolean).join('');
+
+    return `${nav}${TP.ui.group(meta, { cls: 'tp-detail-meta' })}${body}${atts}${actions ? TP.ui.group(actions, { cls: 'tp-detail-actions' }) : ''}`;
+  }
+
+  function paint() { if (TP.annSheet.isOpen()) TP.shell.detail.update(sheetHtml()); }
+
+  function markShownRead(it) {
+    if (!it || !it.event || it.read) return;
+    it.read = true;
+    safe(() => SH.hooks.onRead && SH.hooks.onRead(it));
+    Promise.resolve().then(() => TP.data.markRead([it.event])).catch(() => {});
+  }
+
+  /** Load the body of `it` (once; force → again). Paints when it is still the item shown. */
+  function load(it, force) {
+    const have = SH.body.get(it.key);
+    if (!force && have && (have.state === 'ok' || have.state === 'loading' || have.state === 'noid')) return;
+    if (it.html != null && !force) { SH.body.set(it.key, { state: 'ok', data: { html: it.html } }); return; }
+    let p = null;
+    if (it.kind === 'school') {
+      if (!TP.data.advalvasId || !TP.data.advalvasId(it.event || { url: it.url })) { SH.body.set(it.key, { state: 'noid' }); return; }
+      p = TP.data.advalvasMessage(it.event || { url: it.url }, { force });
+    } else if (it.event && TP.data.announcementBody) {
+      p = TP.data.announcementBody(it.event);
+    } else if (it.cid && it.aid) {
+      p = TP.data.ultraAnnouncement(it.cid, it.aid).then((a) => ({ html: a.body }));
+    } else { SH.body.set(it.key, { state: 'noid' }); return; }
+    SH.body.set(it.key, { state: 'loading' });
+    const seq = ++SH.seq;
+    Promise.resolve(p).then((r) => {
+      SH.body.set(it.key, { state: 'ok', data: r || {} });
+    }, (err) => {
+      SH.body.set(it.key, { state: err && err.needsLogin ? 'login' : 'error' });
+      if (!(err && (err.needsLogin || err.status === 404))) console.debug('[Toledo+] announcement body', err && (err.status || err.message));
+    }).finally(() => {
+      if (cur() === it) {
+        paint();
+        if (seq === SH.seq) TP.shell.announce(t(SH.body.get(it.key).state === 'ok' ? 'annsheet.loaded' : SH.body.get(it.key).state === 'login' ? 'annsheet.login.title' : 'announcements.bodyFailed'));
+      }
+    });
+  }
+
+  function show(i, dir = 0) {
+    if (i < 0 || i >= SH.list.length) return;
+    const prevFocus = safe(() => TP.shell.app.getRootNode().activeElement?.dataset?.detailAction, null);
+    SH.i = i;
+    const it = cur();
+    load(it);
+    markShownRead(it);
+    const row = safe(() => SH.hooks.rowFor && SH.hooks.rowFor(it), null);
+    TP.shell.detail.open({ title: it.title, html: sheetHtml(), opener: row && row.isConnected ? row : SH.opener, onAction, onKey });
+    const dlg = safe(() => TP.shell.app.querySelector('.tp-detail'), null);
+    if (dlg) {
+      SH.showing = true;
+      dlg.setAttribute('data-sheet', 'announcement'); // wider sheet (announcements.css); dropped once it faded out
+      if (!dlg.__tpAnnSheet) {
+        dlg.__tpAnnSheet = true;
+        dlg.addEventListener('close', () => {
+          SH.showing = false;
+          setTimeout(() => { if (!SH.showing) dlg.removeAttribute('data-sheet'); }, TP.motion && !TP.motion.disabled ? 400 : 0);
+        });
+      }
+      const bodyEl = dlg.querySelector('.tp-detail-body');
+      if (bodyEl) bodyEl.scrollTop = 0;
+      if (dir && TP.motion && bodyEl) TP.motion.enter(bodyEl, { from: dir > 0 ? 'up' : 'down', duration: TP.motion.DUR[2] });
+      if (prevFocus) dlg.querySelector(`[data-detail-action="${prevFocus}"]`)?.focus({ preventScroll: true });
+    }
+    // Keep the opener's row in view (and the one Esc will return focus to).
+    if (row && row.isConnected) safe(() => row.scrollIntoView({ block: 'nearest' }));
+  }
+
+  function step(d) {
+    const j = SH.i + d;
+    if (j < 0 || j >= SH.list.length) return false;
+    show(j, d);
+    return true;
+  }
+
+  async function onAction(action) {
+    const it = cur();
+    if (!it) return;
+    if (action === 'an-prev') { step(-1); return; }
+    if (action === 'an-next') { step(1); return; }
+    if (action === 'an-retry') { load(it, true); paint(); return; }
+    if (action === 'an-login') { SH.awaitLogin = it.key; return; } // the link opens the page top-level; we retry on return
+    if (action === 'an-unread' && it.event) {
+      it.read = false;
+      safe(() => SH.hooks.onUnread && SH.hooks.onUnread(it));
+      paint();
+      TP.shell.announce(t('annsheet.markedUnread'));
+      await TP.data.markUnread([it.event]);
+      return;
+    }
+    if (action === 'an-read' && it.event) {
+      it.read = false; markShownRead(it);
+      paint();
+      TP.shell.announce(t('annsheet.markedRead'));
+    }
+  }
+
+  function onKey(ev) {
+    if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+    const tag = ev.target && ev.target.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    const k = ev.key;
+    if (k === 'ArrowDown' || k === 'j' || k === 'J') { if (step(1) || SH.list.length > 1) ev.preventDefault(); }
+    else if (k === 'ArrowUp' || k === 'k' || k === 'K') { if (step(-1) || SH.list.length > 1) ev.preventDefault(); }
+  }
+
+  // Coming back from the Ad Valvas tab (SSO done there): retry the item that asked for a sign-in.
+  let visBound = false;
+  function bindVisibility() {
+    if (visBound) return;
+    visBound = true;
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden || !TP.annSheet.isOpen()) return;
+      const it = cur();
+      const b = it && SH.body.get(it.key);
+      if (it && b && (b.state === 'login' || (SH.awaitLogin === it.key && b.state === 'error'))) { SH.awaitLogin = null; load(it, true); paint(); }
+    });
+  }
+
+  /**
+   * Open the announcement sheet.
+   * @param target  portal event | sheet item
+   * @param o.list    events/items to step through (the current filtered list; default [target])
+   * @param o.opener  element focus returns to (default: the active element)
+   * @param o.onRead(item) / o.onUnread(item) / o.rowFor(item) → element   view hooks
+   */
+  function open(target, o = {}) {
+    if (!target || !TP.shell.detail) return;
+    const norm = (x) => (x && x.kind && x.key ? x : fromEvent(x));
+    const list = (o.list && o.list.length ? o.list : [target]).map(norm);
+    const tk = norm(target).key;
+    let i = list.findIndex((x) => x.key === tk);
+    if (i < 0) { list.unshift(norm(target)); i = 0; }
+    SH.list = list;
+    SH.opener = o.opener || safe(() => TP.shell.app.getRootNode().activeElement, null);
+    SH.hooks = { onRead: o.onRead, onUnread: o.onUnread, rowFor: o.rowFor };
+    SH.awaitLogin = null;
+    for (const [k, v] of SH.body) if (v.state !== 'ok') SH.body.delete(k); // retry failures on a fresh open
+    if (SH.body.size > 60) SH.body.clear();
+    bindVisibility();
+    show(i);
+  }
+
+  TP.annSheet = { open, fromEvent, fromUltra, isOpen: () => !!SH.showing && safe(() => TP.shell.detail.isOpen(), false), _state: SH };
+
+  /* ------------------------------------------------------------------ */
+  /* Announcements view                                                   */
+  /* ------------------------------------------------------------------ */
   const S = {
     ctx: null,
     q: '',
     filter: 'all',          // 'all'|'unread'  — one filter list on the side (like mail folders):
     source: null,           // … or one course luId / 'advalvas' (then filter = 'all')
-    open: new Set(),        // ids of expanded announcements
-    bodies: new Map(),      // id -> {state:'loading'|'ok'|'err', html}
     keepRead: new Set(),    // ids read this session (stay listed under "Ongelezen")
     events: new Map(),      // id -> event
   };
@@ -75,58 +345,32 @@
     try { return (TP.data.announcements({ filter: 'all' }) || []).filter((e) => !e.read); } catch { return []; }
   }
 
-  function openLink(e) {
-    if (!e.url) return '';
-    return `<p class="va-ann-open"><a href="${esc(TP.util.abs(e.url))}" data-action="an-link" data-eid="${esc(String(e.id))}">${esc(t('announcements.openInToledo'))} ›</a></p>`;
-  }
-
-  function bodyHtml(e) {
-    const b = S.bodies.get(String(e.id));
-    if (b && b.state === 'ok') {
-      return `<div class="va-ann-body">${TP.util.sanitize(b.html || '')}</div>${openLink(e)}`;
-    }
-    if (b && b.state === 'err') {
-      return `<p class="va-foot">${esc(t('announcements.bodyFailed'))}</p>${openLink(e)}`;
-    }
-    return `<p class="va-foot" aria-busy="true">${esc(t('announcements.loadingBody'))}</p>`;
-  }
-
   function rowHtml(e) {
     const id = String(e.id);
     S.events.set(id, e);
-    const unread = !e.read && !S.keepRead.has(id);
-    const school = e.subType === 'advalvas';
+    const unread = !e.read;
+    const school = isSchool(e);
     const src = school ? t('announcements.school') : TP.util.courseName(e.source || '');
     const q = `${e.title} ${src} ${e.author || ''}`.toLowerCase();
-    const p = VA().annParts(e, unread); // same row as the Overview card: one chevron for every row (expand or open)
-    if (school || !e.url) {
-      return TP.ui.row({
-        href: e.url ? TP.util.abs(e.url) : undefined,
-        attrs: { 'data-action': 'an-open', 'data-eid': id, ...(school ? { target: '_blank', rel: 'noopener' } : {}) },
-        title: esc(e.title),
-        subtitle: p.subtitle,
-        trailing: p.trailing + (school ? `<span class="va-ann-ext">${TP.ui.icon('external', { size: 14 })}</span>` : ''),
-        chevron: !school, // ↗ = opens another site in a new tab; ⌄ (course announcements) = reads here
-        strong: unread,
-        q,
-        cls: 'va-ann va-ann-row' + (unread ? '' : ' is-read'),
-      });
-    }
-    const html = TP.ui.disclosure({
-      id: 'an-' + id,
-      open: S.open.has(id),
-      summary: { title: esc(e.title), subtitle: p.subtitle, trailing: p.trailing, strong: unread }, // B12: every unread item = 600 + "Nieuw" 
-      body: `<div class="va-ann-slot">${S.open.has(id) ? bodyHtml(e) : ''}</div>`,
+    const p = VA().annParts(e, unread); // same row as the Overview card
+    // Every row (course announcement or Ad Valvas) opens the announcement sheet; ⌘/Ctrl-click still opens the original page.
+    return TP.ui.row({
+      href: e.url ? TP.util.abs(e.url) : '#',
+      attrs: { 'data-action': 'an-open', 'data-eid': id, 'aria-haspopup': 'dialog', 'data-unread': unread ? '1' : null },
+      title: esc(e.title),
+      subtitle: p.subtitle,
+      trailing: p.trailing,
+      chevron: true,
+      strong: unread,
       q,
-      cls: 'va-ann-row',
+      cls: 'va-ann va-ann-row' + (unread ? '' : ' is-read'),
     });
-    return VA().addAttrs(html, { 'data-eid': id, 'data-unread': unread ? '1' : null });
   }
 
   function render(ctx) {
     S.ctx = ctx;
     const V = VA();
-    V.bind(ctx.root, 'announcements', { click: onClick, change: onChange, toggle: onToggle });
+    V.bind(ctx.root, 'announcements', { click: onClick, change: onChange });
     const unreadN = allUnread().length;
     try {
       ctx.setActions && ctx.setActions([]); // "Alles gelezen" sits in the list's section header (like Overzicht › Nieuw)
@@ -163,38 +407,6 @@
     if (S.q) V.filter(ctx.root, S.q);
   }
 
-  function markOne(e) {
-    const id = String(e.id);
-    if (e.read || S.keepRead.has(id)) return;
-    S.keepRead.add(id);
-    Promise.resolve().then(() => TP.data.markRead([e])).catch(() => {});
-  }
-
-  async function loadBody(e) {
-    const id = String(e.id);
-    const cur = S.bodies.get(id);
-    if (cur && (cur.state === 'ok' || cur.state === 'loading')) return;
-    S.bodies.set(id, { state: 'loading' });
-    const { cid, aid } = VA().parseAnnouncement(e.url);
-    try {
-      if (!cid || !aid) throw new Error('unparseable announcement url');
-      const res = await TP.data.ultraAnnouncement(cid, aid);
-      if (!res || res.body == null) throw new Error('empty');
-      S.bodies.set(id, { state: 'ok', html: String(res.body) });
-    } catch (err) {
-      S.bodies.set(id, { state: 'err' });
-    }
-    paintBody(e);
-  }
-
-  function paintBody(e) {
-    const root = S.ctx && S.ctx.root;
-    if (!root) return;
-    const d = root.querySelector(`details[data-eid="${VA().cssEsc(String(e.id))}"]`);
-    const slot = d && d.querySelector('.va-ann-slot');
-    if (slot && d.open) slot.innerHTML = bodyHtml(e);
-  }
-
   async function readAll() {
     const unread = allUnread();
     if (!unread.length) return;
@@ -203,6 +415,13 @@
     VA().announce(t('announcements.allRead'));
     if (S.ctx) render(S.ctx);
   }
+
+  /** The rows currently listed (filter + search applied), in order: what the sheet steps through. */
+  function visibleEvents(root) {
+    return [...root.querySelectorAll('.va-ann-list [data-eid]')].filter((r) => !r.hidden).map((r) => S.events.get(r.getAttribute('data-eid'))).filter(Boolean);
+  }
+
+  const modified = (ev) => ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey || ev.button > 0;
 
   async function onClick(ev) {
     const ctx = S.ctx;
@@ -214,8 +433,15 @@
       ev.preventDefault();
       await VA().retry(el);
     } else if (act === 'an-open' && e) {
-      if (!e.read) S.keepRead.add(String(e.id));
-      await VA().openEvent(ev, el, e, { recent: false });
+      if (modified(ev) && e.url) { if (!e.read) S.keepRead.add(String(e.id)); Promise.resolve().then(() => TP.data.markRead([e])).catch(() => {}); return; }
+      ev.preventDefault();
+      open(e, {
+        list: visibleEvents(ctx.root),
+        opener: el,
+        onRead: (it) => S.keepRead.add(it.key),
+        onUnread: (it) => S.keepRead.delete(it.key),
+        rowFor: (it) => safe(() => S.ctx && S.ctx.root.querySelector(`.va-ann-list [data-eid="${VA().cssEsc(it.key)}"]`), null),
+      });
     } else if (act === 'an-readall') {
       ev.preventDefault();
       await readAll();
@@ -223,28 +449,12 @@
       ev.preventDefault();
       pick(el.getAttribute('data-key') || ':all');
       render(ctx);
-    } else if (act === 'an-link' && e) {
-      markOne(e);
     }
   }
 
   function onChange(ev) {
     const el = ev.target;
     if (el && el.name === 'an-seg' && S.ctx) { pick(el.value); render(S.ctx); }
-  }
-
-  function onToggle(ev) {
-    const d = ev.target;
-    if (!d || d.tagName !== 'DETAILS' || !d.hasAttribute('data-eid')) return;
-    const id = d.getAttribute('data-eid');
-    const e = S.events.get(id);
-    if (!e) return;
-    if (!d.open) { S.open.delete(id); return; }
-    S.open.add(id);
-    const slot = d.querySelector('.va-ann-slot');
-    if (slot && !slot.innerHTML.trim()) slot.innerHTML = bodyHtml(e);
-    markOne(e);
-    loadBody(e);
   }
 
   TP.shell.register('announcements', {
