@@ -188,13 +188,14 @@ TP.data.on('change', fn(key)) / off
 TP.data.on('course', fn({cid, result}))   // a full (non-partial) ultraCourse load finished – TP.index listens
 TP.data.on('error', fn(key))              // a load failed (cached data stays)
 TP.data.on('auth', fn({expired, key}))     // session expired (expired:true) / back (false) — shell shows "Log opnieuw in" → TP.data.loginUrl()
+TP.data.on('ultraAuth', fn({expired}))      // Ultra answered 401 for ultraDeadlines (no Ultra session yet; Toledo itself is fine) — shell shows "Open Ultra" → TP.data.ultraLoginUrl(); does not flag 'auth'; retried when the tab becomes visible again
 TP.data.on('stale', fn())                  // extension updated/reloaded: shell shows "Herlaad"; data stops listeners, writes and loads
 TP.data.on('courseCache', fn({cleared}))   // refresh() cleared the Ultra course cache — the course view should reload its course
 await TP.data.refresh() → {ok, errors:{key:Error}, auth, stale}   // sends queued mark-reads, then loads all portal keys (+ ultraDeadlines
                                      // best-effort); clears the Ultra course cache; concurrent calls share one run; never rejects
 await TP.data.maybeRefresh({maxAge=5 min}) → result|null   // refresh only when lastUpdated() is older; data.js calls it itself on visibilitychange→visible
 await TP.data.flush()                // pending state/settings/cache writes + in-flight mark-read PATCHes; await before navigating away; never rejects
-TP.data.status(key) → {loading, error, auth, t} ; TP.data.authExpired() → bool ; TP.data.loginUrl() → Toledo LOGIN link or the portal
+TP.data.status(key) → {loading, error, auth, t} ; TP.data.authExpired() → bool ; TP.data.loginUrl() → Toledo LOGIN link or the portal ; TP.data.ultraAuthExpired() → bool ; TP.data.ultraLoginUrl() → Ultra course list
 TP.data.isStale() → bool ; TP.data.lastUpdated() → ms|null
 
 // models (sync, computed from peek() + settings + state; return [] when no data yet)

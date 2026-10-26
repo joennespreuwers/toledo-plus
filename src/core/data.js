@@ -12,6 +12,7 @@
   const HOUR = 36e5;
   const KEYS = ['enrollments', 'events', 'upcoming', 'mail', 'links', 'ultraDeadlines'];
   const PORTAL_KEYS = ['enrollments', 'events', 'upcoming', 'mail', 'links'];
+  const ULTRA_KEYS = ['ultraDeadlines']; // an Ultra 401 means no Ultra session yet, not an expired Toledo session
   const CP = 'cache:';             // one chrome.storage.local item per data key
   const MAX_EVENTS = 600;          // newest events kept in the persisted cache
   const MAX_CACHE_CHARS = 4e6;     // chrome.storage.local quota is 10 MB; stay well below
@@ -264,6 +265,13 @@
     authExpired = expired;
     emit('auth', { expired, key });
   }
+  // Ultra has its own session: it only exists after Ultra was opened once in this browser session.
+  let ultraAuth = false;
+  function setUltraAuth(expired) {
+    if (expired === ultraAuth) return;
+    ultraAuth = expired;
+    emit('ultraAuth', { expired });
+  }
   /** The "Log opnieuw in" target: Toledo's own login link when known, else the portal (it redirects to SSO). */
   function loginUrl() { return link('LOGIN') || `${PORTAL}/portal/`; }
 
@@ -386,13 +394,14 @@
         const v = r && r.extra ? r.value : r;
         status[key] = { loading: false, error: null, auth: false };
         put(key, v, r && r.extra);
-        setAuth(Object.values(status).some((s) => s && s.auth), key);
+        if (ULTRA_KEYS.includes(key)) setUltraAuth(false);
+        setAuth(Object.entries(status).some(([k, s]) => !ULTRA_KEYS.includes(k) && s && s.auth), key);
         try { AFTER[key] && AFTER[key](); } catch (e) { log('after load', key, e); }
         return v;
       } catch (e) {
         status[key] = { loading: false, error: e, auth: !!(e && e.auth) };
         if (e && e.stale) markStale();
-        if (e && e.auth) setAuth(true, key);
+        if (e && e.auth) { if (ULTRA_KEYS.includes(key)) setUltraAuth(true); else setAuth(true, key); }
         if (!warned.has(key)) { warned.add(key); log(`load ${key} failed (using cache)`, e && e.status, e && e.message); }
         emit('error', key);
         throw e;
@@ -437,7 +446,11 @@
   // Back to a tab after a while → refresh in the background (the shell may also call maybeRefresh()).
   function watchVisibility() {
     if (typeof document === 'undefined' || !document.addEventListener) return;
-    const fn = () => { if (document.visibilityState === 'visible') maybeRefresh().catch(() => {}); };
+    const fn = () => {
+      if (document.visibilityState !== 'visible') return;
+      maybeRefresh().catch(() => {});
+      if (ultraAuth) load('ultraDeadlines', { force: true }).catch(() => {}); // back from opening Ultra
+    };
     document.addEventListener('visibilitychange', fn);
     cleanups.push(() => document.removeEventListener('visibilitychange', fn));
   }
@@ -1307,6 +1320,7 @@
     KEYS,
     init, peek, load, refresh, maybeRefresh, flush, lastUpdated, status: getStatus, on, off,
     authExpired: () => authExpired, loginUrl, isStale: () => stale,
+    ultraAuthExpired: () => ultraAuth, ultraLoginUrl: () => `${ULTRA}/ultra/course`,
     courses, course, feed, kindOf, deadlines, announcements, schedule, link, quickLinks,
     markRead, markFeedSeen, setPinned, toggleDone, addCustomDeadline, removeCustomDeadline, addRecent, ics,
     userName, loadUser,
@@ -1315,7 +1329,7 @@
     _test: {
       hash, normTitle, parseCalendarName, mapCalendarItem, icsFold, icsText, icsStamp, legacyKey, toledoKey, ultraKey,
       trimEntry, calWindows, firstName, migrateDoneKeys, pruneState, flushPendingRead, markStale, cfg,
-      _reset() { mem = {}; courseCache.clear(); courseData.clear(); aliasMap = new Map(); wantDays = 0; lazyAt = 0; lazyDays = 0; authExpired = false; meTried = false; meInflight = null; for (const k of Object.keys(status)) delete status[k]; },
+      _reset() { mem = {}; courseCache.clear(); courseData.clear(); aliasMap = new Map(); wantDays = 0; lazyAt = 0; lazyDays = 0; authExpired = false; ultraAuth = false; meTried = false; meInflight = null; for (const k of Object.keys(status)) delete status[k]; },
       _put(k, v, extra) { mem[k] = Object.assign({ v, t: Date.now(), rev: 0 }, extra || {}); },
       _entry(k) { return mem[k]; },
       courseCacheSize: () => courseCache.size,

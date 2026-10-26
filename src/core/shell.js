@@ -666,7 +666,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
   safe(() => mqWide.addEventListener('change', () => { if (app?.classList.contains('sb-open')) setOverlay(false); else syncSidebar(); }));
 
   // ---------------- banners: session expired / extension updated (F4) ----------------
-  const banners = { auth: false, stale: false, update: null };
+  const banners = { auth: false, ultra: false, stale: false, update: null };
   function renderBanners() {
     const el = $('[data-shell-region="banners"]');
     if (!el) return;
@@ -677,6 +677,10 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     if (banners.auth) {
       const login = safe(() => TP.data?.loginUrl?.() || TP.data?.link?.('LOGIN'), null) || PORTAL_HOME;
       html += `<div class="tp-banner" data-banner="auth">${icon('warning', { size: 17 })}<span class="tp-banner-text"><strong>${esc(t('shell.authTitle'))}</strong> · ${esc(t('shell.authText'))}</span>${TP.ui.button(t('shell.login'), { kind: 'tinted', attrs: { href: login, 'data-shell': 'login' } })}</div>`;
+    }
+    if (banners.ultra && !banners.auth) {
+      const ultra = safe(() => TP.data?.ultraLoginUrl?.(), null) || 'https://ultra.edu.kuleuven.cloud/ultra/course';
+      html += `<div class="tp-banner" data-banner="ultra">${icon('warning', { size: 17 })}<span class="tp-banner-text"><strong>${esc(t('shell.ultraTitle'))}</strong> · ${esc(t('shell.ultraText'))}</span>${TP.ui.button(t('shell.ultraOpen'), { kind: 'tinted', attrs: { href: ultra, target: '_blank', rel: 'noopener' } })}</div>`;
     }
     if (banners.update) {
       const u = banners.update;
@@ -704,7 +708,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     if (banners[kind] === !!on) return;
     banners[kind] = !!on;
     renderBanners();
-    if (on) announce(t(kind === 'auth' ? 'shell.authTitle' : 'shell.staleTitle'));
+    if (on) announce(t({ auth: 'shell.authTitle', ultra: 'shell.ultraTitle' }[kind] || 'shell.staleTitle'));
   }
 
   // ---------------- detail sheet (HIG sheet/popover; F6 deadline detail) ----------------
@@ -1412,6 +1416,8 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     safe(() => TP.data?.on?.('auth', (e) => setBanner('auth', e && typeof e === 'object' && 'expired' in e ? !!e.expired : true)));
     safe(() => TP.data?.on?.('stale', () => setBanner('stale', true)));
     if (safe(() => TP.data?.authExpired?.(), false)) banners.auth = true;
+    safe(() => TP.data?.on?.('ultraAuth', (e) => setBanner('ultra', !!(e && e.expired))));
+    if (safe(() => TP.data?.ultraAuthExpired?.(), false)) banners.ultra = true;
     if (safe(() => TP.data?.isStale?.(), false)) banners.stale = true;
     // "Nieuwe versie beschikbaar" (manual zip installs have no auto-update).
     safe(() => { TP.telemetry?.on?.('update', setUpdate); const p = TP.telemetry?.pendingUpdate?.(); if (p) banners.update = p; });
