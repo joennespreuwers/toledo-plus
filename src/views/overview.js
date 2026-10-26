@@ -554,7 +554,8 @@
         title: esc(g.name),
         strong: unread.length > 0,
         subtitle: esc(summaryLine(unread.length ? unread : g.items) || t('overview.kind.read')),
-        trailing: `<span class="va-feed-trail">${badge}${latest}</span>`,
+        // time first, count last: counts line up at the right edge whatever the time says ("16:21", "gisteren", "donderdag")
+        trailing: `<span class="va-feed-trail">${latest}${badge || '<span class="va-badge-slot" aria-hidden="true"></span>'}</span>`,
       },
       body: `<div class="va-feed-body">${items}${more}</div>`,
       q: String(g.name || '').toLowerCase(),
