@@ -220,7 +220,7 @@
 
       let urg;
       if (d.done) urg = `<span class="va-urg is-done">${icon('check', { size: 13 })}${esc(t('va.doneWord'))}</span>`;
-      else if (overdue) urg = `<span class="va-urg is-overdue">${icon('warning', { size: 13 })}${esc(t('va.overdue'))}</span>`;
+      else if (overdue) urg = `<span class="va-urg is-overdue">${esc(overdueText(d.due))}</span>`;
       else if (urgent) urg = `<span class="va-urg is-urgent">${icon('clock', { size: 13 })}<span class="va-sr">${esc(t('va.urgent'))}: </span>${esc(TP.fmt.rel(d.due))}</span>`;
       else urg = `<span class="va-urg">${esc(TP.fmt.rel(d.due))}</span>`;
 
@@ -322,7 +322,7 @@
       const st = { body: null, loading: false };
       const metaRow = (ic, label, value) => TP.ui.row({ leading: `<span class="tp-tile">${icon(ic, { size: 16 })}</span>`, title: value, subtitle: esc(label) });
       const html = () => {
-        const urg = d.done ? t('va.doneWord') : overdue ? t('va.overdue') : VA.capitalize(TP.fmt.rel(d.due));
+        const urg = d.done ? t('va.doneWord') : overdue ? overdueText(d.due) : VA.capitalize(TP.fmt.rel(d.due));
         const due = `${VA.capitalize(TP.fmt.date(d.due, { weekday: 'long', day: 'numeric', month: 'long' }))} · ${TP.fmt.time(d.due)}`;
         const meta = [
           metaRow('courses', t('va.sheet.course'), `${TP.ui.dot(d.color || 'var(--label-3)')} ${esc(d.courseName || t('va.noCourse'))}`),
@@ -631,6 +631,12 @@
     return section('courses', { title: esc(t('overview.courses.title')), actions, body });
   }
 
+  /** "3 d te laat" (whole days past due), or "Te laat" on the day itself. Same wording everywhere. */
+  function overdueText(due) {
+    const n = Math.floor((Date.now() - due) / 864e5);
+    return n >= 1 ? t('va.overdueBy', { n }) : t('va.overdue');
+  }
+
   /* ---------- Schedule ---------- */
   // Accepts a TP.data.schedule() item (portal "upcoming") or a TP.kuloket Lesson.
   function lessonRow(s, prefixQ = '') {
@@ -657,6 +663,7 @@
     });
   }
   TP.viewsA.lessonRow = lessonRow;
+  TP.viewsA.overdueText = overdueText;
 
   let kulAsked = '';
   /** Lessons for today + tomorrow: KU Loket when it has them, else Toledo's own "upcoming". */

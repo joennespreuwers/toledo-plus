@@ -94,7 +94,10 @@
 }
 .va-urg.is-urgent { color: var(--label); font-weight: 600; }
 .va-urg.is-urgent .tp-ic { color: var(--amber); }
-.va-urg.is-overdue { color: var(--red); font-weight: 600; }
+/* overdue: the row itself is tinted red (the card clips it to its corners); words in label colour, no icon */
+.va-dl.tone-overdue:not(.is-done) { background: var(--overdue-bg); }
+.va-dl.tone-overdue:not(.is-done):hover { background: var(--overdue-bg-hover); }
+.va-urg.is-overdue { color: var(--label-2); } /* same as every other relative time; the row tint carries the state */
 .va-urg.is-done { color: var(--green); }
 .va-ext { color: var(--label-2); }
 .va-late { color: var(--red); font-weight: 600; }

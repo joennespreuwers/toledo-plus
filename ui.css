@@ -30,6 +30,7 @@
   --toolbar-h: 44px; --sidebar-w: 240px; --rail-w: 64px; --list-max: 760px;
   /* content column: centred in the area right of the sidebar, the same for every view (main + side column) */
   --content-wide: 1240px;
+  --overdue-bg: color-mix(in srgb, var(--red-fill) 16%, var(--bg-2)); --overdue-bg-hover: color-mix(in srgb, var(--red-fill) 22%, var(--bg-2));
   --switch-w: 38px; --switch-h: 22px;
   /* brand constants (never follow the accent) */
   --brand-orange: #EE8B35; --brand-magenta: #E3285A; --brand-ink: #1F2430;

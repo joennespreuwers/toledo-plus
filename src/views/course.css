@@ -87,7 +87,8 @@ details[open] > summary .cv-chev svg { transform: rotate(90deg); }
 .cv-due { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-subhead, .8125rem); color: var(--label-2); white-space: nowrap; }
 .cv-due.is-urgent { color: var(--label); font-weight: 600; }
 .cv-due.is-urgent .tp-ic { color: var(--amber); }
-.cv-due.is-overdue { color: var(--red); font-weight: 600; }
+.cv-dl.is-overdue { background: var(--overdue-bg); }
+.cv-dl.is-overdue:hover, .cv-dl.is-overdue .cv-row-main:hover { background: var(--overdue-bg-hover); }
 
 /* misc */
 .cv-noresults:empty { display: none; }

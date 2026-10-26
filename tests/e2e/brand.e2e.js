@@ -88,24 +88,32 @@ describe('brand: identity, type and colour', () => {
     await screenshot(page, 'brand-settings-about');
   });
 
-  it('"binnenkort" is amber (not the accent), "te laat" red with a warning icon and the word', async () => {
+  it('"binnenkort" is amber (not the accent), "te laat" a red-tinted row with the words (no icon)', async () => {
     const page = await openPortal(h, 'overview');
     const r = await inShadow(page, (sr) => {
       const urg = sr.querySelector('.va-urg.is-urgent');
       const ovd = sr.querySelector('.va-urg.is-overdue');
+      const row = ovd && ovd.closest('.va-dl');
+      const plain = sr.querySelector('.va-dl:not(.tone-overdue)');
       const tile = sr.querySelector('.tp-dt-urgent .tp-dt-d');
+      // color-mix() comes back as "color(srgb r g b)" on a 0–1 scale; rgb() on 0–255
+      const rgb = (c) => { const n = (c.match(/[\d.]+/g) || []).map(Number).slice(0, 3); return c.startsWith('color(') ? n.map((x) => Math.round(x * 255)) : n; };
       return {
         urgIcon: urg ? getComputedStyle(urg.querySelector('svg')).color : null,
         tile: tile ? getComputedStyle(tile).color : null,
-        ovd: ovd ? { color: getComputedStyle(ovd).color, warn: !!ovd.querySelector('svg path[d^="M10.3"]'), text: ovd.textContent.trim() } : null,
+        ovd: ovd ? { color: getComputedStyle(ovd).color, icon: !!ovd.querySelector('svg'), text: ovd.textContent.trim() } : null,
+        rowBg: row ? rgb(getComputedStyle(row).backgroundColor) : null,
+        plainBg: plain ? getComputedStyle(plain).backgroundColor : null,
+        plainTime: plain ? getComputedStyle(plain.querySelector('.va-urg:not(.is-urgent)') || plain).color : null,
       };
     });
     assert.equal(r.urgIcon, 'rgb(138, 83, 0)', 'urgent clock in amber');
     assert.equal(r.tile, 'rgb(138, 83, 0)', 'urgent date tile in amber');
     assert.ok(r.ovd, 'an overdue deadline in the fixtures');
-    assert.equal(r.ovd.color, 'rgb(215, 0, 21)');
-    assert.ok(r.ovd.warn, 'warning icon');
-    assert.ok(r.ovd.text.length > 2, 'the word');
+    assert.ok(r.rowBg && r.rowBg[0] > r.rowBg[1] + 10 && r.rowBg[0] > r.rowBg[2] + 10, `row tinted red (${r.rowBg})`);
+    assert.notEqual(r.rowBg.join(','), (r.plainBg.match(/[\d.]+/g) || []).slice(0, 3).join(','), 'differs from a normal row');
+    assert.equal(r.ovd.icon, false, 'no icon');
+    assert.ok(r.ovd.text.length > 2, 'the words');
   });
 
   it('branded welcome card: ink card with the glyph, intro line, three tips, privacy and one primary button', async () => {
