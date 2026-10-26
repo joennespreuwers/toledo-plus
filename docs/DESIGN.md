@@ -124,7 +124,7 @@ The UI must read as **Toledo+, not Toledo**: our own name, mark, type and colour
 - Empty: "Je bent helemaal bij." + "Bijgewerkt 14:02". Loading: skeleton rows of the same geometry after 300ms. Error: inline row "Kon Toledo niet laden · Opnieuw" while still showing cached data.
 
 ## Layout
-- <700px: single column, tab bar, comfortable-ish touch sizes. 700–1099: sidebar (icon rail by default < 900, expands as an overlay) + one column. ≥1100: sidebar + one **centred** content column of at most 1240px: main + side column `clamp(280px, 30%, 340px)` (schedule/announcements on overview; deadlines/announcements/teachers on course). List views (deadlines, announcements, KU Loket, settings) use a centred 760px column. Nothing sits as a strip next to an empty area.
+- <700px: single column, tab bar, comfortable-ish touch sizes. 700–1099: sidebar (icon rail by default < 900, expands as an overlay) + one column. ≥1100: sidebar + one **centred** content column of at most 1240px: main + side column `clamp(280px, 30%, 340px)` (schedule/announcements on overview; deadlines/announcements/teachers on course). Every view uses that same column (list views too), so switching tabs never moves the title or the edges. Nothing sits as a strip next to an empty area.
 - Spacing: content margin 16 / 24 / 32 (<700 / ≥700 / ≥1100); section gap 28 (compact 22); section titles inset 4px, day headers likewise; group footers and row text inset 16; cards (welcome card) padding 16/20 with 12 between blocks and 16 above the button.
 - Greeting: "Goedemorgen / Goedemiddag / Goedenavond, <voornaam>" (first name from Ultra, kept locally; plain greeting when unknown).
 - Zoom to 200% without horizontal scroll; reflow at 320px.

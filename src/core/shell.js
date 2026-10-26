@@ -974,7 +974,6 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     }
     if (seq !== renderSeq || cur !== current) return;
     syncBusy(cur.root);
-    syncWidth();
     updateHead();
     restoreFocus(focus);
     if (searchQ) applySearch();
@@ -985,13 +984,6 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     if (!root || root.dataset.busyOwn) return;
     const busy = !!root.querySelector('.tp-skeleton');
     if (busy) root.setAttribute('aria-busy', 'true'); else root.removeAttribute('aria-busy');
-  }
-  // Content width (v1.5): list views (.tp-narrow) get a centred ~760px column, the rest a centred column of at
-  // most --content-wide (main + side column). The toolbar's trailing controls follow the same right edge.
-  function syncWidth() {
-    if (!app || !current?.root) return;
-    const w = current.root.querySelector('.tp-narrow') ? 'narrow' : 'wide';
-    if (app.dataset.width !== w) app.dataset.width = w;
   }
   // Debounced full refresh of nav + current view, with a guard against render→change→render loops.
   let burst = { at: 0, n: 0, warned: false };

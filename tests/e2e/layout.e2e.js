@@ -111,15 +111,16 @@ describe('device compatibility', () => {
       assert.ok(Math.abs(title.left - content.left) <= 1, `${width}: large title aligned with the content`);
       await screenshot(h.page, `wide-${width}`);
     }
-    // list views: a centred ~760px column, toolbar aligned with it
+    // every view uses the same content column: switching tabs never moves the title or the edges
     await h.page.setViewportSize({ width: 1920, height: 1000 });
-    for (const route of ['deadlines', 'settings', 'kuloket']) {
+    await go(h, portalRoute('overview'));
+    const ref = await box(h.page, '.tp-view-wrap');
+    for (const route of ['deadlines', 'announcements', 'settings', 'kuloket', 'courses', 'agenda']) {
       await go(h, portalRoute(route));
-      const sb = await box(h.page, 'nav.tp-sidebar');
-      const main = await box(h.page, 'main#tp-main');
-      assert.ok(Math.abs((main.left - sb.right) - (1920 - main.right)) <= 2, `${route}: centred`);
       const content = await box(h.page, '.tp-view-wrap');
-      assert.ok(content.width <= 770, `${route}: narrow (${content.width})`);
+      assert.ok(Math.abs(content.left - ref.left) <= 1 && Math.abs(content.width - ref.width) <= 1, `${route}: same column as overview (${content.left}/${content.width} vs ${ref.left}/${ref.width})`);
+      const title = await box(h.page, '.tp-large-title');
+      assert.ok(Math.abs(title.left - ref.left) <= 1, `${route}: title at the same x`);
       const avatar = await box(h.page, '.tp-toolbar .tp-avatar');
       assert.ok(Math.abs(avatar.right - content.right) <= 12, `${route}: toolbar lines up (${avatar.right} vs ${content.right})`);
     }
@@ -193,15 +194,6 @@ describe('device compatibility', () => {
       }
       await go(h, COURSE_URL);
       assert.ok(await noHScroll(h.page), `course @${width}: horizontal scroll`);
-    }
-  });
-
-  it('≥1100: list views are at most ~760px wide', async () => {
-    await h.page.setViewportSize({ width: 1440, height: 900 });
-    for (const [route, sel] of [['deadlines', '.va-deadlines'], ['announcements', '.va-announcements'], ['settings', '.st-view']]) {
-      await go(h, portalRoute(route));
-      const b = await box(h.page, sel);
-      assert.ok(b && b.width <= 770, `${route}: width ${b && b.width}`);
     }
   });
 
