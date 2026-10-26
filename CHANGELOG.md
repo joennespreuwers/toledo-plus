@@ -7,7 +7,7 @@ Het formaat volgt [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) en he
 ## [Unreleased]
 
 ### Fixed
-- `npm run dev` reloaded the extension endlessly since 1.5.1: Chrome writes the compiled network rules into `_metadata/`, which the file watcher saw as a change. That folder is now ignored.
+- `npm run dev` reloaded the extension endlessly since 1.5.1: Chrome writes the compiled network rules into `_metadata/`, which the file watcher saw as a change. That folder is now ignored, and no longer tracked in git (`.gitignore`), so working trees stay clean.
 
 ## [1.5.1] - 2026-10-26
 
