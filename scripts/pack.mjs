@@ -35,6 +35,7 @@ export function packFiles(root = ROOT) {
   Object.values(manifest.icons || {}).forEach(add);
   const action = manifest.action || {};
   Object.values(typeof action.default_icon === 'object' ? action.default_icon : { x: action.default_icon }).forEach(add);
+  ((manifest.declarative_net_request || {}).rule_resources || []).forEach((r) => add(r.path));
   add(action.default_popup); add(manifest.options_page); add(manifest.options_ui && manifest.options_ui.page);
   const out = new Set();
   for (const r of refs) {

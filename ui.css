@@ -425,7 +425,7 @@
 /* mail (v1.5): envelope in the toolbar, unread count as a small neutral badge; phones: More sheet + account menu */
 a.tp-mail { color: var(--tint-text); text-decoration: none; }
 .tp-mail-badge {
-  position: absolute; top: 2px; right: 0; min-width: 16px; height: 16px; padding: 0 4px; border-radius: var(--r-pill);
+  position: absolute; top: 2px; left: 55%; min-width: 16px; white-space: nowrap; height: 16px; padding: 0 4px; border-radius: var(--r-pill);
   background: #5B6070; color: #FFFFFF; font: 600 10px/16px var(--font); text-align: center; font-variant-numeric: tabular-nums;
   box-shadow: 0 0 0 2px var(--bg); pointer-events: none;
 }

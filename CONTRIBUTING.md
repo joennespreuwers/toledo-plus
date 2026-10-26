@@ -50,7 +50,16 @@ Read first: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (contract: modules, d
 - Playwright does not route the follow-up of a mocked 3xx, so signed download URLs are served by a throwaway local HTTPS server (`tests/helpers/files-server.js`, needs `openssl`).
 - `EXT_DIR=path/to/unpacked npm run test:e2e` runs the suite against another build (e.g. an extracted release zip).
 
-### Pull requests
+### Branches & pull requests
+
+`main` is protected: nobody (maintainers included) pushes to it directly. Every change goes through a pull request.
+
+1. Branch from an up-to-date `main`: `git switch main && git pull && git switch -c <type>/<short-slug>` — types: `feat/`, `fix/`, `ui/`, `docs/`, `chore/`, `agent/` (AI agents).
+2. Commit small, push the branch, open a PR early (draft is fine) so others see what you're working on.
+3. CI must be green; one approving review from another maintainer; resolve conversations. Merge with **Squash and merge**.
+4. Keep the branch current with `git pull --rebase origin main` when `main` moves; fix conflicts locally.
+5. Releases: bump the version in `manifest.json` + `package.json` and add a `## [x.y.z]` section to `CHANGELOG.md` in the PR. Merging it to `main` releases automatically (tag, zip, GitHub release, API "latest version").
+
 
 One topic per PR, fill in the template checklist, include light + dark screenshots for UI changes. CI must be green.
 

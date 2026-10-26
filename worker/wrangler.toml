@@ -30,7 +30,7 @@ namespace_id = "1001"
 crons = ["17 3 * * *"]
 
 [vars]
-LATEST_VERSION = "1.5.0"
+LATEST_VERSION = "1.5.1"
 LATEST_URL = "https://toledoplus.be/#update"
 LATEST_NOTES = ""
 GITHUB_REPO = "joennespreuwers/toledo-plus"

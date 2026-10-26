@@ -24,7 +24,7 @@ test('version matches package.json and CHANGELOG', () => {
 
 test('privacy: only Toledo origins, minimal permissions', () => {
   assert.deepEqual([...(manifest.host_permissions || [])].sort(), [...ORIGINS].sort());
-  const allowed = new Set(['storage']);
+  const allowed = new Set(['storage', 'declarativeNetRequestWithHostAccess']); // DNR: only the landing-page redirect (rules/landing.json), no install warning
   for (const p of manifest.permissions || []) assert.ok(allowed.has(p), `unexpected permission "${p}" – needs a maintainer-approved issue (see AGENTS.md)`);
   assert.ok(!manifest.optional_host_permissions, 'no optional host permissions');
   const csp = JSON.stringify(manifest.content_security_policy || {});
@@ -107,4 +107,18 @@ test('landing skip: one standalone script, only on the landing URL, never on /po
   assert.deepEqual([...e.matches].sort(), ['https://toledo.kuleuven.be/', 'https://toledo.kuleuven.be/?*', 'https://toledo.kuleuven.be/index.html*'].sort());
   for (const m of e.matches) assert.ok(!/portal|\/\*$/.test(m), `${m} must not match the portal or every path`);
   for (const s of manifest.content_scripts) if (s !== e) assert.ok(!(s.js || []).includes('src/landing.js'));
+});
+
+test('landing redirect rule: one exact-URL main_frame redirect to the portal, nothing else', () => {
+  const rr = (manifest.declarative_net_request || {}).rule_resources || [];
+  assert.equal(rr.length, 1);
+  const rules = JSON.parse(read(rr[0].path));
+  assert.equal(rules.length, 1);
+  const r = rules[0];
+  assert.equal(r.action.type, 'redirect');
+  assert.equal(r.action.redirect.url, 'https://toledo.kuleuven.be/portal/');
+  assert.deepEqual(r.condition.resourceTypes, ['main_frame']);
+  const re = new RegExp(r.condition.regexFilter);
+  for (const u of ['https://toledo.kuleuven.be/', 'https://toledo.kuleuven.be/index.html']) assert.ok(re.test(u), u);
+  for (const u of ['https://toledo.kuleuven.be/portal/', 'https://toledo.kuleuven.be/?logout=1', 'https://toledo.kuleuven.be/studentenhandleiding-toledo/overzicht', 'https://evil.example/https://toledo.kuleuven.be/']) assert.ok(!re.test(u), u);
 });

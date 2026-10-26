@@ -6,12 +6,22 @@ Het formaat volgt [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) en he
 
 ## [Unreleased]
 
-### Added
-- `npm run dev`: opens Chrome with the extension and reloads it on every save (web-ext, dev only; persistent profile in `.dev-profile/`).
+## [1.5.1] - 2026-10-26
+
+### Changed
+- The tab always shows the Toledo+ icon, on the portal and in Ultra (no more Toledo/Blackboard favicon).
+- The mail badge shows the real number of unread e-mails instead of "99+".
 
 ### Fixed
 - KU Loket afgemeld: Toledo+ vroeg het rooster om de paar minuten opnieuw op, en elke poging liet een aanmeldcookie achter. Na een tijd weigerde KU Loket alles (ook zelf aanmelden) met "Bad Request · Size of a request header field exceeds server limit". Nu stopt Toledo+ na één "niet aangemeld" 30 minuten met vragen (gedeeld over tabbladen); wie via "Aanmelden bij KU Loket" aanmeldt en terugkomt naar Toledo, of op "Opnieuw" klikt, krijgt meteen het rooster.
+- Going to toledo.kuleuven.be now really skips the start page: a network-level redirect (declarativeNetRequest, exact URL only, no extra install warning) instead of only a content script. Still switchable in Settings › Geavanceerd.
 - Zonder Ultra-sessie (Ultra nog niet geopend sinds het aanmelden) toonde Toledo+ "Je sessie is verlopen" terwijl Toledo gewoon werkte, en "Log opnieuw in" hielp niet. Nu verschijnt "Nog niet aangemeld bij Ultra" met een knop "Open Ultra"; terug in Toledo laden de deadlines vanzelf.
+- The logo illustration in empty states was squished; it now uses the logo's real proportions.
+- Website: stylesheets, scripts and images are versioned per deploy, so a fresh page never combines with a cached old stylesheet (the logo sat on the left).
+
+### Added
+- `npm run dev`: opens Chrome with the extension and reloads it on every save (web-ext, dev only; persistent profile in `.dev-profile/`).
+- Releases are automatic: bumping the version in manifest.json on main tags the release, builds the zip and updates api.toledoplus.be's "latest version". worker/** changes on main deploy the API (needs CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID secrets).
 
 ## [1.5.0] - 2026-10-26
 
