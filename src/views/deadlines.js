@@ -196,17 +196,12 @@
       }).join('');
     }
 
-    const footer = `<div class="va-footnotes">
-      <p class="va-foot">${TP.ui.icon('calendar', { size: 13 })} ${esc(t('deadlines.exportHint'))}</p>
-      <p class="va-foot">${TP.ui.icon('check', { size: 13 })} ${esc(t('deadlines.honest'))}</p>
-    </div>`;
 
     V.paint(ctx.root, `<div class="va-view va-deadlines tp-narrow">
       ${filtersHtml()}
       ${addFormHtml()}
       <div class="va-dl-list">${body}</div>
       <div class="va-noresults" hidden></div>
-      ${footer}
     </div>`);
     if (S.q) V.filter(ctx.root, S.q);
   }

@@ -108,12 +108,10 @@
     else if (!items.length) body += TP.ui.group(TP.ui.empty(t('announcements.empty.' + S.filter)));
     else body += V.addAttrs(TP.ui.group(items.map(rowHtml).join(''), { cls: 'va-ann-list' }), { 'data-va-sec': 'list' });
 
-    const note = S.filter !== 'courses' ? `<p class="va-foot">${TP.ui.icon('external', { size: 13 })} ${esc(t('announcements.schoolNote'))}</p>` : '';
     V.paint(ctx.root, `<div class="va-view va-announcements tp-narrow">
       <div class="va-filters">${seg}</div>
       ${body}
       <div class="va-noresults" hidden></div>
-      ${note}
     </div>`);
     if (S.q) V.filter(ctx.root, S.q);
   }

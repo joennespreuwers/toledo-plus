@@ -13,4 +13,3 @@
 .va-ann-open { margin: 10px 0 0; font-size: var(--fs-subhead, .8125rem); }
 .va-ann-open a { color: var(--tint-text, var(--tint)); font-weight: 600; }
 .va-ann .tp-row-trail { color: var(--label-2); }
-.va-announcements > .va-foot { margin-top: 16px; }

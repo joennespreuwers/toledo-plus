@@ -26,14 +26,12 @@
 .ag-status p { margin: 0; }
 .ag-status.is-warn { padding: 10px 12px; border-radius: var(--r-group); background: var(--bg-2); color: var(--label); font-size: var(--fs-subhead); line-height: var(--lh-subhead); }
 .ag-status.is-warn > svg { color: var(--orange); margin-top: 2px; }
-.ag-status a, .ag-foot a { color: var(--tint-text); font-weight: 500; }
+.ag-status a { color: var(--tint-text); font-weight: 500; }
 .ag-or a { font-weight: 400; }
 .ag-fallback { display: block; margin-top: 2px; color: var(--label-2); }
 .ag-spin { flex: none; width: 12px; height: 12px; margin-top: 2px; border-radius: 50%; border: 1.5px solid var(--label-3); border-top-color: var(--label-2); }
 @media (prefers-reduced-motion: no-preference) { .ag-spin { animation: ag-spin .8s linear infinite; } }
 @keyframes ag-spin { to { transform: rotate(360deg); } }
-.ag-foot { margin: 14px 2px 0; color: var(--label-2); font-size: var(--fs-footnote); line-height: var(--lh-footnote); }
-.ag-foot svg { display: inline-block; vertical-align: -2px; }
 .ag-muted { color: var(--label-2); }
 
 /* ---------- shared calendar surface */
@@ -306,7 +304,7 @@
   .ag-nav .ag-today { padding-inline: 10px; }
   .ag-controls { flex-wrap: nowrap; }
   .ag-controls .tp-segmented { flex: 1; min-width: 0; }
-  .ag-keys-btn, .ag-keyhint, .ag-tz { display: none; }
+  .ag-keys-btn, .ag-tz { display: none; }
   .ag-view .ag-dayhead { flex-direction: column; align-items: center; gap: 0; padding-inline: 0; }
   .ag-dayview .ag-dayhead { align-items: flex-start; }
   .ag-dow { font-size: 11px; }

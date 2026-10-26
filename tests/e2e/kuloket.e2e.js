@@ -43,7 +43,7 @@ describe('KU Loket hub (desktop, light)', () => {
       assert.equal(await a.getAttribute('target'), '_blank');
       assert.match(await a.getAttribute('href'), /^https:\/\/webwsp\.aps\.kuleuven\.be\/sap\/bc\/ui2\/flp\?sap-language=NL#zr_\d{4}-display$/);
     }
-    assert.ok((await page.locator(`${ROOT} .kl-readonly`).innerText()).includes('alleen'), 'read-only note');
+    assert.ok((await page.locator(`${ROOT} .tp-subtitle`).innerText()).includes('alleen'), 'read-only, said under the title');
     await page.waitForTimeout(300);
     assertClean(h);
     assert.deepEqual(h.errors, []);

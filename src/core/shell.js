@@ -775,7 +775,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
       while (live.length > TOAST_MAX) dismissToast(live.shift());
     }
     clearTimeout(el.__tpT);
-    el.__tpT = setTimeout(() => dismissToast(el), TOAST_MS);
+    el.__tpT = setTimeout(() => dismissToast(el), Math.min(9000, Math.max(TOAST_MS, text.length * 60))); // longer text stays longer
   }
   function dismissToast(el) {
     clearTimeout(el.__tpT);

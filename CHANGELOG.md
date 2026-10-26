@@ -8,6 +8,7 @@ Het formaat volgt [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) en he
 
 ### Changed
 - Alle tabbladen gebruiken dezelfde breedte: Deadlines, Mededelingen, KU Loket en Instellingen springen niet meer naar een smallere kolom.
+- Geen losse kleine teksten meer onderaan de pagina, ver van waar ze over gaan: de uitleg over het agendabestand staat in de melding na het downloaden, "alleen-lezen" bij KU Loket staat onder de titel, en herhaalde of overbodige hints (Agenda: iCal en sneltoetsen, Deadlines: "Klaar", Mededelingen: nieuw tabblad) zijn weg.
 
 ### Fixed
 - `npm run dev` reloaded the extension endlessly since 1.5.1: Chrome writes the compiled network rules into `_metadata/`, which the file watcher saw as a change. That folder is now ignored, and no longer tracked in git (`.gitignore`), so working trees stay clean.

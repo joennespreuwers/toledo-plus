@@ -22,5 +22,3 @@
 .kl-g-support { --kl: #8E8E93; }
 .kl-g-survey, .kl-g-safety { color: #000; }
 .kl-app .tp-row-sub { white-space: normal; }
-.kl-readonly { display: flex; align-items: flex-start; gap: 6px; margin: 4px 4px 0; color: var(--label-2); font-size: var(--fs-footnote); line-height: var(--lh-footnote); }
-.kl-readonly > svg { flex: none; margin-top: 1px; }

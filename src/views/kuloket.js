@@ -83,8 +83,7 @@
     if (!ctx || !ctx.root.isConnected) return;
     const st = TP.kuloket.status();
     const main = examsSection(st) + todaySection(st);
-    const note = `<p class="kl-readonly">${icon('eye', { size: 14 })}<span>${esc(t('kuloket.readOnly'))}</span></p>`;
-    ctx.root.innerHTML = `<div class="kl-view tp-narrow">${main}${appsSections()}${note}<div class="kl-noresults" hidden></div></div>`;
+    ctx.root.innerHTML = `<div class="kl-view tp-narrow">${main}${appsSections()}<div class="kl-noresults" hidden></div></div>`;
     if (S.q) applySearch();
   }
 
@@ -95,7 +94,6 @@
     let n = 0;
     root.querySelectorAll('[data-q]').forEach((el) => { const hit = !q || (el.getAttribute('data-q') || '').includes(q); el.hidden = !hit; if (hit && q) n++; });
     root.querySelectorAll('section.tp-section').forEach((s) => { s.hidden = !!q && !s.querySelector('[data-q]:not([hidden])'); });
-    const ro = root.querySelector('.kl-readonly'); if (ro) ro.hidden = !!q;
     const nr = root.querySelector('.kl-noresults');
     if (nr) { nr.hidden = !q || n > 0; nr.innerHTML = q && !n ? TP.ui.noResults(q) : ''; }
   }

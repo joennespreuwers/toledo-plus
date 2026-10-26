@@ -18,7 +18,6 @@
 .va-form-error { margin: 0; color: var(--red); font-size: var(--fs-subhead, .8125rem); }
 .va-form-actions { display: flex; justify-content: flex-end; }
 
-.va-footnotes { margin-top: 24px; display: grid; gap: 6px; }
 
 @media (max-width: 420px) {
   .va-field-row { grid-template-columns: 1fr; }
