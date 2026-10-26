@@ -6,7 +6,7 @@ const { exists, list, read } = require('../helpers/sandbox');
 
 const manifest = JSON.parse(read('manifest.json'));
 // Toledo + Ultra, plus (v1.3) KU Loket and the public TimeEdit iCal feed — mirrored by the relay allowlist in background.js.
-const ORIGINS = ['https://toledo.kuleuven.be/*', 'https://ultra.edu.kuleuven.cloud/*', 'https://webwsp.aps.kuleuven.be/*', 'https://cloud.timeedit.net/*'];
+const ORIGINS = ['https://toledo.kuleuven.be/*', 'https://ultra.edu.kuleuven.cloud/*', 'https://webwsp.aps.kuleuven.be/*', 'https://cloud.timeedit.net/*', 'https://api.toledoplus.be/*'];
 
 test('manifest basics', () => {
   assert.equal(manifest.manifest_version, 3);

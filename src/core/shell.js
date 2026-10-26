@@ -455,6 +455,7 @@ ${item(`${icon('mail')}<span class="tp-menu-label">${esc(t('shell.mail'))}</span
     ` href="https://outlook.office.com/mail/" target="_blank" rel="noopener" aria-description="${esc(t('common.newTab'))}"`)}
 ${notif ? item(`${icon('bell')}<span class="tp-menu-label">${esc(t('shell.notifSettings'))}<small>${esc(t('shell.notifHint'))}</small></span>`, ` href="${esc(notif)}"`) : ''}
 <button type="button" class="tp-menu-item" role="menuitem" tabindex="-1" data-shell="classic">${icon('classic')}<span class="tp-menu-label">${esc(t('shell.classic'))}<small>${esc(t('shell.classicHint'))}</small></span></button>
+<button type="button" class="tp-menu-item" role="menuitem" tabindex="-1" data-shell="feedback">${icon('megaphone')}<span class="tp-menu-label">${esc(t('feedback.menu'))}</span></button>
 <div class="tp-menu-sep" role="separator"></div>
 ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</span>`, ` href="${esc(logout)}"`)}`;
     const dot = $('.tp-avatar-dot');
@@ -532,7 +533,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
   safe(() => mqWide.addEventListener('change', () => { if (app?.classList.contains('sb-open')) setOverlay(false); else syncSidebar(); }));
 
   // ---------------- banners: session expired / extension updated (F4) ----------------
-  const banners = { auth: false, stale: false };
+  const banners = { auth: false, stale: false, update: null };
   function renderBanners() {
     const el = $('[data-shell-region="banners"]');
     if (!el) return;
@@ -544,8 +545,13 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
       const login = safe(() => TP.data?.loginUrl?.() || TP.data?.link?.('LOGIN'), null) || PORTAL_HOME;
       html += `<div class="tp-banner" data-banner="auth">${icon('warning', { size: 17 })}<span class="tp-banner-text"><strong>${esc(t('shell.authTitle'))}</strong> · ${esc(t('shell.authText'))}</span>${TP.ui.button(t('shell.login'), { kind: 'tinted', attrs: { href: login, 'data-shell': 'login' } })}</div>`;
     }
+    if (banners.update) {
+      const u = banners.update;
+      html += `<div class="tp-banner" data-banner="update">${icon('download', { size: 17 })}<span class="tp-banner-text"><strong>${esc(t('update.banner', { version: u.version }))}</strong> · ${esc(t('update.how'))}</span>${TP.ui.button(t('update.get'), { kind: 'tinted', attrs: { href: u.url, target: '_blank', rel: 'noopener' } })}${TP.ui.button(t('update.dismiss'), { kind: 'plain', attrs: { 'data-shell': 'update-dismiss' } })}</div>`;
+    }
     if (el.innerHTML !== html) el.innerHTML = html;
   }
+  function setUpdate(u) { banners.update = u || null; renderBanners(); }
   function setBanner(kind, on) {
     if (banners[kind] === !!on) return;
     banners[kind] = !!on;
@@ -975,6 +981,8 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
         case 'detail-close': closeDetail(); return;
         case 'sb-courses': toggleCoursesGroup(el); return;
         case 'reload': location.reload(); return;
+        case 'feedback': closeMenu(false); closeSheet(); safe(() => TP.feedback?.open({ page: current?.route, opener: $('.tp-avatar') })); return;
+        case 'update-dismiss': safe(() => TP.telemetry?.dismissUpdate?.(banners.update?.version)); setUpdate(null); return;
         case 'view-action': {
           const a = current?.actions?.[Number(el.dataset.index)];
           if (a?.onClick) Promise.resolve().then(() => a.onClick(ev, current.ctx)).catch((e) => console.warn('[Toledo+] action', e));
@@ -1129,6 +1137,8 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     safe(() => TP.data?.on?.('stale', () => setBanner('stale', true)));
     if (safe(() => TP.data?.authExpired?.(), false)) banners.auth = true;
     if (safe(() => TP.data?.isStale?.(), false)) banners.stale = true;
+    // "Nieuwe versie beschikbaar" (manual zip installs have no auto-update).
+    safe(() => { TP.telemetry?.on?.('update', setUpdate); const p = TP.telemetry?.pendingUpdate?.(); if (p) banners.update = p; });
     // KU Loket (Agent B's module may not exist): nav badges + current view follow its cache.
     safe(() => TP.kuloket?.on?.('change', () => { if (mode === 'shell') rerender(); }));
     // Coming back to the tab: TP.data refreshes itself (maybeRefresh on visibilitychange); older data layers → our throttle.

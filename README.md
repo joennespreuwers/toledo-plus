@@ -55,7 +55,7 @@ Je versie zie je in **Instellingen → Over**. Volg de repository (*Watch → Cu
 
 ## Privacy
 
-Toledo+ leest alleen wat Toledo jou zelf al toont, via je eigen sessie op `toledo.kuleuven.be` en `ultra.edu.kuleuven.cloud`. Instellingen staan in de opslag van je browser. **Geen analytics, geen trackers, geen eigen servers, geen andere websites.** Details: [PRIVACY.md](PRIVACY.md).
+Toledo+ leest alleen wat Toledo en KU Loket jou zelf al tonen, via je eigen sessie. Instellingen staan in de opslag van je browser. **Geen tracking van wie je bent:** enkel een anoniem dagelijks signaal (willekeurig id, versie, browser, taal) naar `api.toledoplus.be`, dat je uitzet in Instellingen → Over. Details: [PRIVACY.md](PRIVACY.md).
 
 ## Problemen of ideeën?
 

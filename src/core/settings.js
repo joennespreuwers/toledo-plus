@@ -23,6 +23,7 @@
     courses: { sort: 'activity', showCommunities: false, items: {} },
     sync: { markReadInToledo: true },
     search: { indexAll: true },
+    privacy: { telemetry: true, updateCheck: true },
     custom: [],
   };
   // v3: the pin/favourite concept is gone (no 'pinned' per course, no sync.favoritesToToledo).

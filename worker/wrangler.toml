@@ -29,8 +29,8 @@ namespace_id = "1001"
 crons = ["17 3 * * *"]
 
 [vars]
-LATEST_VERSION = ""
-LATEST_URL = "https://github.com/joennespreuwers/toledo-plus/releases/latest"
+LATEST_VERSION = "1.4.0"
+LATEST_URL = "https://toledoplus.be/#update"
 LATEST_NOTES = ""
 GITHUB_REPO = "joennespreuwers/toledo-plus"
 # Optional: comma-separated extension ids allowed by CORS (empty = any chrome-extension:// / extension:// origin).

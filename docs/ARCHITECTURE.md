@@ -346,3 +346,13 @@ On Ultra pages that are not a course outline, and on portal routes other than '#
 
 ## Quality bar
 WCAG 2.2 AA; keyboard reachable; works at 390px and 1440px; light + dark; NL/EN/FR complete; no console errors; no unhandled promise rejections; never `innerHTML` unsanitized remote HTML (use `TP.util.sanitize`), always `TP.util.esc` for text.
+
+## Addendum v1.4 (2026-10-26)
+
+- **Pinning is removed** (settings v3): no `pinned` per course, no favourite sync. The sidebar group is "Vakken" (current, non-hidden courses in `TP.shell.sortCourses` order). Sections above that still mention pins are historical.
+- **Shell additions:** `TP.shell.detail(...)` (detail sheet, used for deadlines), `TP.shell.sortCourses`, banners `auth` / `stale` / `update`; `TP.util.courseColorKey`, `TP.util.accentKey`.
+- **`TP.telemetry`** (`src/core/telemetry.js`, after `kuloket.js`): `schedule()` (called from `boot.js`), anonymous ping ≤ 1×/24 h from the portal only, `checkUpdate()` ≤ 1×/12 h, `on('update', fn)`, `pendingUpdate()`, `dismissUpdate(v)`, `sendFeedback(...)`. Settings `privacy.telemetry` and `privacy.updateCheck` (both default `true`). Opt-out deletes `telemetry:id` locally and calls `POST /v1/forget`.
+- **`TP.feedback`** (`src/core/feedback.js`, after `palette.js`): `open({ page, opener })` — accessible sheet; works with telemetry off.
+- **Relay:** `https://api.toledoplus.be` is allowed for exactly `POST /v1/ping`, `POST /v1/forget`, `POST /v1/feedback`, `GET /v1/latest`, without query/hash and with `credentials: 'omit'`.
+- **Server:** `worker/` (Cloudflare Worker + D1); see `worker/README.md`.
+- Load order (both origins): util, i18n, i18n/{core, overview, deadlines, announcements, courses, course, settings, agenda, kuloket, palette, feedback}, core/{settings, net, data, kuloket, telemetry, index, ui, shell, palette, feedback}, views/{overview, deadlines, announcements, courses, course, settings, agenda, kuloket}, boot.

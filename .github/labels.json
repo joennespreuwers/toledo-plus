@@ -1,16 +1,77 @@
 [
-  { "name": "bug", "color": "d73a4a", "description": "Iets werkt niet zoals het hoort / Something isn't working" },
-  { "name": "enhancement", "color": "a2eeef", "description": "Nieuwe functie of verbetering / New feature or improvement" },
-  { "name": "ux", "color": "c5def5", "description": "Ontwerp, layout, duidelijkheid / Design, layout, clarity" },
-  { "name": "i18n", "color": "fbca04", "description": "Vertalingen NL/EN/FR / Translations" },
-  { "name": "accessibility", "color": "0e8a16", "description": "Toegankelijkheid (WCAG 2.2 AA, toetsenbord, schermlezer)" },
-  { "name": "good first issue", "color": "7057ff", "description": "Goed om mee te beginnen / Good for newcomers" },
-  { "name": "help wanted", "color": "008672", "description": "Hulp welkom / Extra attention is needed" },
-  { "name": "needs-triage", "color": "ededed", "description": "Nog niet bekeken / Not yet triaged" },
-  { "name": "needs-repro", "color": "f9d0c4", "description": "Kunnen we (nog) niet reproduceren; meer info nodig / Cannot reproduce yet" },
-  { "name": "wontfix", "color": "ffffff", "description": "Doen we niet (met uitleg) / Will not be worked on" },
-  { "name": "duplicate", "color": "cfd3d7", "description": "Bestaat al / Already reported" },
-  { "name": "question", "color": "d876e3", "description": "Vraag, geen bug / Question" },
-  { "name": "agent:ready", "color": "1d76db", "description": "Afgebakend en klaar voor een AI-agent / Scoped and ready for an AI agent" },
-  { "name": "agent:in-progress", "color": "5319e7", "description": "Een agent werkt hieraan (PR volgt) / An agent is working on this" }
+  {
+    "name": "bug",
+    "color": "d73a4a",
+    "description": "Iets werkt niet zoals het hoort / Something isn't working"
+  },
+  {
+    "name": "enhancement",
+    "color": "a2eeef",
+    "description": "Nieuwe functie of verbetering / New feature or improvement"
+  },
+  {
+    "name": "ux",
+    "color": "c5def5",
+    "description": "Ontwerp, layout, duidelijkheid / Design, layout, clarity"
+  },
+  {
+    "name": "i18n",
+    "color": "fbca04",
+    "description": "Vertalingen NL/EN/FR / Translations"
+  },
+  {
+    "name": "accessibility",
+    "color": "0e8a16",
+    "description": "Toegankelijkheid (WCAG 2.2 AA, toetsenbord, schermlezer)"
+  },
+  {
+    "name": "good first issue",
+    "color": "7057ff",
+    "description": "Goed om mee te beginnen / Good for newcomers"
+  },
+  {
+    "name": "help wanted",
+    "color": "008672",
+    "description": "Hulp welkom / Extra attention is needed"
+  },
+  {
+    "name": "needs-triage",
+    "color": "ededed",
+    "description": "Nog niet bekeken / Not yet triaged"
+  },
+  {
+    "name": "needs-repro",
+    "color": "f9d0c4",
+    "description": "Kunnen we (nog) niet reproduceren; meer info nodig / Cannot reproduce yet"
+  },
+  {
+    "name": "wontfix",
+    "color": "ffffff",
+    "description": "Doen we niet (met uitleg) / Will not be worked on"
+  },
+  {
+    "name": "duplicate",
+    "color": "cfd3d7",
+    "description": "Bestaat al / Already reported"
+  },
+  {
+    "name": "question",
+    "color": "d876e3",
+    "description": "Vraag, geen bug / Question"
+  },
+  {
+    "name": "agent:ready",
+    "color": "1d76db",
+    "description": "Afgebakend en klaar voor een AI-agent / Scoped and ready for an AI agent"
+  },
+  {
+    "name": "agent:in-progress",
+    "color": "5319e7",
+    "description": "Een agent werkt hieraan (PR volgt) / An agent is working on this"
+  },
+  {
+    "name": "feedback",
+    "color": "bfdadc",
+    "description": "Feedback uit de extensie / Feedback sent from the extension"
+  }
 ]

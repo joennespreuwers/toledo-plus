@@ -17,6 +17,7 @@
       TP.shell.start();
       // ⌘K document index: crawl the current courses in the background (5 s after boot, when idle).
       try { TP.index?.load?.().then(() => TP.index.schedule()).catch(() => {}); } catch (_) { /* optional */ }
+      try { TP.telemetry?.schedule?.(); } catch (_) { /* optional */ }
     } catch (e) {
       // Fail open: show the original page rather than a blank screen.
       document.documentElement.classList.remove('tplus-on', 'tplus-deep');

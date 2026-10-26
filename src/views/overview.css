@@ -186,3 +186,4 @@
 @media (prefers-reduced-motion: reduce) {
   .va-delay { animation-duration: 1ms; }
 }
+.va-onboard-privacy { margin-top: 8px; font: var(--fs-footnote)/var(--lh-footnote) var(--font); color: var(--label-2); }

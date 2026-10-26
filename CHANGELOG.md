@@ -6,6 +6,43 @@ Het formaat volgt [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) en he
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-10-26
+
+Bundelt v1.2 (betrouwbaarheid), v1.3 (Agenda & KU Loket) en v1.4 (UX-opschoning) uit de review van 26 oktober. / Bundles v1.2 (reliability), v1.3 (Agenda & KU Loket) and v1.4 (UX cleanup) from the 26 October review.
+
+### Added
+- **Agenda** (replaces Planning; old `planning` links redirect): your full timetable from **KU Loket** (course, time, group, room, teacher) together with deadlines and exams — day, week and list views. Falls back to your public TimeEdit iCal feed when there is no KU Loket session. Settings → Agenda shows the KU Loket status and the iCal link (masked; paste / replace / remove).
+- **Exam schedule (IER)** as an "Examens" group on top of Deadlines and in the Agenda, with countdown.
+- **KU Loket hub**: grouped shortcuts to the KU Loket apps (ISP, attesten, financieel, faciliteiten, MOBIB, uurrooster, service desk, …).
+- **Deadline detail sheet**: course, due date, source; *Open in vak*, *Open in Toledo*, mark done, *Zet in agenda* (single-event .ics).
+- **"Nieuw" in course content**: blue dots, "n nieuw" in the course header (same source as the feed) and an *Alleen nieuw* filter.
+- Next lesson in the course page side column; KU Loket lessons (room, teacher) in Overview › Rooster.
+- **Banners**: "Je sessie is verlopen · Log opnieuw in", "Toledo+ is bijgewerkt · Herlaad", and "Nieuwe versie beschikbaar" (manual installs don't auto-update).
+- **Feedback** from the extension (account menu or Settings → Over): idea / problem / other, optional contact (never published).
+- **Anonymous usage signal** (on by default, switch in Settings → Over and the welcome card): at most once a day a random install id, version, browser and language to `api.toledoplus.be`. No name, student number or Toledo data; IPs are not stored. Turning it off deletes the id and the server rows. See PRIVACY.md.
+- One-time welcome card on the Overview.
+- `worker/`: the Cloudflare Worker behind `api.toledoplus.be` (ping, forget, feedback → optional GitHub issue, latest version, token-protected stats) with D1 storage and rate limiting.
+- `website/`: the product site for toledoplus.be (NL/EN/FR) with an installer guide, deployed by `.github/workflows/pages.yml`. Releases now also carry a stable `toledo-plus.zip` asset.
+
+### Changed
+- **Pinning removed.** The sidebar shows "Vakken": your current courses in your chosen order (collapsible); no more coupling to Toledo favourites.
+- Settings reduced to 10 groups; overview sections are reordered on a "Secties aanpassen…" subpage; course settings live in Vakken › Bewerk; "Geavanceerd" holds Toledo-page switches and export/import/reset.
+- Consistent wording: "Te laat", "Ad Valvas", "Zet in agenda". Sidebar badges: no count on Overview; Deadlines grey (open) or red (overdue).
+- Red/pink are no longer accent colours (a stored one becomes blue); default course colours are unique.
+- Layout: content next to the sidebar on 1920–2560 px, lists capped at ~760 px, icon rail by default at 700–899 px, fixes at 320 px, "‹ Vakken" back button below 1100 px, ≥ 24 px link targets.
+- Network: retry with backoff on 429/5xx; failed mark-read PATCHes are queued and sent later (keepalive, chunked).
+
+### Fixed
+- Endless skeletons and false empty states on load errors: every section now shows loading, an error row with *Opnieuw*, empty (only after a successful load) or content.
+- Overdue deadlines older than 7 days disappeared — they now stay (collapsed "Ouder dan een week").
+- New items with an older date never appeared in "Nieuw"; "read" was reset on refresh with Toledo sync off.
+- One failing Ultra request cached an empty course; ↻ didn't refresh course content.
+- Changes in one tab were invisible in others / could undo "done" marks.
+- Opening an item and navigating immediately lost "Recent" and the read PATCH.
+- Search on Overview didn't filter counts and left empty day headers; unread style was inconsistent.
+- Duplicate deadlines (23:59 vs 00:00) and lost "done"/ICS UID after a deadline moved.
+- Storage-quota rejection, `ping` attribute not stripped, flaky DST test.
+
 ## [1.1.0] - 2026-10-26
 
 ### Added

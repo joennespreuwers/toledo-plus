@@ -53,15 +53,20 @@ jobs:
           cat >> RELEASE_NOTES.md <<'NOTES'
 
           ---
-          **Installeren / Install:** download `toledo-plus-*.zip`, pak uit, ga naar `chrome://extensions` (of `edge://extensions`), zet *Ontwikkelaarsmodus / Developer mode* aan → *Uitgepakte extensie laden / Load unpacked* → kies de uitgepakte map. Zie de README.
+          **Installeren / Install:** download `toledo-plus.zip` (of zie https://toledoplus.be), pak uit, ga naar `chrome://extensions` (of `edge://extensions`), zet *Ontwikkelaarsmodus / Developer mode* aan → *Uitgepakte extensie laden / Load unpacked* → kies de uitgepakte map. Zie de README.
           NOTES
 
       - name: Pack extension (manifest-referenced files only)
-        run: npm run pack
+        run: |
+          npm run pack
+          # Stable name for https://github.com/joennespreuwers/toledo-plus/releases/latest/download/toledo-plus.zip (installer guide on toledoplus.be)
+          cp dist/toledo-plus-*.zip dist/toledo-plus.zip
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/toledo-plus-*.zip
+          files: |
+            dist/toledo-plus-*.zip
+            dist/toledo-plus.zip
           body_path: RELEASE_NOTES.md
           fail_on_unmatched_files: true

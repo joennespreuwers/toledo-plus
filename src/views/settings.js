@@ -201,7 +201,7 @@
       </div>`, t('settings.advanced.foot'));
   }
 
-  function about() {
+  function about(s) {
     let version = '';
     try { version = chrome.runtime.getManifest().version; } catch { version = ''; }
     const link = (href, label, icon) => `<a class="st-row st-link-row" href="${esc(href)}" target="_blank" rel="noopener">
@@ -209,8 +209,11 @@
     return block('about', t('settings.about'),
       `<div class="st-row"><span class="st-label">${esc(t('settings.about.version'))}</span><span class="st-value">${esc(version || '—')}</span></div>`
       + link(REPO, t('settings.about.github'), 'external')
-      + link(ISSUE, t('settings.about.issue'), 'external'),
-      t('settings.about.privacy'));
+      + link(ISSUE, t('settings.about.issue'), 'external')
+      + toggleRow('s:privacy.telemetry', s.privacy?.telemetry !== false, t('telemetry.setting.label'), t('telemetry.setting.desc'))
+      + toggleRow('s:privacy.updateCheck', s.privacy?.updateCheck !== false, t('telemetry.update.label'), t('telemetry.update.desc'))
+      + `<div class="st-row st-row-actions"><button type="button" class="st-action" data-action="feedback" data-fk="feedback">${TP.ui.icon('megaphone', { size: 16 })}<span>${esc(t('feedback.menu'))}</span></button></div>`,
+      t('telemetry.about'));
   }
 
   // ---------- subpage: Overzicht › Secties (edit mode: drag handle + ↑/↓ + switch) ----------
@@ -247,7 +250,7 @@
       root.innerHTML = sectionsPage(s);
     } else {
       try { ctx.setTitle && ctx.setTitle(t('settings.title')); } catch { /* ignore */ }
-      root.innerHTML = `<div class="st-view">${language(s)}${look(s)}${overview(s)}${deadlines(s)}${coursesBlock()}${agenda()}${search(s)}${sync(s)}${advanced(s)}${about()}</div>`;
+      root.innerHTML = `<div class="st-view">${language(s)}${look(s)}${overview(s)}${deadlines(s)}${coursesBlock()}${agenda()}${search(s)}${sync(s)}${advanced(s)}${about(s)}</div>`;
     }
     restoreFocus(root, focus);
   }
@@ -371,6 +374,7 @@
       if (act === 'sec-up') moveSection(b.dataset.id, -1);
       else if (act === 'sec-down') moveSection(b.dataset.id, 1);
       else if (act === 'export') exportSettings();
+      else if (act === 'feedback') TP.feedback?.open({ page: 'settings', opener: b });
       else if (act === 'reset') resetClick();
       else if (act === 'ics-edit') { ui.icsEdit = true; rerender(); cur?.root.querySelector('input[name="st-ics"]')?.focus(); }
       else if (act === 'ics-cancel') { ui.icsEdit = false; rerender(); cur?.root.querySelector('[data-fk="ics-edit"]')?.focus(); }

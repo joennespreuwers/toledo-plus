@@ -421,6 +421,15 @@ kbd {
 .notfound { min-height: 60vh; display: grid; place-items: center; text-align: center; }
 .notfound .big { font-size: clamp(5rem, 18vw, 10rem); font-weight: 700; letter-spacing: -.05em; line-height: 1; color: var(--label-3); font-family: var(--font-display); }
 
+/* ------------------------------------------------------------ small phones */
+@media (max-width: 419px) {
+  .nav .btn-small { display: none; }
+  .hero h1 .nowrap { white-space: normal; }
+  .hero h1 { font-size: 2.5rem; }
+}
+.signal > div { min-width: 0; }
+@media (max-width: 599px) { .signal { flex-direction: column; gap: 14px; } }
+
 /* ------------------------------------------------------------ motion */
 @media (prefers-reduced-motion: no-preference) {
   .js .reveal { opacity: 0; transform: translateY(24px); transition: opacity .7s ease, transform .7s cubic-bezier(.2, .7, .2, 1); }

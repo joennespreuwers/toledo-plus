@@ -12,7 +12,7 @@ This file is for AI coding agents (Claude Code and others) working on Toledo+, i
 
 - Manifest V3, **no build step**, plain ES2020 IIFEs on `globalThis.TP`; no ES modules, no npm runtime dependencies.
 - All UI inside the `#tplus-root` **shadow root**; CSS files listed in `TP.shell.CSS` and in `web_accessible_resources`.
-- **Network:** only `https://toledo.kuleuven.be` and `https://ultra.edu.kuleuven.cloud` (plus the signed file-storage redirect for downloads). Cross-origin via `TP.net` → `background.js` relay, best-effort with silent degradation. **Never add calls to other domains. Never add analytics, telemetry, remote fonts or remote code.** Do not add permissions to `manifest.json` without a maintainer-approved issue.
+- **Network:** only `https://toledo.kuleuven.be`, `https://ultra.edu.kuleuven.cloud` (plus the signed file-storage redirect for downloads), read-only `https://webwsp.aps.kuleuven.be` (KU Loket) and `https://cloud.timeedit.net` (iCal), and the project's own `https://api.toledoplus.be` (exact paths only: `POST /v1/ping`, `POST /v1/forget`, `POST /v1/feedback`, `GET /v1/latest`; no cookies). Cross-origin via `TP.net` → `background.js` relay, best-effort with silent degradation. **Never add calls to other domains. The only usage signal is the anonymous daily ping in `src/core/telemetry.js` (random id, version, browser, language — opt-out in Settings); never extend it with identity, Toledo data or behaviour tracking. Never add remote fonts or remote code.** Do not add permissions to `manifest.json` without a maintainer-approved issue.
 - On Ultra every URL must be absolute (`TP.util.abs`) – Ultra's `<base href>` points to a CDN.
 - Remote HTML → `TP.util.sanitize`; text → `TP.util.esc`. No exceptions.
 - Every user-facing string in **nl, en and fr** via `TP.i18n.add`. Dutch first; short, plain, informal-polite ("je").
@@ -46,7 +46,7 @@ For every open issue labelled `needs-triage` (oldest first, max ~15 per run):
 4. **Bugs** – try to **reproduce with mocks**: add or adjust fixtures/routes in `tests/` to mimic the reported data shape and write a failing e2e or unit test.
    - Reproduced → comment what you found, label `agent:ready` (if the fix is small and clear) or `help wanted`.
    - Not reproducible / info missing → label `needs-repro`, ask for exactly what is missing (browser + version, Toledo+ version, view, language, steps, console errors) in the reporter's language. Close after 21 days without reply.
-5. **Feature requests** – check against the product principles in `docs/DESIGN.md`. Fits and is small → `agent:ready` or `good first issue`; large/unclear → ask a question; conflicts with principles (e.g. grades, analytics, other domains) → `wontfix` with a short, kind explanation.
+5. **Feature requests** – check against the product principles in `docs/DESIGN.md`. Fits and is small → `agent:ready` or `good first issue`; large/unclear → ask a question; conflicts with principles (e.g. grades, tracking, other domains) → `wontfix` with a short, kind explanation.
 6. **Work** – pick at most **3** `agent:ready` issues per run. Label `agent:in-progress`, create a branch `agent/<issue-number>-<slug>`, implement, open a PR.
 7. Never close an issue only because a PR exists; let the merge close it (`Fixes #n`).
 8. Post a short triage summary comment on the pinned "Triage log" discussion/issue if one exists.
@@ -69,7 +69,7 @@ For every open issue labelled `needs-triage` (oldest first, max ~15 per run):
 | Missing or wrong translation | `i18n` | Fix all three languages; often `good first issue` |
 | Keyboard, screen reader, contrast, zoom | `accessibility` (+ `bug`) | Treat as P1/P2; verify against DESIGN.md checklist |
 | Toledo/Ultra changed its API or HTML | `bug`, `help wanted` | Update mocks to new shape first, then fix; note in CHANGELOG |
-| Request for grades, analytics, other sites, heavy customization | `wontfix` | Explain the principle kindly, close |
+| Request for grades, tracking/analytics beyond the anonymous ping, other sites, heavy customization | `wontfix` | Explain the principle kindly, close |
 | Unclear / missing info | `needs-repro` | Ask specific questions |
 | Same as existing | `duplicate` | Link + close |
 

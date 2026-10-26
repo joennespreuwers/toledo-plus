@@ -120,3 +120,17 @@ test('timeout → error "timeout"; network error → message', async () => {
   const f = await send(msg('https://toledo.kuleuven.be/portal/api/fail'));
   assert.equal(f.status, 0); assert.match(f.error, /Failed to fetch/);
 });
+
+test('Toledo+ API: only the exact method+path pairs, no query/hash, no cookies', async () => {
+  const { send, calls } = load(async (url) => res('{}', { url }));
+  const API = 'https://api.toledoplus.be';
+  for (const [m, p] of [['POST', '/v1/ping'], ['POST', '/v1/forget'], ['POST', '/v1/feedback'], ['GET', '/v1/latest']]) {
+    const r = await send(msg(API + p, { method: m, body: m === 'POST' ? { id: 'x' } : undefined }));
+    assert.equal(r.ok, true, `${m} ${p}`);
+  }
+  assert.ok(calls.every((c) => c.init.credentials === 'omit'));
+  for (const [m, p] of [['GET', '/v1/stats'], ['GET', '/v1/ping'], ['POST', '/v1/latest'], ['GET', '/v1/latest?x=1'], ['POST', '/v1/ping#a'], ['POST', '/']]) {
+    assert.equal((await send(msg(API + p, { method: m }))).error, 'blocked-url', `${m} ${p}`);
+  }
+  assert.equal((await send(msg(API + '/v1/ping', { method: 'PATCH' }))).error, 'blocked-method');
+});

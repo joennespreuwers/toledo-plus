@@ -432,6 +432,7 @@
       <div class="va-onboard-head"><span class="tp-mark" aria-hidden="true">T+</span><h2 id="va-onboard-h">${esc(t('overview.onboard.title'))}</h2>
         <button type="button" class="tp-tb-btn" data-action="ov-onboard-close" aria-label="${esc(t('overview.onboard.close'))}">${icon('xmark', { size: 16 })}</button></div>
       <ul>${li('overview.onboard.what')}${li('overview.onboard.classic')}${li('overview.onboard.read')}</ul>
+      <p class="va-onboard-privacy">${esc(t('telemetry.onboarding'))}</p>
       <p>${TP.ui.button(t('overview.onboard.ok'), { kind: 'tinted', action: 'ov-onboard-close' })}</p>
     </section>`;
   }

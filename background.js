@@ -1,6 +1,6 @@
 /* Toledo+ — MV3 service worker.
    Only job: a cross-origin fetch relay for our own content scripts
-   (toledo.kuleuven.be portal <-> ultra.edu.kuleuven.cloud Blackboard Ultra, plus read-only KU Loket/TimeEdit).
+   (toledo.kuleuven.be portal <-> ultra.edu.kuleuven.cloud Blackboard Ultra, plus read-only KU Loket/TimeEdit and the Toledo+ API for the anonymous usage signal/feedback).
    Content scripts can only fetch their own origin with cookies; the extension can fetch
    the allowed origins because of host_permissions. Nothing else is reachable through this relay. */
 'use strict';
@@ -11,7 +11,11 @@ const TP_ALLOWED = {
   'https://ultra.edu.kuleuven.cloud': ['GET', 'PATCH'], // Blackboard REST
   'https://webwsp.aps.kuleuven.be': ['GET'],            // KU Loket (SAP OData: uurrooster, examenrooster, iCal-link)
   'https://cloud.timeedit.net': ['GET'],                // public TimeEdit iCal feed of the student's timetable
+  'https://api.toledoplus.be': ['GET', 'POST'],         // Toledo+ API (exact paths: TP_API_PATHS)
 };
+// The Toledo+ API: only these exact method+path pairs, no query string, no cookies.
+const TP_API = 'https://api.toledoplus.be';
+const TP_API_PATHS = ['POST /v1/ping', 'POST /v1/forget', 'POST /v1/feedback', 'GET /v1/latest'];
 const TP_ALLOWED_ORIGINS = Object.keys(TP_ALLOWED);
 // Pages whose content scripts may use the relay (besides the extension's own pages).
 const TP_SENDER_ORIGINS = ['https://toledo.kuleuven.be', 'https://ultra.edu.kuleuven.cloud'];
@@ -55,11 +59,15 @@ async function tpRelay(msg) {
   if (!tpAllowed(url)) return { ok: false, status: 0, data: null, error: 'blocked-url' };
   const method = String(msg.method || 'GET').toUpperCase();
   if (!(TP_ALLOWED[tpOrigin(url)] || []).includes(method)) return { ok: false, status: 0, data: null, error: 'blocked-method' };
+  if (tpOrigin(url) === TP_API) {
+    const u = new URL(url);
+    if (u.search || u.hash || !TP_API_PATHS.includes(`${method} ${u.pathname}`)) return { ok: false, status: 0, data: null, error: 'blocked-url' };
+  }
 
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), tpCfg.timeout);
   try {
-    const init = { method, credentials: 'include', headers: tpHeaders(msg.headers), signal: ctrl.signal, redirect: 'follow' };
+    const init = { method, credentials: tpOrigin(url) === TP_API ? 'omit' : 'include', headers: tpHeaders(msg.headers), signal: ctrl.signal, redirect: 'follow' };
     if (msg.body != null && method !== 'GET') init.body = typeof msg.body === 'string' ? msg.body : JSON.stringify(msg.body);
     const r = await fetch(url, init);
     // Redirects (e.g. an expired session bouncing to the SSO login) must not leave the allowed origins.

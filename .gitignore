@@ -10,3 +10,7 @@ Thumbs.db
 *.zip
 *.crx
 *.pem
+worker/node_modules/
+worker/.wrangler/
+website/.screens/
+.dev.vars
