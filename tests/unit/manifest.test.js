@@ -49,7 +49,7 @@ test('content scripts follow the documented load order and exist', () => {
     for (const f of [...(s.js || []), ...(s.css || [])]) assert.ok(exists(f), `content script file ${f} missing`);
     const js = s.js || [];
     const idx = (f) => js.indexOf(f);
-    const order = ['src/core/util.js', 'src/core/i18n.js', 'src/core/settings.js', 'src/core/net.js', 'src/core/data.js', 'src/core/index.js', 'src/core/ui.js', 'src/core/shell.js', 'src/core/palette.js', 'src/boot.js'];
+    const order = ['src/core/util.js', 'src/core/i18n.js', 'src/core/settings.js', 'src/core/net.js', 'src/core/data.js', 'src/core/index.js', 'src/core/ui.js', 'src/core/motion.js', 'src/core/shell.js', 'src/core/palette.js', 'src/boot.js'];
     for (const f of order) assert.ok(idx(f) >= 0, `${f} not loaded in content script for ${s.matches}`);
     for (let i = 1; i < order.length; i++) assert.ok(idx(order[i - 1]) < idx(order[i]), `${order[i - 1]} must load before ${order[i]}`);
     for (const f of list('src/i18n', /\.js$/)) {
