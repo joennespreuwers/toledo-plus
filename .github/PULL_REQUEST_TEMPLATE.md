@@ -30,4 +30,4 @@ Fixes #
 - [ ] UI zichtbaar veranderd → screenshots + og-afbeelding opnieuw (`node website/tools/screens.mjs`)
 - [ ] Nieuwe instelling → standaardwaarde + migratie in `settings.js`, rij in Instellingen, alle 3 talen
 - [ ] Nieuwe `TP.*` API, view-hook of opslagsleutel → `docs/ARCHITECTURE.md`
-- [ ] Release in deze PR? → versie in `manifest.json` **en** `package.json` + sectie `## [x.y.z]` in `CHANGELOG.md`
+- [ ] Versie **niet** verhoogd (behalve in een "Release X.Y.Z"-PR) — enkel een regel onder `## [Unreleased]`
