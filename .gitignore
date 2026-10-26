@@ -15,3 +15,4 @@ worker/.wrangler/
 website/.screens/
 .dev.vars
 .dev-profile/
+package-lock.json
