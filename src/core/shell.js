@@ -467,7 +467,9 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
       up.innerHTML = failed
         ? `${stamp ? stamp + ' · ' : ''}<span class="tp-updated-err">${icon('warning', { size: 13 })}${esc(t('shell.loadError'))}</span> · <button type="button" class="tp-link-btn" data-shell="refresh">${esc(t('common.retry'))}</button>`
         : stamp;
-      up.hidden = !failed && !ms;
+      // Views may already show the timestamp in their subtitle; don't repeat it.
+      const dup = !failed && stamp && $('.tp-subtitle')?.textContent.includes(TP.fmt.time(ms));
+      up.hidden = (!failed && !ms) || !!dup;
     }
     const acts = $('.tp-head-actions');
     if (acts) {
