@@ -53,6 +53,7 @@
           if (ch.index || ch.indexMeta) emit();
         });
       } catch (_) { /* tests */ }
+      emit();
     })();
     return loaded;
   }

@@ -1,815 +1,970 @@
 {
- "courses": {
-  "_200661_1": {
-   "id": "_200661_1",
-   "courseId": "ULTRA-B-LUCA-N50265-2627",
-   "name": "Filmtaal 1 [N50265]",
-   "externalId": "ULTRA-B-LUCA-N50265-2627"
-  },
-  "_200662_1": {
-   "id": "_200662_1",
-   "courseId": "ULTRA-B-LUCA-N50300-2627",
-   "name": "Regie 1 [N50300]",
-   "externalId": "ULTRA-B-LUCA-N50300-2627"
-  },
-  "_200663_1": {
-   "id": "_200663_1",
-   "courseId": "ULTRA-B-LUCA-N50008-2627",
-   "name": "Geluid 1 [N50008]",
-   "externalId": "ULTRA-B-LUCA-N50008-2627"
-  },
-  "_200664_1": {
-   "id": "_200664_1",
-   "courseId": "ULTRA-B-LUCA-N50347-2627",
-   "name": "Productie 1 [N50347]",
-   "externalId": "ULTRA-B-LUCA-N50347-2627"
-  },
-  "_200665_1": {
-   "id": "_200665_1",
-   "courseId": "ULTRA-B-LUCA-N50270-2627",
-   "name": "Montage Technieken 1 [N50270]",
-   "externalId": "ULTRA-B-LUCA-N50270-2627"
-  },
-  "_200666_1": {
-   "id": "_200666_1",
-   "courseId": "ULTRA-B-LUCA-N50354-2627",
-   "name": "Storytelling [N50354]",
-   "externalId": "ULTRA-B-LUCA-N50354-2627"
-  },
-  "_200667_1": {
-   "id": "_200667_1",
-   "courseId": "ULTRA-B-LUCA-N50167-2627",
-   "name": "Beeldtaal 1 [N50167]",
-   "externalId": "ULTRA-B-LUCA-N50167-2627"
-  },
-  "_200668_1": {
-   "id": "_200668_1",
-   "courseId": "ULTRA-B-LUCA-N50006-2627",
-   "name": "Beeldtechnologie 1 [N50006]",
-   "externalId": "ULTRA-B-LUCA-N50006-2627"
-  },
-  "_200669_1": {
-   "id": "_200669_1",
-   "courseId": "ULTRA-B-LUCA-N50120-2627",
-   "name": "Filmgeschiedenis 1 [N50120]",
-   "externalId": "ULTRA-B-LUCA-N50120-2627"
-  },
-  "_200670_1": {
-   "id": "_200670_1",
-   "courseId": "ULTRA-B-LUCA-N50210-2627",
-   "name": "Camera 1 [N50210]",
-   "externalId": "ULTRA-B-LUCA-N50210-2627"
-  },
-  "_200671_1": {
-   "id": "_200671_1",
-   "courseId": "ULTRA-B-LUCA-N50500-2627",
-   "name": "Engels voor film [N50500]",
-   "externalId": "ULTRA-B-LUCA-N50500-2627"
-  },
-  "_200672_1": {
-   "id": "_200672_1",
-   "courseId": "ULTRA-B-LUCA-N50400-2627",
-   "name": "Scenario 2 [N50400]",
-   "externalId": "ULTRA-B-LUCA-N50400-2627"
-  },
-  "_190001_1": {
-   "id": "_190001_1",
-   "courseId": "ULTRA-B-KUL-T1000-2526",
-   "name": "Wiskunde 1 [T1000]",
-   "externalId": "ULTRA-B-KUL-T1000-2526"
-  },
-  "_150001_1": {
-   "id": "_150001_1",
-   "courseId": "ULTRA-C-10000001-K",
-   "name": "- infoLUCA@Campus Voorbeeld",
-   "externalId": "ULTRA-C-10000001-K"
-  },
-  "_150002_1": {
-   "id": "_150002_1",
-   "courseId": "ULTRA-C-10000002-K-2627",
-   "name": "Studentenvereniging Lichtbak",
-   "externalId": "ULTRA-C-10000002-K-2627"
-  },
-  "_150003_1": {
-   "id": "_150003_1",
-   "courseId": "ULTRA-C-10000003-K",
-   "name": "- Studentenraad (Voorbeeld)",
-   "externalId": "ULTRA-C-10000003-K"
-  }
- },
- "trees": {
-  "_200661_1": [
-   {
-    "id": "_5002_1",
-    "title": "Les 1 — Introductie",
-    "created": "@iso:-35d",
-    "modified": "@iso:-35d",
-    "position": 0,
-    "hasChildren": true,
-    "availability": {
-     "available": "Yes"
+  "courses": {
+    "_200661_1": {
+      "id": "_200661_1",
+      "courseId": "ULTRA-B-LUCA-N50265-2627",
+      "name": "Filmtaal 1 [N50265]",
+      "externalId": "ULTRA-B-LUCA-N50265-2627"
     },
-    "contentHandler": {
-     "id": "resource/x-bb-folder"
+    "_200662_1": {
+      "id": "_200662_1",
+      "courseId": "ULTRA-B-LUCA-N50300-2627",
+      "name": "Regie 1 [N50300]",
+      "externalId": "ULTRA-B-LUCA-N50300-2627"
     },
-    "_kids": [
-     {
-      "id": "_5000_1",
-      "title": "filmtaal_les1.pdf",
-      "created": "@iso:-35d",
-      "modified": "@iso:-35d",
-      "position": 0,
-      "hasChildren": false,
-      "availability": {
-       "available": "Yes"
-      },
-      "contentHandler": {
-       "id": "resource/x-bb-file",
-       "file": {
-        "fileName": "filmtaal_les1.pdf",
-        "mimeType": "application/pdf"
-       }
-      },
-      "_attachments": [
-       {
-        "id": "_att_5000_1",
-        "fileName": "filmtaal_les1.pdf",
-        "mimeType": "application/pdf"
-       }
-      ],
-      "links": [
-       {
-        "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5000_1",
-        "rel": "alternate",
-        "type": "UI"
-       }
-      ]
-     },
-     {
-      "id": "_5001_1",
-      "title": "Voorbeeldfragment_1.mp4",
-      "created": "@iso:-35d",
-      "modified": "@iso:-35d",
-      "position": 0,
-      "hasChildren": false,
-      "availability": {
-       "available": "Yes"
-      },
-      "contentHandler": {
-       "id": "resource/x-bb-file",
-       "file": {
-        "fileName": "Voorbeeldfragment_1.mp4",
-        "mimeType": "video/mp4"
-       }
-      },
-      "_attachments": [
-       {
-        "id": "_att_5001_1",
-        "fileName": "Voorbeeldfragment_1.mp4",
-        "mimeType": "video/mp4"
-       }
-      ],
-      "links": [
-       {
-        "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5001_1",
-        "rel": "alternate",
-        "type": "UI"
-       }
-      ]
-     }
-    ],
-    "links": [
-     {
-      "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5002_1",
-      "rel": "alternate",
-      "type": "UI"
-     }
-    ]
-   },
-   {
-    "id": "_5005_1",
-    "title": "Les 2 — Kadrering",
-    "created": "@iso:-28d",
-    "modified": "@iso:-28d",
-    "position": 0,
-    "hasChildren": true,
-    "availability": {
-     "available": "Yes"
+    "_200663_1": {
+      "id": "_200663_1",
+      "courseId": "ULTRA-B-LUCA-N50008-2627",
+      "name": "Geluid 1 [N50008]",
+      "externalId": "ULTRA-B-LUCA-N50008-2627"
     },
-    "contentHandler": {
-     "id": "resource/x-bb-folder"
+    "_200664_1": {
+      "id": "_200664_1",
+      "courseId": "ULTRA-B-LUCA-N50347-2627",
+      "name": "Productie 1 [N50347]",
+      "externalId": "ULTRA-B-LUCA-N50347-2627"
     },
-    "_kids": [
-     {
-      "id": "_5003_1",
-      "title": "filmtaal_les2.pdf",
-      "created": "@iso:-28d",
-      "modified": "@iso:-28d",
-      "position": 0,
-      "hasChildren": false,
-      "availability": {
-       "available": "Yes"
-      },
-      "contentHandler": {
-       "id": "resource/x-bb-file",
-       "file": {
-        "fileName": "filmtaal_les2.pdf",
-        "mimeType": "application/pdf"
-       }
-      },
-      "_attachments": [
-       {
-        "id": "_att_5003_1",
-        "fileName": "filmtaal_les2.pdf",
-        "mimeType": "application/pdf"
-       }
-      ],
-      "links": [
-       {
-        "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5003_1",
-        "rel": "alternate",
-        "type": "UI"
-       }
-      ]
-     },
-     {
-      "id": "_5004_1",
-      "title": "kadrering_schema.png",
-      "created": "@iso:-28d",
-      "modified": "@iso:-28d",
-      "position": 0,
-      "hasChildren": false,
-      "availability": {
-       "available": "Yes"
-      },
-      "contentHandler": {
-       "id": "resource/x-bb-file",
-       "file": {
-        "fileName": "kadrering_schema.png",
-        "mimeType": "image/png"
-       }
-      },
-      "_attachments": [
-       {
-        "id": "_att_5004_1",
-        "fileName": "kadrering_schema.png",
-        "mimeType": "image/png"
-       }
-      ],
-      "links": [
-       {
-        "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5004_1",
-        "rel": "alternate",
-        "type": "UI"
-       }
-      ]
-     }
-    ],
-    "links": [
-     {
-      "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5005_1",
-      "rel": "alternate",
-      "type": "UI"
-     }
-    ]
-   },
-   {
-    "id": "_5012_1",
-    "title": "Les 4 — Montage en ritme",
-    "created": "@iso:-0.2d",
-    "modified": "@iso:-0.2d",
-    "position": 0,
-    "hasChildren": true,
-    "availability": {
-     "available": "Yes"
+    "_200665_1": {
+      "id": "_200665_1",
+      "courseId": "ULTRA-B-LUCA-N50270-2627",
+      "name": "Montage Technieken 1 [N50270]",
+      "externalId": "ULTRA-B-LUCA-N50270-2627"
     },
-    "contentHandler": {
-     "id": "resource/x-bb-lesson"
+    "_200666_1": {
+      "id": "_200666_1",
+      "courseId": "ULTRA-B-LUCA-N50354-2627",
+      "name": "Storytelling [N50354]",
+      "externalId": "ULTRA-B-LUCA-N50354-2627"
     },
-    "_kids": [
-     {
-      "id": "_5006_1",
-      "title": "filmtaal_les4.pdf",
-      "created": "@iso:-0.1d",
-      "modified": "@iso:-0.1d",
-      "position": 0,
-      "hasChildren": false,
-      "availability": {
-       "available": "Yes"
-      },
-      "contentHandler": {
-       "id": "resource/x-bb-file",
-       "file": {
-        "fileName": "filmtaal_les4.pdf",
-        "mimeType": "application/pdf"
-       }
-      },
-      "_attachments": [
-       {
-        "id": "_att_5006_1",
-        "fileName": "filmtaal_les4.pdf",
-        "mimeType": "application/pdf"
-       }
-      ],
-      "links": [
-       {
-        "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5006_1",
-        "rel": "alternate",
-        "type": "UI"
-       }
-      ]
-     },
-     {
-      "id": "_5007_1",
-      "title": "Metropolis_fragment.mp4",
-      "created": "@iso:-0.15d",
-      "modified": "@iso:-0.15d",
-      "position": 0,
-      "hasChildren": false,
-      "availability": {
-       "available": "Yes"
-      },
-      "contentHandler": {
-       "id": "resource/x-bb-file",
-       "file": {
-        "fileName": "Metropolis_fragment.mp4",
-        "mimeType": "video/mp4"
-       }
-      },
-      "_attachments": [
-       {
-        "id": "_att_5007_1",
-        "fileName": "Metropolis_fragment.mp4",
-        "mimeType": "video/mp4"
-       }
-      ],
-      "links": [
-       {
-        "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5007_1",
-        "rel": "alternate",
-        "type": "UI"
-       }
-      ]
-     },
-     {
-      "id": "_5011_1",
-      "title": "Extra fragmenten",
-      "created": "@iso:-0.2d",
-      "modified": "@iso:-0.2d",
-      "position": 0,
-      "hasChildren": true,
-      "availability": {
-       "available": "Yes"
-      },
-      "contentHandler": {
-       "id": "resource/x-bb-folder"
-      },
-      "_kids": [
-       {
-        "id": "_5008_1",
-        "title": "Ritmeoefening_Zebra.mp4",
-        "created": "@iso:-0.2d",
-        "modified": "@iso:-0.2d",
+    "_200667_1": {
+      "id": "_200667_1",
+      "courseId": "ULTRA-B-LUCA-N50167-2627",
+      "name": "Beeldtaal 1 [N50167]",
+      "externalId": "ULTRA-B-LUCA-N50167-2627"
+    },
+    "_200668_1": {
+      "id": "_200668_1",
+      "courseId": "ULTRA-B-LUCA-N50006-2627",
+      "name": "Beeldtechnologie 1 [N50006]",
+      "externalId": "ULTRA-B-LUCA-N50006-2627"
+    },
+    "_200669_1": {
+      "id": "_200669_1",
+      "courseId": "ULTRA-B-LUCA-N50120-2627",
+      "name": "Filmgeschiedenis 1 [N50120]",
+      "externalId": "ULTRA-B-LUCA-N50120-2627"
+    },
+    "_200670_1": {
+      "id": "_200670_1",
+      "courseId": "ULTRA-B-LUCA-N50210-2627",
+      "name": "Camera 1 [N50210]",
+      "externalId": "ULTRA-B-LUCA-N50210-2627"
+    },
+    "_200671_1": {
+      "id": "_200671_1",
+      "courseId": "ULTRA-B-LUCA-N50500-2627",
+      "name": "Engels voor film [N50500]",
+      "externalId": "ULTRA-B-LUCA-N50500-2627"
+    },
+    "_200672_1": {
+      "id": "_200672_1",
+      "courseId": "ULTRA-B-LUCA-N50400-2627",
+      "name": "Scenario 2 [N50400]",
+      "externalId": "ULTRA-B-LUCA-N50400-2627"
+    },
+    "_190001_1": {
+      "id": "_190001_1",
+      "courseId": "ULTRA-B-KUL-T1000-2526",
+      "name": "Wiskunde 1 [T1000]",
+      "externalId": "ULTRA-B-KUL-T1000-2526"
+    },
+    "_150001_1": {
+      "id": "_150001_1",
+      "courseId": "ULTRA-C-10000001-K",
+      "name": "- infoLUCA@Campus Voorbeeld",
+      "externalId": "ULTRA-C-10000001-K"
+    },
+    "_150002_1": {
+      "id": "_150002_1",
+      "courseId": "ULTRA-C-10000002-K-2627",
+      "name": "Studentenvereniging Lichtbak",
+      "externalId": "ULTRA-C-10000002-K-2627"
+    },
+    "_150003_1": {
+      "id": "_150003_1",
+      "courseId": "ULTRA-C-10000003-K",
+      "name": "- Studentenraad (Voorbeeld)",
+      "externalId": "ULTRA-C-10000003-K"
+    }
+  },
+  "trees": {
+    "_200661_1": [
+      {
+        "id": "_5002_1",
+        "title": "Les 1 — Introductie",
+        "created": "@iso:-35d",
+        "modified": "@iso:-35d",
         "position": 0,
-        "hasChildren": false,
+        "hasChildren": true,
         "availability": {
-         "available": "Yes"
+          "available": "Yes"
         },
         "contentHandler": {
-         "id": "resource/x-bb-file",
-         "file": {
-          "fileName": "Ritmeoefening_Zebra.mp4",
-          "mimeType": "video/mp4"
-         }
+          "id": "resource/x-bb-folder"
         },
-        "_attachments": [
-         {
-          "id": "_att_5008_1",
-          "fileName": "Ritmeoefening_Zebra.mp4",
-          "mimeType": "video/mp4"
-         }
+        "_kids": [
+          {
+            "id": "_5000_1",
+            "title": "filmtaal_les1.pdf",
+            "created": "@iso:-35d",
+            "modified": "@iso:-35d",
+            "position": 0,
+            "hasChildren": false,
+            "availability": {
+              "available": "Yes"
+            },
+            "contentHandler": {
+              "id": "resource/x-bb-file",
+              "file": {
+                "fileName": "filmtaal_les1.pdf",
+                "mimeType": "application/pdf"
+              }
+            },
+            "_attachments": [
+              {
+                "id": "_att_5000_1",
+                "fileName": "filmtaal_les1.pdf",
+                "mimeType": "application/pdf"
+              }
+            ],
+            "links": [
+              {
+                "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5000_1",
+                "rel": "alternate",
+                "type": "UI"
+              }
+            ]
+          },
+          {
+            "id": "_5001_1",
+            "title": "Voorbeeldfragment_1.mp4",
+            "created": "@iso:-35d",
+            "modified": "@iso:-35d",
+            "position": 0,
+            "hasChildren": false,
+            "availability": {
+              "available": "Yes"
+            },
+            "contentHandler": {
+              "id": "resource/x-bb-file",
+              "file": {
+                "fileName": "Voorbeeldfragment_1.mp4",
+                "mimeType": "video/mp4"
+              }
+            },
+            "_attachments": [
+              {
+                "id": "_att_5001_1",
+                "fileName": "Voorbeeldfragment_1.mp4",
+                "mimeType": "video/mp4"
+              }
+            ],
+            "links": [
+              {
+                "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5001_1",
+                "rel": "alternate",
+                "type": "UI"
+              }
+            ]
+          }
         ],
         "links": [
-         {
-          "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5008_1",
-          "rel": "alternate",
-          "type": "UI"
-         }
+          {
+            "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5002_1",
+            "rel": "alternate",
+            "type": "UI"
+          }
         ]
-       },
-       {
-        "id": "_5010_1",
-        "title": "Achtergrond",
+      },
+      {
+        "id": "_5005_1",
+        "title": "Les 2 — Kadrering",
+        "created": "@iso:-28d",
+        "modified": "@iso:-28d",
+        "position": 0,
+        "hasChildren": true,
+        "availability": {
+          "available": "Yes"
+        },
+        "contentHandler": {
+          "id": "resource/x-bb-folder"
+        },
+        "_kids": [
+          {
+            "id": "_5003_1",
+            "title": "filmtaal_les2.pdf",
+            "created": "@iso:-28d",
+            "modified": "@iso:-28d",
+            "position": 0,
+            "hasChildren": false,
+            "availability": {
+              "available": "Yes"
+            },
+            "contentHandler": {
+              "id": "resource/x-bb-file",
+              "file": {
+                "fileName": "filmtaal_les2.pdf",
+                "mimeType": "application/pdf"
+              }
+            },
+            "_attachments": [
+              {
+                "id": "_att_5003_1",
+                "fileName": "filmtaal_les2.pdf",
+                "mimeType": "application/pdf"
+              }
+            ],
+            "links": [
+              {
+                "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5003_1",
+                "rel": "alternate",
+                "type": "UI"
+              }
+            ]
+          },
+          {
+            "id": "_5004_1",
+            "title": "kadrering_schema.png",
+            "created": "@iso:-28d",
+            "modified": "@iso:-28d",
+            "position": 0,
+            "hasChildren": false,
+            "availability": {
+              "available": "Yes"
+            },
+            "contentHandler": {
+              "id": "resource/x-bb-file",
+              "file": {
+                "fileName": "kadrering_schema.png",
+                "mimeType": "image/png"
+              }
+            },
+            "_attachments": [
+              {
+                "id": "_att_5004_1",
+                "fileName": "kadrering_schema.png",
+                "mimeType": "image/png"
+              }
+            ],
+            "links": [
+              {
+                "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5004_1",
+                "rel": "alternate",
+                "type": "UI"
+              }
+            ]
+          }
+        ],
+        "links": [
+          {
+            "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5005_1",
+            "rel": "alternate",
+            "type": "UI"
+          }
+        ]
+      },
+      {
+        "id": "_5012_1",
+        "title": "Les 4 — Montage en ritme",
         "created": "@iso:-0.2d",
         "modified": "@iso:-0.2d",
         "position": 0,
         "hasChildren": true,
         "availability": {
-         "available": "Yes"
+          "available": "Yes"
         },
         "contentHandler": {
-         "id": "resource/x-bb-folder"
+          "id": "resource/x-bb-lesson"
         },
         "_kids": [
-         {
-          "id": "_5009_1",
-          "title": "Diepe_bron_Kwartel.pdf",
-          "created": "@iso:-0.2d",
-          "modified": "@iso:-0.2d",
+          {
+            "id": "_5006_1",
+            "title": "filmtaal_les4.pdf",
+            "created": "@iso:-0.1d",
+            "modified": "@iso:-0.1d",
+            "position": 0,
+            "hasChildren": false,
+            "availability": {
+              "available": "Yes"
+            },
+            "contentHandler": {
+              "id": "resource/x-bb-file",
+              "file": {
+                "fileName": "filmtaal_les4.pdf",
+                "mimeType": "application/pdf"
+              }
+            },
+            "_attachments": [
+              {
+                "id": "_att_5006_1",
+                "fileName": "filmtaal_les4.pdf",
+                "mimeType": "application/pdf"
+              }
+            ],
+            "links": [
+              {
+                "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5006_1",
+                "rel": "alternate",
+                "type": "UI"
+              }
+            ]
+          },
+          {
+            "id": "_5007_1",
+            "title": "Metropolis_fragment.mp4",
+            "created": "@iso:-0.15d",
+            "modified": "@iso:-0.15d",
+            "position": 0,
+            "hasChildren": false,
+            "availability": {
+              "available": "Yes"
+            },
+            "contentHandler": {
+              "id": "resource/x-bb-file",
+              "file": {
+                "fileName": "Metropolis_fragment.mp4",
+                "mimeType": "video/mp4"
+              }
+            },
+            "_attachments": [
+              {
+                "id": "_att_5007_1",
+                "fileName": "Metropolis_fragment.mp4",
+                "mimeType": "video/mp4"
+              }
+            ],
+            "links": [
+              {
+                "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5007_1",
+                "rel": "alternate",
+                "type": "UI"
+              }
+            ]
+          },
+          {
+            "id": "_5011_1",
+            "title": "Extra fragmenten",
+            "created": "@iso:-0.2d",
+            "modified": "@iso:-0.2d",
+            "position": 0,
+            "hasChildren": true,
+            "availability": {
+              "available": "Yes"
+            },
+            "contentHandler": {
+              "id": "resource/x-bb-folder"
+            },
+            "_kids": [
+              {
+                "id": "_5008_1",
+                "title": "Ritmeoefening_Zebra.mp4",
+                "created": "@iso:-0.2d",
+                "modified": "@iso:-0.2d",
+                "position": 0,
+                "hasChildren": false,
+                "availability": {
+                  "available": "Yes"
+                },
+                "contentHandler": {
+                  "id": "resource/x-bb-file",
+                  "file": {
+                    "fileName": "Ritmeoefening_Zebra.mp4",
+                    "mimeType": "video/mp4"
+                  }
+                },
+                "_attachments": [
+                  {
+                    "id": "_att_5008_1",
+                    "fileName": "Ritmeoefening_Zebra.mp4",
+                    "mimeType": "video/mp4"
+                  }
+                ],
+                "links": [
+                  {
+                    "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5008_1",
+                    "rel": "alternate",
+                    "type": "UI"
+                  }
+                ]
+              },
+              {
+                "id": "_5010_1",
+                "title": "Achtergrond",
+                "created": "@iso:-0.2d",
+                "modified": "@iso:-0.2d",
+                "position": 0,
+                "hasChildren": true,
+                "availability": {
+                  "available": "Yes"
+                },
+                "contentHandler": {
+                  "id": "resource/x-bb-folder"
+                },
+                "_kids": [
+                  {
+                    "id": "_5009_1",
+                    "title": "Diepe_bron_Kwartel.pdf",
+                    "created": "@iso:-0.2d",
+                    "modified": "@iso:-0.2d",
+                    "position": 0,
+                    "hasChildren": false,
+                    "availability": {
+                      "available": "Yes"
+                    },
+                    "contentHandler": {
+                      "id": "resource/x-bb-file",
+                      "file": {
+                        "fileName": "Diepe_bron_Kwartel.pdf",
+                        "mimeType": "application/pdf"
+                      }
+                    },
+                    "_attachments": [
+                      {
+                        "id": "_att_5009_1",
+                        "fileName": "Diepe_bron_Kwartel.pdf",
+                        "mimeType": "application/pdf"
+                      }
+                    ],
+                    "links": [
+                      {
+                        "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5009_1",
+                        "rel": "alternate",
+                        "type": "UI"
+                      }
+                    ]
+                  }
+                ],
+                "links": [
+                  {
+                    "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5010_1",
+                    "rel": "alternate",
+                    "type": "UI"
+                  }
+                ]
+              }
+            ],
+            "links": [
+              {
+                "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5011_1",
+                "rel": "alternate",
+                "type": "UI"
+              }
+            ]
+          }
+        ],
+        "links": [
+          {
+            "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5012_1",
+            "rel": "alternate",
+            "type": "UI"
+          }
+        ]
+      },
+      {
+        "id": "_5014_1",
+        "title": "Archief vorig jaar",
+        "created": "@iso:-400d",
+        "modified": "@iso:-400d",
+        "position": 0,
+        "hasChildren": true,
+        "availability": {
+          "available": "Yes"
+        },
+        "contentHandler": {
+          "id": "resource/x-bb-folder"
+        },
+        "_kids": [
+          {
+            "id": "_5013_1",
+            "title": "oud_programma.pdf",
+            "created": "@iso:-400d",
+            "modified": "@iso:-400d",
+            "position": 0,
+            "hasChildren": false,
+            "availability": {
+              "available": "Yes"
+            },
+            "contentHandler": {
+              "id": "resource/x-bb-file",
+              "file": {
+                "fileName": "oud_programma.pdf",
+                "mimeType": "application/pdf"
+              }
+            },
+            "_attachments": [
+              {
+                "id": "_att_5013_1",
+                "fileName": "oud_programma.pdf",
+                "mimeType": "application/pdf"
+              }
+            ],
+            "links": [
+              {
+                "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5013_1",
+                "rel": "alternate",
+                "type": "UI"
+              }
+            ]
+          }
+        ],
+        "links": [
+          {
+            "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5014_1",
+            "rel": "alternate",
+            "type": "UI"
+          }
+        ]
+      },
+      {
+        "id": "_5015_1",
+        "title": "Verborgen map",
+        "created": "@iso:-3d",
+        "modified": "@iso:-3d",
+        "position": 0,
+        "hasChildren": true,
+        "availability": {
+          "available": "No"
+        },
+        "contentHandler": {
+          "id": "resource/x-bb-folder"
+        },
+        "_kids": [],
+        "links": [
+          {
+            "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5015_1",
+            "rel": "alternate",
+            "type": "UI"
+          }
+        ]
+      },
+      {
+        "id": "_5016_1",
+        "title": "Opdracht 'Onder de huid'",
+        "created": "@iso:-2d",
+        "modified": "@iso:-2d",
+        "position": 0,
+        "hasChildren": false,
+        "availability": {
+          "available": "Yes"
+        },
+        "contentHandler": {
+          "id": "resource/x-bb-asmt-test-link"
+        },
+        "links": [
+          {
+            "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5016_1",
+            "rel": "alternate",
+            "type": "UI"
+          }
+        ]
+      },
+      {
+        "id": "_5017_1",
+        "title": "Leeswijzer",
+        "created": "@iso:-30d",
+        "modified": "@iso:-30d",
+        "position": 0,
+        "hasChildren": false,
+        "availability": {
+          "available": "Yes"
+        },
+        "contentHandler": {
+          "id": "resource/x-bb-document"
+        },
+        "body": "<p>Lees <strong>hoofdstuk 4 en 5</strong> voor de magneetweek.</p><p><a href=\"https://example.org/bron\" onclick=\"window.__tplusXss=1\">Extra bron</a></p><script>window.__tplusXss=1</script><img src=\"x\" onerror=\"window.__tplusXss=1\"><a href=\"javascript:window.__tplusXss=1\">js-link</a>",
+        "links": [
+          {
+            "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5017_1",
+            "rel": "alternate",
+            "type": "UI"
+          }
+        ]
+      },
+      {
+        "id": "_5018_1",
+        "title": "Filmdatabank (extern)",
+        "created": "@iso:-20d",
+        "modified": "@iso:-20d",
+        "position": 0,
+        "hasChildren": false,
+        "availability": {
+          "available": "Yes"
+        },
+        "contentHandler": {
+          "id": "resource/x-bb-externallink",
+          "url": "https://example.org/filmdatabank"
+        },
+        "links": [
+          {
+            "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5018_1",
+            "rel": "alternate",
+            "type": "UI"
+          }
+        ]
+      },
+      {
+        "id": "_5019_1",
+        "title": "Leerplatform tool",
+        "created": "@iso:-25d",
+        "modified": "@iso:-25d",
+        "position": 0,
+        "hasChildren": false,
+        "availability": {
+          "available": "Yes"
+        },
+        "contentHandler": {
+          "id": "resource/x-bb-blti-link"
+        },
+        "links": [
+          {
+            "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5019_1",
+            "rel": "alternate",
+            "type": "UI"
+          }
+        ]
+      }
+    ],
+    "_200662_1": [
+      {
+        "id": "_6010_1",
+        "title": "Week 3 — Mise-en-scène",
+        "created": "@iso:-12d",
+        "modified": "@iso:-12d",
+        "position": 0,
+        "hasChildren": true,
+        "availability": {
+          "available": "Yes"
+        },
+        "contentHandler": {
+          "id": "resource/x-bb-folder"
+        },
+        "links": [
+          {
+            "href": "/ultra/redirect?redirectType=nautilus&courseId=_200662_1&contentId=_6010_1",
+            "rel": "alternate",
+            "type": "UI"
+          }
+        ],
+        "_kids": [
+          {
+            "id": "_6011_1",
+            "title": "Opdrachten",
+            "created": "@iso:-12d",
+            "modified": "@iso:-12d",
+            "position": 0,
+            "hasChildren": true,
+            "availability": {
+              "available": "Yes"
+            },
+            "contentHandler": {
+              "id": "resource/x-bb-folder"
+            },
+            "links": [
+              {
+                "href": "/ultra/redirect?redirectType=nautilus&courseId=_200662_1&contentId=_6011_1",
+                "rel": "alternate",
+                "type": "UI"
+              }
+            ],
+            "_kids": [
+              {
+                "id": "_6012_1",
+                "title": "Opdracht Scèneanalyse",
+                "created": "@iso:-3d",
+                "modified": "@iso:-3d",
+                "position": 0,
+                "hasChildren": false,
+                "availability": {
+                  "available": "Yes"
+                },
+                "contentHandler": {
+                  "id": "resource/x-bb-asmt-test-link"
+                },
+                "links": [
+                  {
+                    "href": "/ultra/redirect?redirectType=nautilus&courseId=_200662_1&contentId=_6012_1",
+                    "rel": "alternate",
+                    "type": "UI"
+                  }
+                ]
+              },
+              {
+                "id": "_6013_1",
+                "title": "Draaiboek_sjabloon_Ooievaar.docx",
+                "created": "@iso:-3d",
+                "modified": "@iso:-3d",
+                "position": 0,
+                "hasChildren": false,
+                "availability": {
+                  "available": "Yes"
+                },
+                "contentHandler": {
+                  "id": "resource/x-bb-file",
+                  "file": {
+                    "fileName": "Draaiboek_sjabloon_Ooievaar.docx",
+                    "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  }
+                },
+                "links": [
+                  {
+                    "href": "/ultra/redirect?redirectType=nautilus&courseId=_200662_1&contentId=_6013_1",
+                    "rel": "alternate",
+                    "type": "UI"
+                  }
+                ],
+                "_attachments": [
+                  {
+                    "id": "_att_6013_1",
+                    "fileName": "Draaiboek_sjabloon_Ooievaar.docx",
+                    "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "_6014_1",
+            "title": "Regienota Ooievaar",
+            "created": "@iso:-5d",
+            "modified": "@iso:-5d",
+            "position": 0,
+            "hasChildren": false,
+            "availability": {
+              "available": "Yes"
+            },
+            "contentHandler": {
+              "id": "resource/x-bb-document"
+            },
+            "links": [
+              {
+                "href": "/ultra/redirect?redirectType=nautilus&courseId=_200662_1&contentId=_6014_1",
+                "rel": "alternate",
+                "type": "UI"
+              }
+            ],
+            "body": "<p>Lees de regienota voor les 3.</p>"
+          }
+        ]
+      },
+      {
+        "id": "_6015_1",
+        "title": "Regie_reader.pdf",
+        "created": "@iso:-30d",
+        "modified": "@iso:-30d",
+        "position": 0,
+        "hasChildren": false,
+        "availability": {
+          "available": "Yes"
+        },
+        "contentHandler": {
+          "id": "resource/x-bb-file",
+          "file": {
+            "fileName": "Regie_reader.pdf",
+            "mimeType": "application/pdf"
+          }
+        },
+        "links": [
+          {
+            "href": "/ultra/redirect?redirectType=nautilus&courseId=_200662_1&contentId=_6015_1",
+            "rel": "alternate",
+            "type": "UI"
+          }
+        ],
+        "_attachments": [
+          {
+            "id": "_att_6015_1",
+            "fileName": "Regie_reader.pdf",
+            "mimeType": "application/pdf"
+          }
+        ]
+      }
+    ]
+  },
+  "defaultTree": [
+    {
+      "id": "_5021_1",
+      "title": "Les 1",
+      "created": "@iso:-10d",
+      "modified": "@iso:-10d",
+      "position": 0,
+      "hasChildren": true,
+      "availability": {
+        "available": "Yes"
+      },
+      "contentHandler": {
+        "id": "resource/x-bb-folder"
+      },
+      "_kids": [
+        {
+          "id": "_5020_1",
+          "title": "les1.pdf",
+          "created": "@iso:-10d",
+          "modified": "@iso:-10d",
           "position": 0,
           "hasChildren": false,
           "availability": {
-           "available": "Yes"
+            "available": "Yes"
           },
           "contentHandler": {
-           "id": "resource/x-bb-file",
-           "file": {
-            "fileName": "Diepe_bron_Kwartel.pdf",
-            "mimeType": "application/pdf"
-           }
+            "id": "resource/x-bb-file",
+            "file": {
+              "fileName": "les1.pdf",
+              "mimeType": "application/pdf"
+            }
           },
           "_attachments": [
-           {
-            "id": "_att_5009_1",
-            "fileName": "Diepe_bron_Kwartel.pdf",
-            "mimeType": "application/pdf"
-           }
-          ],
-          "links": [
-           {
-            "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5009_1",
-            "rel": "alternate",
-            "type": "UI"
-           }
+            {
+              "id": "_att_5020_1",
+              "fileName": "les1.pdf",
+              "mimeType": "application/pdf"
+            }
           ]
-         }
-        ],
-        "links": [
-         {
-          "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5010_1",
-          "rel": "alternate",
-          "type": "UI"
-         }
-        ]
-       }
-      ],
-      "links": [
-       {
-        "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5011_1",
-        "rel": "alternate",
-        "type": "UI"
-       }
+        }
       ]
-     }
-    ],
-    "links": [
-     {
-      "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5012_1",
-      "rel": "alternate",
-      "type": "UI"
-     }
-    ]
-   },
-   {
-    "id": "_5014_1",
-    "title": "Archief vorig jaar",
-    "created": "@iso:-400d",
-    "modified": "@iso:-400d",
-    "position": 0,
-    "hasChildren": true,
-    "availability": {
-     "available": "Yes"
     },
-    "contentHandler": {
-     "id": "resource/x-bb-folder"
-    },
-    "_kids": [
-     {
-      "id": "_5013_1",
-      "title": "oud_programma.pdf",
-      "created": "@iso:-400d",
-      "modified": "@iso:-400d",
+    {
+      "id": "_5022_1",
+      "title": "Syllabus.pdf",
+      "created": "@iso:-40d",
+      "modified": "@iso:-40d",
       "position": 0,
       "hasChildren": false,
       "availability": {
-       "available": "Yes"
+        "available": "Yes"
       },
       "contentHandler": {
-       "id": "resource/x-bb-file",
-       "file": {
-        "fileName": "oud_programma.pdf",
-        "mimeType": "application/pdf"
-       }
+        "id": "resource/x-bb-file",
+        "file": {
+          "fileName": "Syllabus.pdf",
+          "mimeType": "application/pdf"
+        }
       },
       "_attachments": [
-       {
-        "id": "_att_5013_1",
-        "fileName": "oud_programma.pdf",
-        "mimeType": "application/pdf"
-       }
-      ],
-      "links": [
-       {
-        "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5013_1",
-        "rel": "alternate",
-        "type": "UI"
-       }
+        {
+          "id": "_att_5022_1",
+          "fileName": "Syllabus.pdf",
+          "mimeType": "application/pdf"
+        }
       ]
-     }
-    ],
-    "links": [
-     {
-      "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5014_1",
-      "rel": "alternate",
-      "type": "UI"
-     }
-    ]
-   },
-   {
-    "id": "_5015_1",
-    "title": "Verborgen map",
-    "created": "@iso:-3d",
-    "modified": "@iso:-3d",
-    "position": 0,
-    "hasChildren": true,
-    "availability": {
-     "available": "No"
-    },
-    "contentHandler": {
-     "id": "resource/x-bb-folder"
-    },
-    "_kids": [],
-    "links": [
-     {
-      "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5015_1",
-      "rel": "alternate",
-      "type": "UI"
-     }
-    ]
-   },
-   {
-    "id": "_5016_1",
-    "title": "Opdracht 'Onder de huid'",
-    "created": "@iso:-2d",
-    "modified": "@iso:-2d",
-    "position": 0,
-    "hasChildren": false,
-    "availability": {
-     "available": "Yes"
-    },
-    "contentHandler": {
-     "id": "resource/x-bb-asmt-test-link"
-    },
-    "links": [
-     {
-      "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5016_1",
-      "rel": "alternate",
-      "type": "UI"
-     }
-    ]
-   },
-   {
-    "id": "_5017_1",
-    "title": "Leeswijzer",
-    "created": "@iso:-30d",
-    "modified": "@iso:-30d",
-    "position": 0,
-    "hasChildren": false,
-    "availability": {
-     "available": "Yes"
-    },
-    "contentHandler": {
-     "id": "resource/x-bb-document"
-    },
-    "body": "<p>Lees <strong>hoofdstuk 4 en 5</strong> voor de magneetweek.</p><p><a href=\"https://example.org/bron\" onclick=\"window.__tplusXss=1\">Extra bron</a></p><script>window.__tplusXss=1</script><img src=\"x\" onerror=\"window.__tplusXss=1\"><a href=\"javascript:window.__tplusXss=1\">js-link</a>",
-    "links": [
-     {
-      "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5017_1",
-      "rel": "alternate",
-      "type": "UI"
-     }
-    ]
-   },
-   {
-    "id": "_5018_1",
-    "title": "Filmdatabank (extern)",
-    "created": "@iso:-20d",
-    "modified": "@iso:-20d",
-    "position": 0,
-    "hasChildren": false,
-    "availability": {
-     "available": "Yes"
-    },
-    "contentHandler": {
-     "id": "resource/x-bb-externallink",
-     "url": "https://example.org/filmdatabank"
-    },
-    "links": [
-     {
-      "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5018_1",
-      "rel": "alternate",
-      "type": "UI"
-     }
-    ]
-   },
-   {
-    "id": "_5019_1",
-    "title": "Leerplatform tool",
-    "created": "@iso:-25d",
-    "modified": "@iso:-25d",
-    "position": 0,
-    "hasChildren": false,
-    "availability": {
-     "available": "Yes"
-    },
-    "contentHandler": {
-     "id": "resource/x-bb-blti-link"
-    },
-    "links": [
-     {
-      "href": "/ultra/redirect?redirectType=nautilus&courseId=_200661_1&contentId=_5019_1",
-      "rel": "alternate",
-      "type": "UI"
-     }
-    ]
-   }
-  ]
- },
- "defaultTree": [
-  {
-   "id": "_5021_1",
-   "title": "Les 1",
-   "created": "@iso:-10d",
-   "modified": "@iso:-10d",
-   "position": 0,
-   "hasChildren": true,
-   "availability": {
-    "available": "Yes"
-   },
-   "contentHandler": {
-    "id": "resource/x-bb-folder"
-   },
-   "_kids": [
-    {
-     "id": "_5020_1",
-     "title": "les1.pdf",
-     "created": "@iso:-10d",
-     "modified": "@iso:-10d",
-     "position": 0,
-     "hasChildren": false,
-     "availability": {
-      "available": "Yes"
-     },
-     "contentHandler": {
-      "id": "resource/x-bb-file",
-      "file": {
-       "fileName": "les1.pdf",
-       "mimeType": "application/pdf"
-      }
-     },
-     "_attachments": [
+    }
+  ],
+  "announcements": {
+    "_200661_1": [
       {
-       "id": "_att_5020_1",
-       "fileName": "les1.pdf",
-       "mimeType": "application/pdf"
+        "id": "_ann1_1",
+        "title": "Lokaalwijziging les 5",
+        "body": "<p>Dag iedereen,</p><p>Les 5 gaat door in <strong>lokaal C207</strong>.</p><script>window.__tplusXss=1</script>",
+        "created": "@iso:-0.3d",
+        "draft": false
+      },
+      {
+        "id": "_ann2_1",
+        "title": "Welkom bij Filmtaal 1",
+        "body": "<p>Welkom! Alle info staat onder <em>Les 1</em>.</p>",
+        "created": "@iso:-40d",
+        "draft": false
+      },
+      {
+        "id": "_ann3_1",
+        "title": "Concept (niet zichtbaar)",
+        "body": "<p>draft</p>",
+        "created": "@iso:-1d",
+        "draft": true
       }
-     ]
-    }
-   ]
+    ]
   },
-  {
-   "id": "_5022_1",
-   "title": "Syllabus.pdf",
-   "created": "@iso:-40d",
-   "modified": "@iso:-40d",
-   "position": 0,
-   "hasChildren": false,
-   "availability": {
-    "available": "Yes"
-   },
-   "contentHandler": {
-    "id": "resource/x-bb-file",
-    "file": {
-     "fileName": "Syllabus.pdf",
-     "mimeType": "application/pdf"
-    }
-   },
-   "_attachments": [
+  "columns": {
+    "_200661_1": [
+      {
+        "id": "_col1_1",
+        "name": "Opdracht 'Onder de huid'",
+        "contentId": "_5016_1",
+        "grading": {
+          "due": "@iso:+1d@23:59"
+        }
+      },
+      {
+        "id": "_col2_1",
+        "name": "Filmfestival selectie",
+        "grading": {
+          "due": "@iso:-20d@23:59"
+        }
+      },
+      {
+        "id": "_col3_1",
+        "name": "Aanwezigheid"
+      }
+    ]
+  },
+  "instructors": {
+    "_200661_1": [
+      {
+        "id": "_u1_1",
+        "courseRoleId": "Instructor",
+        "user": {
+          "id": "_u1",
+          "name": {
+            "given": "Docent",
+            "family": "A"
+          },
+          "contact": {
+            "email": "docent.a@example.edu"
+          }
+        }
+      },
+      {
+        "id": "_u2_1",
+        "courseRoleId": "Instructor",
+        "user": {
+          "id": "_u2",
+          "name": {
+            "given": "Docent",
+            "family": "B"
+          },
+          "contact": {
+            "email": "docent.b@example.edu"
+          }
+        }
+      }
+    ]
+  },
+  "calendarItems": [
     {
-     "id": "_att_5022_1",
-     "fileName": "Syllabus.pdf",
-     "mimeType": "application/pdf"
+      "id": "ci1",
+      "type": "GradebookColumn",
+      "title": "Opdracht 'Onder de huid'",
+      "calendarId": "_200661_1",
+      "calendarName": "ULTRA-B-LUCA-N50265-2627: Filmtaal 1 [N50265]",
+      "start": "@iso:+1d@23:59",
+      "end": "@iso:+1d@23:59"
+    },
+    {
+      "id": "ci2",
+      "type": "GradebookColumn",
+      "title": "Shotlist korte film",
+      "calendarId": "_200662_1",
+      "calendarName": "ULTRA-B-LUCA-N50300-2627: Regie 1 [N50300]",
+      "start": "@iso:+5d@23:59",
+      "end": "@iso:+5d@23:59"
+    },
+    {
+      "id": "ci3",
+      "type": "GradebookColumn",
+      "title": "Geluidsdagboek week 6",
+      "calendarId": "_200663_1",
+      "calendarName": "ULTRA-B-LUCA-N50008-2627: Geluid 1 [N50008]",
+      "start": "@iso:+3d@09:00",
+      "end": "@iso:+3d@09:00"
     }
-   ]
-  }
- ],
- "announcements": {
-  "_200661_1": [
-   {
-    "id": "_ann1_1",
-    "title": "Lokaalwijziging les 5",
-    "body": "<p>Dag iedereen,</p><p>Les 5 gaat door in <strong>lokaal C207</strong>.</p><script>window.__tplusXss=1</script>",
-    "created": "@iso:-0.3d",
-    "draft": false
-   },
-   {
-    "id": "_ann2_1",
-    "title": "Welkom bij Filmtaal 1",
-    "body": "<p>Welkom! Alle info staat onder <em>Les 1</em>.</p>",
-    "created": "@iso:-40d",
-    "draft": false
-   },
-   {
-    "id": "_ann3_1",
-    "title": "Concept (niet zichtbaar)",
-    "body": "<p>draft</p>",
-    "created": "@iso:-1d",
-    "draft": true
-   }
   ]
- },
- "columns": {
-  "_200661_1": [
-   {
-    "id": "_col1_1",
-    "name": "Opdracht 'Onder de huid'",
-    "contentId": "_5016_1",
-    "grading": {
-     "due": "@iso:+1d@23:59"
-    }
-   },
-   {
-    "id": "_col2_1",
-    "name": "Filmfestival selectie",
-    "grading": {
-     "due": "@iso:-20d@23:59"
-    }
-   },
-   {
-    "id": "_col3_1",
-    "name": "Aanwezigheid"
-   }
-  ]
- },
- "instructors": {
-  "_200661_1": [
-   {
-    "id": "_u1_1",
-    "courseRoleId": "Instructor",
-    "user": {
-     "id": "_u1",
-     "name": {
-      "given": "Docent",
-      "family": "A"
-     },
-     "contact": {
-      "email": "docent.a@example.edu"
-     }
-    }
-   },
-   {
-    "id": "_u2_1",
-    "courseRoleId": "Instructor",
-    "user": {
-     "id": "_u2",
-     "name": {
-      "given": "Docent",
-      "family": "B"
-     },
-     "contact": {
-      "email": "docent.b@example.edu"
-     }
-    }
-   }
-  ]
- },
- "calendarItems": [
-  {
-   "id": "ci1",
-   "type": "GradebookColumn",
-   "title": "Opdracht 'Onder de huid'",
-   "calendarId": "_200661_1",
-   "calendarName": "ULTRA-B-LUCA-N50265-2627: Filmtaal 1 [N50265]",
-   "start": "@iso:+1d@23:59",
-   "end": "@iso:+1d@23:59"
-  },
-  {
-   "id": "ci2",
-   "type": "GradebookColumn",
-   "title": "Shotlist korte film",
-   "calendarId": "_200662_1",
-   "calendarName": "ULTRA-B-LUCA-N50300-2627: Regie 1 [N50300]",
-   "start": "@iso:+5d@23:59",
-   "end": "@iso:+5d@23:59"
-  },
-  {
-   "id": "ci3",
-   "type": "GradebookColumn",
-   "title": "Geluidsdagboek week 6",
-   "calendarId": "_200663_1",
-   "calendarName": "ULTRA-B-LUCA-N50008-2627: Geluid 1 [N50008]",
-   "start": "@iso:+3d@09:00",
-   "end": "@iso:+3d@09:00"
-  }
- ]
 }
