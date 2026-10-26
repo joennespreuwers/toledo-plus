@@ -14,3 +14,5 @@ worker/node_modules/
 worker/.wrangler/
 website/.screens/
 .dev.vars
+.dev-profile/
+package-lock.json
