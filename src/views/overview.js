@@ -401,7 +401,17 @@
   function greeting() {
     const h = new Date().getHours();
     const k = h < 5 ? 'night' : h < 12 ? 'morning' : h < 18 ? 'afternoon' : 'evening';
-    return t('overview.greet.' + k);
+    const greet = t('overview.greet.' + k);
+    // First name from Ultra (TP.data.userName, cached locally); without it just the greeting.
+    let name = '';
+    try { name = (TP.data.userName && TP.data.userName()) || ''; } catch { name = ''; }
+    return name ? t('overview.greet.named', { greet, name }) : greet;
+  }
+  let askedName = false;
+  function askName() {
+    if (askedName || !TP.data.loadUser) return;
+    askedName = true;
+    try { if (!TP.data.userName()) Promise.resolve(TP.data.loadUser()).catch(() => {}); } catch { /* best effort */ }
   }
 
   function subtitle() {
@@ -433,7 +443,7 @@
         <button type="button" class="tp-tb-btn" data-action="ov-onboard-close" aria-label="${esc(t('overview.onboard.close'))}">${icon('xmark', { size: 16 })}</button></div>
       <ul>${li('overview.onboard.what')}${li('overview.onboard.classic')}${li('overview.onboard.read')}</ul>
       <p class="va-onboard-privacy">${esc(t('telemetry.onboarding'))}</p>
-      <p>${TP.ui.button(t('overview.onboard.ok'), { kind: 'tinted', action: 'ov-onboard-close' })}</p>
+      <div class="va-onboard-actions">${TP.ui.button(t('overview.onboard.ok'), { kind: 'filled', action: 'ov-onboard-close' })}</div>
     </section>`;
   }
 
@@ -857,6 +867,7 @@
   function render(ctx) {
     S.ctx = ctx;
     VA.bind(ctx.root, 'overview', { click: onClick, toggle: onToggle });
+    askName(); // state.me changes re-render the shell (and so this title)
     try { ctx.setTitle && ctx.setTitle(greeting()); } catch { /* ignore */ }
     try { ctx.setSubtitle && ctx.setSubtitle(subtitle()); } catch { /* ignore */ }
     try { ctx.setActions && ctx.setActions([]); } catch { /* ignore */ }

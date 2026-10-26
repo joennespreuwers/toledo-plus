@@ -119,7 +119,7 @@
 .va-bar { width: 4px; border-radius: 2px; background: var(--c, var(--label-3)); align-self: stretch; min-height: 32px; }
 
 .va-dayhead {
-  margin: 16px 16px 6px; font-size: var(--fs-headline, .9375rem); font-weight: 600; color: var(--label);
+  margin: 16px 4px 8px; /* aligned with the section title (.tp-sec-head: 0 4px) */ font-size: var(--fs-headline, .9375rem); font-weight: 600; color: var(--label);
 }
 .va-dayhead span { font-weight: 400; color: var(--label-2); margin-left: 4px; }
 .va-dayhead:first-child, .va-day:first-child > .va-dayhead { margin-top: 4px; }
@@ -132,16 +132,20 @@
 .va-filters .tp-field { display: inline-flex; align-items: center; gap: 8px; }
 
 /* ---------- overview: onboarding (F10) ---------- */
+/* card padding 16/20 (row inset), 12 between blocks, 16 above the button; the close button sits in the corner */
 .va-onboard {
-  margin: 0 0 var(--section-gap, 28px); padding: 14px 12px 14px 16px; border-radius: var(--r-group, 12px);
+  margin: 0 0 var(--section-gap, 28px); padding: 16px 20px 20px; border-radius: var(--r-group, 12px);
   background: var(--bg-2); box-shadow: inset 3px 0 0 var(--tint);
 }
-.va-onboard-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.va-onboard-head { display: flex; align-items: center; gap: 10px; margin: -4px -8px 12px 0; }
 .va-onboard-head h2 { flex: 1; min-width: 0; font: 700 var(--fs-headline)/var(--lh-headline) var(--font-display); }
-.va-onboard ul { display: grid; gap: 8px; margin: 0 0 12px; }
-.va-onboard li { display: flex; gap: 8px; align-items: flex-start; font-size: var(--fs-subhead); line-height: var(--lh-subhead); color: var(--label); }
+.va-onboard ul { display: grid; gap: 8px; margin: 0; }
+.va-onboard li { display: flex; gap: 10px; align-items: flex-start; font-size: var(--fs-subhead); line-height: var(--lh-subhead); color: var(--label); }
 .va-onboard li .tp-ic { flex: none; margin-top: 1px; color: var(--tint-text); }
 .va-onboard p { margin: 0; }
+.va-onboard .va-onboard-privacy { margin-top: 12px; padding-top: 12px; border-top: var(--hairline) solid var(--separator); font: var(--fs-footnote)/var(--lh-footnote) var(--font); color: var(--label-2); }
+.va-onboard-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.va-onboard-actions .tp-btn { min-height: 36px; padding-inline: 16px; }
 
 /* ---------- overview: feed ---------- */
 .va-feed .tp-summary .tp-row-sub {
@@ -186,4 +190,3 @@
 @media (prefers-reduced-motion: reduce) {
   .va-delay { animation-duration: 1ms; }
 }
-.va-onboard-privacy { margin-top: 8px; font: var(--fs-footnote)/var(--lh-footnote) var(--font); color: var(--label-2); }

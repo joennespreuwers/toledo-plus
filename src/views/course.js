@@ -207,7 +207,12 @@
         sub = `<span>${esc(t('course.items', { n: leaves.length }))}${fresh ? ` · <span class="cv-sub-new" title="${esc(t('course.newSince', { n: fresh }))}">${esc(t('course.newCount', { n: fresh }))}</span>` : ''}</span>`;
       }
     }
-    const actions = `<button type="button" class="cv-btn" data-action="classic" data-fk="classic">${TP.ui.icon('classic', { size: 16 })}<span>${esc(t('course.classic'))}</span></button>`;
+    const lu = st.luId || (st.data && st.data.course && st.data.course.courseId) || null;
+    const inSb = !!(lu && TP.shell.inSidebar && TP.shell.inSidebar(lu));
+    const sbBtn = lu && TP.shell.setInSidebar
+      ? `<button type="button" class="cv-btn" data-action="sidebar" data-lu="${esc(lu)}" data-fk="sidebar">${TP.ui.icon(inSb ? 'sidebarRemove' : 'sidebarAdd', { size: 16 })}<span>${esc(t(inSb ? 'shell.sbRemove' : 'shell.sbAdd'))}</span></button>`
+      : '';
+    const actions = sbBtn + `<button type="button" class="cv-btn" data-action="classic" data-fk="classic">${TP.ui.icon('classic', { size: 16 })}<span>${esc(t('course.classic'))}</span></button>`;
     return `
       <header class="cv-head">
         <div class="cv-head-main">
@@ -686,6 +691,7 @@
         if (act === 'download') { ev.preventDefault(); onDownload(a); return; }
         if (act === 'toggle-all') { ev.preventDefault(); toggleAll(a); return; }
         if (act === 'classic') { ev.preventDefault(); onClassic(); return; }
+        if (act === 'sidebar') { ev.preventDefault(); TP.shell.setInSidebar(a.dataset.lu); return; } // settings change → re-render
         if (act === 'retry') {
           ev.preventDefault();
           try { if (st.cid && TP.data.clearCourseCache) TP.data.clearCourseCache(st.cid); } catch { /* ignore */ }

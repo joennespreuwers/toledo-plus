@@ -84,7 +84,7 @@
     const st = TP.kuloket.status();
     const main = examsSection(st) + todaySection(st);
     const note = `<p class="kl-readonly">${icon('eye', { size: 14 })}<span>${esc(t('kuloket.readOnly'))}</span></p>`;
-    ctx.root.innerHTML = `<div class="kl-view">${main}${appsSections()}${note}<div class="kl-noresults" hidden></div></div>`;
+    ctx.root.innerHTML = `<div class="kl-view tp-narrow">${main}${appsSections()}${note}<div class="kl-noresults" hidden></div></div>`;
     if (S.q) applySearch();
   }
 

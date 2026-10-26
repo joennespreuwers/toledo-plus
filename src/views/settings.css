@@ -1,6 +1,6 @@
 /* Toledo+ — Settings view (views-B). Inset grouped, label leading / control trailing. */
 .st-view > .tp-section { margin: 0; } /* the flex gap is the section gap (was doubled to ~56px) */
-.st-view { display: flex; flex-direction: column; gap: 28px; max-width: 720px; min-width: 0; }
+.st-view { display: flex; flex-direction: column; gap: var(--section-gap, 28px); min-width: 0; }
 .st-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 .st-row {

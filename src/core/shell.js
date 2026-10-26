@@ -11,6 +11,7 @@
   const PORTAL = 'https://toledo.kuleuven.be';
   const ULTRA = 'https://ultra.edu.kuleuven.cloud';
   const PORTAL_HOME = PORTAL + '/portal/';
+  const MAIL_URL = 'https://outlook.office.com/mail/'; // student mailbox (Outlook web), opens in a new tab
   const ROUTES = ['overview', 'courses', 'course', 'deadlines', 'agenda', 'announcements', 'kuloket', 'settings'];
   const ROUTE_ALIASES = { planning: 'agenda' }; // old links keep working
   const START_PAGES = ['overview', 'courses', 'deadlines', 'agenda'];
@@ -263,6 +264,7 @@
       <button type="button" class="tp-search-clear" data-shell="search-clear" aria-label="${esc(t('shell.searchClear'))}" hidden>${icon('xmark', { size: 13, strokeWidth: 2.4 })}</button>
     </div>
     <button type="button" class="tp-tb-btn tp-search-open" data-shell="search-open" aria-label="${esc(t('shell.searchOpen'))}">${icon('search', { size: 20 })}</button>
+    <a class="tp-tb-btn tp-mail" href="${MAIL_URL}" target="_blank" rel="noopener" data-shell-mail title="${esc(t('shell.mail'))}" aria-label="${esc(t('shell.mailOpen'))}">${icon('mail', { size: 20 })}<span class="tp-mail-badge" aria-hidden="true" hidden></span></a>
     <button type="button" class="tp-tb-btn tp-refresh" data-shell="refresh" aria-label="${esc(t('shell.refresh'))}" title="${esc(t('shell.refresh'))}">${icon('refresh', { size: 20 })}</button>
     <div class="tp-account">
       <button type="button" class="tp-tb-btn tp-avatar" data-shell="menu" aria-haspopup="menu" aria-expanded="false" aria-controls="tp-account-menu" aria-label="${esc(t('shell.account'))}">${icon('person', { size: 20 })}<span class="tp-avatar-dot" hidden></span></button>
@@ -376,9 +378,26 @@
     return list.slice().sort((a, b) => (a.type === b.type ? 0 : a.type === 'course' ? -1 : 1) || cmp(a, b));
   }
 
-  // Sidebar group "Vakken" (N1): the current, non-hidden courses in the student's order; compact rows; collapsible.
+  /** The courses the student put in the sidebar (settings.courses.items[luId].inSidebar, v1.5), in the
+   *  courses sort; hidden courses never show. Communities/older years count too when added explicitly. */
+  const inSidebar = (luId) => !!safe(() => TP.settings.course(luId).inSidebar, false);
+  function sidebarCourses() {
+    return safe(() => sortCourses((TP.data?.courses?.({ includeCommunities: true, currentOnly: false }) || [])
+      .filter((c) => !c.hidden && inSidebar(c.luId))), []);
+  }
+  /** Toggle a course in the sidebar (course page, Vakken list, Vakken › Bewerk). → new value */
+  function setInSidebar(luId, on) {
+    if (!luId) return false;
+    const next = on == null ? !inSidebar(luId) : !!on;
+    safe(() => Promise.resolve(TP.settings.setCourse(luId, { inSidebar: next })).catch(() => {}));
+    const name = safe(() => TP.data.course(luId)?.name, '') || '';
+    announce(t(next ? 'shell.sbAdded' : 'shell.sbRemoved', { name }));
+    return next;
+  }
+
+  // Sidebar group "Vakken": only the courses the student added (N1 v1.5: "minder cluttery"); no group when empty.
   function coursesGroup() {
-    const list = safe(() => sortCourses(TP.data?.courses?.({}) || []), []);
+    const list = sidebarCourses();
     if (!list.length) return '';
     const closed = !!safe(() => TP.state?.get?.()?.ui?.sbCoursesClosed, false);
     const act = current?.route === 'course' ? current : null;
@@ -418,6 +437,12 @@
       sheet.innerHTML = TP.ui.group(TP.ui.row({
         action: 'palette', attrs: { 'data-shell': 'palette', 'aria-haspopup': 'dialog' },
         leading: `<span class="tp-tile">${icon('search', { size: 17 })}</span>`, title: esc(t('palette.open')),
+      }) + TP.ui.row({
+        href: MAIL_URL, attrs: { target: '_blank', rel: 'noopener', 'data-sheet-mail': '' },
+        leading: `<span class="tp-tile">${icon('mail', { size: 17 })}</span>`,
+        title: `${esc(t('shell.mail'))}<span class="tp-sr"> (${esc(t('common.newTab'))})</span>`,
+        trailing: mailCount() ? TP.ui.badge(mailCount(), { tone: 'gray', label: t('shell.mailUnread', { n: mailCount() }) }) : '',
+        chevron: false,
       })) + TP.ui.group(MORE.map((r) => TP.ui.row({
         href: href(r), attrs: { 'data-route': r, 'aria-current': activeNav() === r ? 'page' : null },
         leading: `<span class="tp-tile">${icon(r, { size: 17 })}</span>`, title: esc(t('nav.' + r)),
@@ -452,14 +477,22 @@
     // N9: no second "Instellingen" (it is in the sidebar/More), mail count is neutral gray (not an alarm).
     menu.innerHTML = `
 ${item(`${icon('mail')}<span class="tp-menu-label">${esc(t('shell.mail'))}</span>${mail ? TP.ui.badge(mail, { tone: 'gray', label: t('shell.mailUnread', { n: mail }) }) : ''}${icon('external', { size: 13, cls: 'tp-menu-ext' })}`,
-    ` href="https://outlook.office.com/mail/" target="_blank" rel="noopener" aria-description="${esc(t('common.newTab'))}"`)}
+    ` href="${MAIL_URL}" target="_blank" rel="noopener" aria-description="${esc(t('common.newTab'))}"`)}
 ${notif ? item(`${icon('bell')}<span class="tp-menu-label">${esc(t('shell.notifSettings'))}<small>${esc(t('shell.notifHint'))}</small></span>`, ` href="${esc(notif)}"`) : ''}
 <button type="button" class="tp-menu-item" role="menuitem" tabindex="-1" data-shell="classic">${icon('classic')}<span class="tp-menu-label">${esc(t('shell.classic'))}<small>${esc(t('shell.classicHint'))}</small></span></button>
 <button type="button" class="tp-menu-item" role="menuitem" tabindex="-1" data-shell="feedback">${icon('megaphone')}<span class="tp-menu-label">${esc(t('feedback.menu'))}</span></button>
 <div class="tp-menu-sep" role="separator"></div>
 ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</span>`, ` href="${esc(logout)}"`)}`;
     const dot = $('.tp-avatar-dot');
-    if (dot) dot.hidden = !mail;
+    if (dot) dot.hidden = !mail; // phones only (CSS): the toolbar mail button carries the count ≥ 700px
+    const mb = $('.tp-mail');
+    if (mb) {
+      const label = mail ? `${t('shell.mail')}, ${t('shell.mailUnread', { n: mail })}` : t('shell.mail');
+      mb.setAttribute('aria-label', `${label} (${t('common.newTab')})`);
+      mb.title = label;
+      const b = mb.querySelector('.tp-mail-badge');
+      if (b) { b.hidden = !mail; b.textContent = mail > 99 ? '99+' : String(mail || ''); }
+    }
     const btn = $('.tp-avatar');
     if (btn) btn.setAttribute('aria-label', mail ? `${t('shell.account')}, ${t('shell.mailUnread', { n: mail })}` : t('shell.account'));
   }
@@ -795,9 +828,17 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
       if (cur === current) cur.root.innerHTML = TP.ui.group(TP.ui.errorRow(t('shell.renderError'), 'tp-retry-view'));
     }
     if (seq !== renderSeq || cur !== current) return;
+    syncWidth();
     updateHead();
     restoreFocus(focus);
     if (searchQ) applySearch();
+  }
+  // Content width (v1.5): list views (.tp-narrow) get a centred ~760px column, the rest a centred column of at
+  // most --content-wide (main + side column). The toolbar's trailing controls follow the same right edge.
+  function syncWidth() {
+    if (!app || !current?.root) return;
+    const w = current.root.querySelector('.tp-narrow') ? 'narrow' : 'wide';
+    if (app.dataset.width !== w) app.dataset.width = w;
   }
   // Debounced full refresh of nav + current view, with a guard against render→change→render loops.
   let burst = { at: 0, n: 0, warned: false };
@@ -1172,7 +1213,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
 
   TP.shell = {
     CSS: CSS_FILES, ROUTES,
-    register, navigate, href, toast, announce, sortCourses,
+    register, navigate, href, toast, announce, sortCourses, inSidebar, setInSidebar, sidebarCourses,
     detail: { open: openDetail, update: updateDetail, close: closeDetail, isOpen: () => !!$('.tp-detail')?.open },
     rerender: () => rerender(),
     start, preflight,

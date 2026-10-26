@@ -6,10 +6,11 @@
   const add = () => TP.i18n.add({
     nl: {
       'overview.search': 'Zoeken',
-      'overview.greet.night': 'Goeienacht',
-      'overview.greet.morning': 'Goeiemorgen',
-      'overview.greet.afternoon': 'Goeiemiddag',
-      'overview.greet.evening': 'Goeienavond',
+      'overview.greet.night': 'Goedenacht',
+      'overview.greet.morning': 'Goedemorgen',
+      'overview.greet.afternoon': 'Goedemiddag',
+      'overview.greet.evening': 'Goedenavond',
+      'overview.greet.named': '{greet}, {name}',
       'overview.updated': 'Bijgewerkt {time}',
       'overview.loading': 'Gegevens laden…',
 
@@ -89,6 +90,7 @@
       'overview.greet.morning': 'Good morning',
       'overview.greet.afternoon': 'Good afternoon',
       'overview.greet.evening': 'Good evening',
+      'overview.greet.named': '{greet}, {name}',
       'overview.updated': 'Updated {time}',
       'overview.loading': 'Loading…',
 
@@ -168,6 +170,7 @@
       'overview.greet.morning': 'Bonjour',
       'overview.greet.afternoon': 'Bon après-midi',
       'overview.greet.evening': 'Bonsoir',
+      'overview.greet.named': '{greet} {name}',
       'overview.updated': 'Mis à jour à {time}',
       'overview.loading': 'Chargement…',
 

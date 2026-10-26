@@ -1,0 +1,1089 @@
+{
+ "_comment": "Fictitious demo data (Blackboard Ultra REST shape, see tests/fixtures/ultra.json). Courses without a tree get defaultTree.",
+ "courses": {
+  "_900661_1": {
+   "id": "_900661_1",
+   "courseId": "ULTRA-B-DEMO-ZX1001-2627",
+   "name": "Wiskunde I [ZX1001]",
+   "externalId": "ULTRA-B-DEMO-ZX1001-2627"
+  },
+  "_900662_1": {
+   "id": "_900662_1",
+   "courseId": "ULTRA-B-DEMO-ZX1002-2627",
+   "name": "Inleiding tot de economie [ZX1002]",
+   "externalId": "ULTRA-B-DEMO-ZX1002-2627"
+  },
+  "_900663_1": {
+   "id": "_900663_1",
+   "courseId": "ULTRA-B-DEMO-ZX1003-2627",
+   "name": "Algemene chemie [ZX1003]",
+   "externalId": "ULTRA-B-DEMO-ZX1003-2627"
+  },
+  "_900664_1": {
+   "id": "_900664_1",
+   "courseId": "ULTRA-B-DEMO-ZX1004-2627",
+   "name": "Academisch Engels [ZX1004]",
+   "externalId": "ULTRA-B-DEMO-ZX1004-2627"
+  },
+  "_900665_1": {
+   "id": "_900665_1",
+   "courseId": "ULTRA-B-DEMO-ZX1005-2627",
+   "name": "Statistiek [ZX1005]",
+   "externalId": "ULTRA-B-DEMO-ZX1005-2627"
+  },
+  "_900666_1": {
+   "id": "_900666_1",
+   "courseId": "ULTRA-B-DEMO-ZX1006-2627",
+   "name": "Programmeren [ZX1006]",
+   "externalId": "ULTRA-B-DEMO-ZX1006-2627"
+  },
+  "_900667_1": {
+   "id": "_900667_1",
+   "courseId": "ULTRA-B-DEMO-ZX1007-2627",
+   "name": "Sociologie [ZX1007]",
+   "externalId": "ULTRA-B-DEMO-ZX1007-2627"
+  },
+  "_900668_1": {
+   "id": "_900668_1",
+   "courseId": "ULTRA-B-DEMO-ZX1008-2627",
+   "name": "Inleiding tot de bureaucratie [ZX1008]",
+   "externalId": "ULTRA-B-DEMO-ZX1008-2627"
+  },
+  "_900669_1": {
+   "id": "_900669_1",
+   "courseId": "ULTRA-B-DEMO-ZX1009-2627",
+   "name": "Geschiedenis van het moderne denken [ZX1009]",
+   "externalId": "ULTRA-B-DEMO-ZX1009-2627"
+  },
+  "_900670_1": {
+   "id": "_900670_1",
+   "courseId": "ULTRA-B-DEMO-ZX1010-2627",
+   "name": "Fysica [ZX1010]",
+   "externalId": "ULTRA-B-DEMO-ZX1010-2627"
+  },
+  "_900671_1": {
+   "id": "_900671_1",
+   "courseId": "ULTRA-B-DEMO-ZX1011-2627",
+   "name": "Academisch schrijven [ZX1011]",
+   "externalId": "ULTRA-B-DEMO-ZX1011-2627"
+  },
+  "_900672_1": {
+   "id": "_900672_1",
+   "courseId": "ULTRA-B-DEMO-ZX1012-2627",
+   "name": "Filosofie [ZX1012]",
+   "externalId": "ULTRA-B-DEMO-ZX1012-2627"
+  },
+  "_990001_1": {
+   "id": "_990001_1",
+   "courseId": "ULTRA-B-DEMO-ZX0999-2526",
+   "name": "Kansrekenen [ZX0999]",
+   "externalId": "ULTRA-B-DEMO-ZX0999-2526"
+  },
+  "_950001_1": {
+   "id": "_950001_1",
+   "courseId": "ULTRA-C-10000001-K",
+   "name": "- Studentenportaal@Campus Voorbeeld",
+   "externalId": "ULTRA-C-10000001-K"
+  },
+  "_950002_1": {
+   "id": "_950002_1",
+   "courseId": "ULTRA-C-10000002-K-2627",
+   "name": "Studentenkring Voorbeeld",
+   "externalId": "ULTRA-C-10000002-K-2627"
+  },
+  "_950003_1": {
+   "id": "_950003_1",
+   "courseId": "ULTRA-C-10000003-K",
+   "name": "- Studentenraad (Voorbeeld)",
+   "externalId": "ULTRA-C-10000003-K"
+  }
+ },
+ "trees": {
+  "_900661_1": [
+   {
+    "id": "_5003_1",
+    "title": "Les 1 — Introductie (en een quiz die niet meetelt)",
+    "created": "@iso:-35d",
+    "modified": "@iso:-35d",
+    "position": 0,
+    "hasChildren": true,
+    "availability": {
+     "available": "Yes"
+    },
+    "contentHandler": {
+     "id": "resource/x-bb-folder"
+    },
+    "_kids": [
+     {
+      "id": "_5001_1",
+      "title": "Slides_les1.pdf",
+      "created": "@iso:-35d",
+      "modified": "@iso:-35d",
+      "position": 0,
+      "hasChildren": false,
+      "availability": {
+       "available": "Yes"
+      },
+      "contentHandler": {
+       "id": "resource/x-bb-file",
+       "file": {
+        "fileName": "Slides_les1.pdf",
+        "mimeType": "application/pdf"
+       }
+      },
+      "_attachments": [
+       {
+        "id": "_att_5001_1",
+        "fileName": "Slides_les1.pdf",
+        "mimeType": "application/pdf"
+       }
+      ],
+      "links": [
+       {
+        "href": "/ultra/redirect?redirectType=nautilus&courseId=_900661_1&contentId=_5001_1",
+        "rel": "alternate",
+        "type": "UI"
+       }
+      ]
+     },
+     {
+      "id": "_5002_1",
+      "title": "Welkomstvideo_geluid_valt_weg_na_2min.mp4",
+      "created": "@iso:-35d",
+      "modified": "@iso:-35d",
+      "position": 0,
+      "hasChildren": false,
+      "availability": {
+       "available": "Yes"
+      },
+      "contentHandler": {
+       "id": "resource/x-bb-file",
+       "file": {
+        "fileName": "Welkomstvideo_geluid_valt_weg_na_2min.mp4",
+        "mimeType": "video/mp4"
+       }
+      },
+      "_attachments": [
+       {
+        "id": "_att_5002_1",
+        "fileName": "Welkomstvideo_geluid_valt_weg_na_2min.mp4",
+        "mimeType": "video/mp4"
+       }
+      ],
+      "links": [
+       {
+        "href": "/ultra/redirect?redirectType=nautilus&courseId=_900661_1&contentId=_5002_1",
+        "rel": "alternate",
+        "type": "UI"
+       }
+      ]
+     }
+    ],
+    "links": [
+     {
+      "href": "/ultra/redirect?redirectType=nautilus&courseId=_900661_1&contentId=_5003_1",
+      "rel": "alternate",
+      "type": "UI"
+     }
+    ]
+   },
+   {
+    "id": "_5006_1",
+    "title": "Les 2 — Limieten",
+    "created": "@iso:-28d",
+    "modified": "@iso:-28d",
+    "position": 0,
+    "hasChildren": true,
+    "availability": {
+     "available": "Yes"
+    },
+    "contentHandler": {
+     "id": "resource/x-bb-folder"
+    },
+    "_kids": [
+     {
+      "id": "_5004_1",
+      "title": "Slides_les2_FINAL.pdf",
+      "created": "@iso:-28d",
+      "modified": "@iso:-28d",
+      "position": 0,
+      "hasChildren": false,
+      "availability": {
+       "available": "Yes"
+      },
+      "contentHandler": {
+       "id": "resource/x-bb-file",
+       "file": {
+        "fileName": "Slides_les2_FINAL.pdf",
+        "mimeType": "application/pdf"
+       }
+      },
+      "_attachments": [
+       {
+        "id": "_att_5004_1",
+        "fileName": "Slides_les2_FINAL.pdf",
+        "mimeType": "application/pdf"
+       }
+      ],
+      "links": [
+       {
+        "href": "/ultra/redirect?redirectType=nautilus&courseId=_900661_1&contentId=_5004_1",
+        "rel": "alternate",
+        "type": "UI"
+       }
+      ]
+     },
+     {
+      "id": "_5005_1",
+      "title": "Foto_van_het_bord_(onleesbaar).jpg",
+      "created": "@iso:-28d",
+      "modified": "@iso:-28d",
+      "position": 0,
+      "hasChildren": false,
+      "availability": {
+       "available": "Yes"
+      },
+      "contentHandler": {
+       "id": "resource/x-bb-file",
+       "file": {
+        "fileName": "Foto_van_het_bord_(onleesbaar).jpg",
+        "mimeType": "image/jpeg"
+       }
+      },
+      "_attachments": [
+       {
+        "id": "_att_5005_1",
+        "fileName": "Foto_van_het_bord_(onleesbaar).jpg",
+        "mimeType": "image/jpeg"
+       }
+      ],
+      "links": [
+       {
+        "href": "/ultra/redirect?redirectType=nautilus&courseId=_900661_1&contentId=_5005_1",
+        "rel": "alternate",
+        "type": "UI"
+       }
+      ]
+     }
+    ],
+    "links": [
+     {
+      "href": "/ultra/redirect?redirectType=nautilus&courseId=_900661_1&contentId=_5006_1",
+      "rel": "alternate",
+      "type": "UI"
+     }
+    ]
+   },
+   {
+    "id": "_5009_1",
+    "title": "Les 3 — Afgeleiden",
+    "created": "@iso:-8d",
+    "modified": "@iso:-8d",
+    "position": 0,
+    "hasChildren": true,
+    "availability": {
+     "available": "Yes"
+    },
+    "contentHandler": {
+     "id": "resource/x-bb-folder"
+    },
+    "_kids": [
+     {
+      "id": "_5007_1",
+      "title": "Slides_les3_FINAL.pdf",
+      "created": "@iso:-8d",
+      "modified": "@iso:-8d",
+      "position": 0,
+      "hasChildren": false,
+      "availability": {
+       "available": "Yes"
+      },
+      "contentHandler": {
+       "id": "resource/x-bb-file",
+       "file": {
+        "fileName": "Slides_les3_FINAL.pdf",
+        "mimeType": "application/pdf"
+       }
+      },
+      "_attachments": [
+       {
+        "id": "_att_5007_1",
+        "fileName": "Slides_les3_FINAL.pdf",
+        "mimeType": "application/pdf"
+       }
+      ],
+      "links": [
+       {
+        "href": "/ultra/redirect?redirectType=nautilus&courseId=_900661_1&contentId=_5007_1",
+        "rel": "alternate",
+        "type": "UI"
+       }
+      ]
+     },
+     {
+      "id": "_5008_1",
+      "title": "Oefenzitting_3.pdf",
+      "created": "@iso:-8d",
+      "modified": "@iso:-8d",
+      "position": 0,
+      "hasChildren": false,
+      "availability": {
+       "available": "Yes"
+      },
+      "contentHandler": {
+       "id": "resource/x-bb-file",
+       "file": {
+        "fileName": "Oefenzitting_3.pdf",
+        "mimeType": "application/pdf"
+       }
+      },
+      "_attachments": [
+       {
+        "id": "_att_5008_1",
+        "fileName": "Oefenzitting_3.pdf",
+        "mimeType": "application/pdf"
+       }
+      ],
+      "links": [
+       {
+        "href": "/ultra/redirect?redirectType=nautilus&courseId=_900661_1&contentId=_5008_1",
+        "rel": "alternate",
+        "type": "UI"
+       }
+      ]
+     }
+    ],
+    "links": [
+     {
+      "href": "/ultra/redirect?redirectType=nautilus&courseId=_900661_1&contentId=_5009_1",
+      "rel": "alternate",
+      "type": "UI"
+     }
+    ]
+   },
+   {
+    "id": "_5016_1",
+    "title": "Les 4 — Integralen",
+    "created": "@iso:-0.2d",
+    "modified": "@iso:-0.2d",
+    "position": 0,
+    "hasChildren": true,
+    "availability": {
+     "available": "Yes"
+    },
+    "contentHandler": {
+     "id": "resource/x-bb-lesson"
+    },
+    "_kids": [
+     {
+      "id": "_5010_1",
+      "title": "Slides_les4_FINAL_v2_echtfinal.pdf",
+      "created": "@iso:-0.1d",
+      "modified": "@iso:-0.1d",
+      "position": 0,
+      "hasChildren": false,
+      "availability": {
+       "available": "Yes"
+      },
+      "contentHandler": {
+       "id": "resource/x-bb-file",
+       "file": {
+        "fileName": "Slides_les4_FINAL_v2_echtfinal.pdf",
+        "mimeType": "application/pdf"
+       }
+      },
+      "_attachments": [
+       {
+        "id": "_att_5010_1",
+        "fileName": "Slides_les4_FINAL_v2_echtfinal.pdf",
+        "mimeType": "application/pdf"
+       }
+      ],
+      "links": [
+       {
+        "href": "/ultra/redirect?redirectType=nautilus&courseId=_900661_1&contentId=_5010_1",
+        "rel": "alternate",
+        "type": "UI"
+       }
+      ]
+     },
+     {
+      "id": "_5011_1",
+      "title": "Opname_les4_geluid_vanaf_minuut_12.mp4",
+      "created": "@iso:-0.15d",
+      "modified": "@iso:-0.15d",
+      "position": 0,
+      "hasChildren": false,
+      "availability": {
+       "available": "Yes"
+      },
+      "contentHandler": {
+       "id": "resource/x-bb-file",
+       "file": {
+        "fileName": "Opname_les4_geluid_vanaf_minuut_12.mp4",
+        "mimeType": "video/mp4"
+       }
+      },
+      "_attachments": [
+       {
+        "id": "_att_5011_1",
+        "fileName": "Opname_les4_geluid_vanaf_minuut_12.mp4",
+        "mimeType": "video/mp4"
+       }
+      ],
+      "links": [
+       {
+        "href": "/ultra/redirect?redirectType=nautilus&courseId=_900661_1&contentId=_5011_1",
+        "rel": "alternate",
+        "type": "UI"
+       }
+      ]
+     },
+     {
+      "id": "_5015_1",
+      "title": "Extra oefeningen",
+      "created": "@iso:-0.2d",
+      "modified": "@iso:-0.2d",
+      "position": 0,
+      "hasChildren": true,
+      "availability": {
+       "available": "Yes"
+      },
+      "contentHandler": {
+       "id": "resource/x-bb-folder"
+      },
+      "_kids": [
+       {
+        "id": "_5012_1",
+        "title": "Oefenzitting 4 — oplossingen (met 2 bekende fouten).pdf",
+        "created": "@iso:-1d",
+        "modified": "@iso:-1d",
+        "position": 0,
+        "hasChildren": false,
+        "availability": {
+         "available": "Yes"
+        },
+        "contentHandler": {
+         "id": "resource/x-bb-file",
+         "file": {
+          "fileName": "Oefenzitting 4 — oplossingen (met 2 bekende fouten).pdf",
+          "mimeType": "application/pdf"
+         }
+        },
+        "_attachments": [
+         {
+          "id": "_att_5012_1",
+          "fileName": "Oefenzitting 4 — oplossingen (met 2 bekende fouten).pdf",
+          "mimeType": "application/pdf"
+         }
+        ],
+        "links": [
+         {
+          "href": "/ultra/redirect?redirectType=nautilus&courseId=_900661_1&contentId=_5012_1",
+          "rel": "alternate",
+          "type": "UI"
+         }
+        ]
+       },
+       {
+        "id": "_5014_1",
+        "title": "Achtergrond",
+        "created": "@iso:-0.2d",
+        "modified": "@iso:-0.2d",
+        "position": 0,
+        "hasChildren": true,
+        "availability": {
+         "available": "Yes"
+        },
+        "contentHandler": {
+         "id": "resource/x-bb-folder"
+        },
+        "_kids": [
+         {
+          "id": "_5013_1",
+          "title": "Bewijs_dat_niet_op_het_examen_komt.pdf",
+          "created": "@iso:-0.2d",
+          "modified": "@iso:-0.2d",
+          "position": 0,
+          "hasChildren": false,
+          "availability": {
+           "available": "Yes"
+          },
+          "contentHandler": {
+           "id": "resource/x-bb-file",
+           "file": {
+            "fileName": "Bewijs_dat_niet_op_het_examen_komt.pdf",
+            "mimeType": "application/pdf"
+           }
+          },
+          "_attachments": [
+           {
+            "id": "_att_5013_1",
+            "fileName": "Bewijs_dat_niet_op_het_examen_komt.pdf",
+            "mimeType": "application/pdf"
+           }
+          ],
+          "links": [
+           {
+            "href": "/ultra/redirect?redirectType=nautilus&courseId=_900661_1&contentId=_5013_1",
+            "rel": "alternate",
+            "type": "UI"
+           }
+          ]
+         }
+        ],
+        "links": [
+         {
+          "href": "/ultra/redirect?redirectType=nautilus&courseId=_900661_1&contentId=_5014_1",
+          "rel": "alternate",
+          "type": "UI"
+         }
+        ]
+       }
+      ],
+      "links": [
+       {
+        "href": "/ultra/redirect?redirectType=nautilus&courseId=_900661_1&contentId=_5015_1",
+        "rel": "alternate",
+        "type": "UI"
+       }
+      ]
+     }
+    ],
+    "links": [
+     {
+      "href": "/ultra/redirect?redirectType=nautilus&courseId=_900661_1&contentId=_5016_1",
+      "rel": "alternate",
+      "type": "UI"
+     }
+    ]
+   },
+   {
+    "id": "_5018_1",
+    "title": "Archief vorig jaar (niet meer geldig, behalve hoofdstuk 3)",
+    "created": "@iso:-400d",
+    "modified": "@iso:-400d",
+    "position": 0,
+    "hasChildren": true,
+    "availability": {
+     "available": "Yes"
+    },
+    "contentHandler": {
+     "id": "resource/x-bb-folder"
+    },
+    "_kids": [
+     {
+      "id": "_5017_1",
+      "title": "oud_programma.pdf",
+      "created": "@iso:-400d",
+      "modified": "@iso:-400d",
+      "position": 0,
+      "hasChildren": false,
+      "availability": {
+       "available": "Yes"
+      },
+      "contentHandler": {
+       "id": "resource/x-bb-file",
+       "file": {
+        "fileName": "oud_programma.pdf",
+        "mimeType": "application/pdf"
+       }
+      },
+      "_attachments": [
+       {
+        "id": "_att_5017_1",
+        "fileName": "oud_programma.pdf",
+        "mimeType": "application/pdf"
+       }
+      ],
+      "links": [
+       {
+        "href": "/ultra/redirect?redirectType=nautilus&courseId=_900661_1&contentId=_5017_1",
+        "rel": "alternate",
+        "type": "UI"
+       }
+      ]
+     }
+    ],
+    "links": [
+     {
+      "href": "/ultra/redirect?redirectType=nautilus&courseId=_900661_1&contentId=_5018_1",
+      "rel": "alternate",
+      "type": "UI"
+     }
+    ]
+   },
+   {
+    "id": "_5019_1",
+    "title": "Komt eraan",
+    "created": "@iso:-3d",
+    "modified": "@iso:-3d",
+    "position": 0,
+    "hasChildren": true,
+    "availability": {
+     "available": "Yes"
+    },
+    "contentHandler": {
+     "id": "resource/x-bb-folder"
+    },
+    "_kids": [],
+    "links": [
+     {
+      "href": "/ultra/redirect?redirectType=nautilus&courseId=_900661_1&contentId=_5019_1",
+      "rel": "alternate",
+      "type": "UI"
+     }
+    ]
+   },
+   {
+    "id": "_5020_1",
+    "title": "Opdracht 2 (nieuwe versie, negeer de vorige)",
+    "created": "@iso:-2d",
+    "modified": "@iso:-2d",
+    "position": 0,
+    "hasChildren": false,
+    "availability": {
+     "available": "Yes"
+    },
+    "contentHandler": {
+     "id": "resource/x-bb-asmt-test-link"
+    },
+    "links": [
+     {
+      "href": "/ultra/redirect?redirectType=nautilus&courseId=_900661_1&contentId=_5020_1",
+      "rel": "alternate",
+      "type": "UI"
+     }
+    ]
+   },
+   {
+    "id": "_5021_1",
+    "title": "Leeswijzer",
+    "created": "@iso:-30d",
+    "modified": "@iso:-30d",
+    "position": 0,
+    "hasChildren": false,
+    "availability": {
+     "available": "Yes"
+    },
+    "contentHandler": {
+     "id": "resource/x-bb-document"
+    },
+    "body": "<p>Lees <strong>hoofdstuk 4 en 5</strong>. Of 5 en 6, afhankelijk van welke editie je hebt.</p><p>Vragen? Stel ze in de les, of op het forum, of per mail (niet alle drie).</p>",
+    "links": [
+     {
+      "href": "/ultra/redirect?redirectType=nautilus&courseId=_900661_1&contentId=_5021_1",
+      "rel": "alternate",
+      "type": "UI"
+     }
+    ]
+   },
+   {
+    "id": "_5022_1",
+    "title": "Formularium (extern)",
+    "created": "@iso:-20d",
+    "modified": "@iso:-20d",
+    "position": 0,
+    "hasChildren": false,
+    "availability": {
+     "available": "Yes"
+    },
+    "contentHandler": {
+     "id": "resource/x-bb-externallink"
+    },
+    "links": [
+     {
+      "href": "/ultra/redirect?redirectType=nautilus&courseId=_900661_1&contentId=_5022_1",
+      "rel": "alternate",
+      "type": "UI"
+     }
+    ]
+   },
+   {
+    "id": "_5023_1",
+    "title": "Online oefenplatform",
+    "created": "@iso:-25d",
+    "modified": "@iso:-25d",
+    "position": 0,
+    "hasChildren": false,
+    "availability": {
+     "available": "Yes"
+    },
+    "contentHandler": {
+     "id": "resource/x-bb-blti-link"
+    },
+    "links": [
+     {
+      "href": "/ultra/redirect?redirectType=nautilus&courseId=_900661_1&contentId=_5023_1",
+      "rel": "alternate",
+      "type": "UI"
+     }
+    ]
+   }
+  ],
+  "_900662_1": [
+   {
+    "id": "_5028_1",
+    "title": "Week 3 — Vraag en aanbod",
+    "created": "@iso:-12d",
+    "modified": "@iso:-12d",
+    "position": 0,
+    "hasChildren": true,
+    "availability": {
+     "available": "Yes"
+    },
+    "contentHandler": {
+     "id": "resource/x-bb-folder"
+    },
+    "_kids": [
+     {
+      "id": "_5026_1",
+      "title": "Opdrachten",
+      "created": "@iso:-12d",
+      "modified": "@iso:-12d",
+      "position": 0,
+      "hasChildren": true,
+      "availability": {
+       "available": "Yes"
+      },
+      "contentHandler": {
+       "id": "resource/x-bb-folder"
+      },
+      "_kids": [
+       {
+        "id": "_5024_1",
+        "title": "Paper: vraag en aanbod — indienen via Toledo (of mail, of papier, zie les)",
+        "created": "@iso:-3d",
+        "modified": "@iso:-3d",
+        "position": 0,
+        "hasChildren": false,
+        "availability": {
+         "available": "Yes"
+        },
+        "contentHandler": {
+         "id": "resource/x-bb-asmt-test-link"
+        },
+        "links": [
+         {
+          "href": "/ultra/redirect?redirectType=nautilus&courseId=_900662_1&contentId=_5024_1",
+          "rel": "alternate",
+          "type": "UI"
+         }
+        ]
+       },
+       {
+        "id": "_5025_1",
+        "title": "Paper_sjabloon_(echt_het_juiste).docx",
+        "created": "@iso:-3d",
+        "modified": "@iso:-3d",
+        "position": 0,
+        "hasChildren": false,
+        "availability": {
+         "available": "Yes"
+        },
+        "contentHandler": {
+         "id": "resource/x-bb-file",
+         "file": {
+          "fileName": "Paper_sjabloon_(echt_het_juiste).docx",
+          "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+         }
+        },
+        "_attachments": [
+         {
+          "id": "_att_5025_1",
+          "fileName": "Paper_sjabloon_(echt_het_juiste).docx",
+          "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+         }
+        ],
+        "links": [
+         {
+          "href": "/ultra/redirect?redirectType=nautilus&courseId=_900662_1&contentId=_5025_1",
+          "rel": "alternate",
+          "type": "UI"
+         }
+        ]
+       }
+      ],
+      "links": [
+       {
+        "href": "/ultra/redirect?redirectType=nautilus&courseId=_900662_1&contentId=_5026_1",
+        "rel": "alternate",
+        "type": "UI"
+       }
+      ]
+     },
+     {
+      "id": "_5027_1",
+      "title": "Leesnota week 3",
+      "created": "@iso:-5d",
+      "modified": "@iso:-5d",
+      "position": 0,
+      "hasChildren": false,
+      "availability": {
+       "available": "Yes"
+      },
+      "contentHandler": {
+       "id": "resource/x-bb-document"
+      },
+      "body": "<p>Lees hoofdstuk 3 voor de les. Hoofdstuk 2 mag je overslaan, want dat hebben we vorige week ook al overgeslagen.</p>",
+      "links": [
+       {
+        "href": "/ultra/redirect?redirectType=nautilus&courseId=_900662_1&contentId=_5027_1",
+        "rel": "alternate",
+        "type": "UI"
+       }
+      ]
+     }
+    ],
+    "links": [
+     {
+      "href": "/ultra/redirect?redirectType=nautilus&courseId=_900662_1&contentId=_5028_1",
+      "rel": "alternate",
+      "type": "UI"
+     }
+    ]
+   },
+   {
+    "id": "_5029_1",
+    "title": "Slides_week2_(ook_voor_week3).pdf",
+    "created": "@iso:-0.5d",
+    "modified": "@iso:-0.5d",
+    "position": 0,
+    "hasChildren": false,
+    "availability": {
+     "available": "Yes"
+    },
+    "contentHandler": {
+     "id": "resource/x-bb-file",
+     "file": {
+      "fileName": "Slides_week2_(ook_voor_week3).pdf",
+      "mimeType": "application/pdf"
+     }
+    },
+    "_attachments": [
+     {
+      "id": "_att_5029_1",
+      "fileName": "Slides_week2_(ook_voor_week3).pdf",
+      "mimeType": "application/pdf"
+     }
+    ],
+    "links": [
+     {
+      "href": "/ultra/redirect?redirectType=nautilus&courseId=_900662_1&contentId=_5029_1",
+      "rel": "alternate",
+      "type": "UI"
+     }
+    ]
+   },
+   {
+    "id": "_5030_1",
+    "title": "Handboek_hfst_1-12_scan_een_beetje_scheef.pdf",
+    "created": "@iso:-3d",
+    "modified": "@iso:-3d",
+    "position": 0,
+    "hasChildren": false,
+    "availability": {
+     "available": "Yes"
+    },
+    "contentHandler": {
+     "id": "resource/x-bb-file",
+     "file": {
+      "fileName": "Handboek_hfst_1-12_scan_een_beetje_scheef.pdf",
+      "mimeType": "application/pdf"
+     }
+    },
+    "_attachments": [
+     {
+      "id": "_att_5030_1",
+      "fileName": "Handboek_hfst_1-12_scan_een_beetje_scheef.pdf",
+      "mimeType": "application/pdf"
+     }
+    ],
+    "links": [
+     {
+      "href": "/ultra/redirect?redirectType=nautilus&courseId=_900662_1&contentId=_5030_1",
+      "rel": "alternate",
+      "type": "UI"
+     }
+    ]
+   }
+  ]
+ },
+ "defaultTree": [
+  {
+   "id": "_d1_1",
+   "title": "Les 1",
+   "created": "@iso:-10d",
+   "modified": "@iso:-10d",
+   "position": 0,
+   "hasChildren": true,
+   "availability": {
+    "available": "Yes"
+   },
+   "contentHandler": {
+    "id": "resource/x-bb-folder"
+   },
+   "_kids": [
+    {
+     "id": "_d2_1",
+     "title": "Slides_les1_FINAL.pdf",
+     "created": "@iso:-10d",
+     "modified": "@iso:-10d",
+     "position": 0,
+     "hasChildren": false,
+     "availability": {
+      "available": "Yes"
+     },
+     "contentHandler": {
+      "id": "resource/x-bb-file",
+      "file": {
+       "fileName": "Slides_les1_FINAL.pdf",
+       "mimeType": "application/pdf"
+      }
+     },
+     "_attachments": [
+      {
+       "id": "_att_d2_1",
+       "fileName": "Slides_les1_FINAL.pdf",
+       "mimeType": "application/pdf"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "_d3_1",
+   "title": "Syllabus.pdf",
+   "created": "@iso:-40d",
+   "modified": "@iso:-40d",
+   "position": 0,
+   "hasChildren": false,
+   "availability": {
+    "available": "Yes"
+   },
+   "contentHandler": {
+    "id": "resource/x-bb-file",
+    "file": {
+     "fileName": "Syllabus.pdf",
+     "mimeType": "application/pdf"
+    }
+   },
+   "_attachments": [
+    {
+     "id": "_att_d3_1",
+     "fileName": "Syllabus.pdf",
+     "mimeType": "application/pdf"
+    }
+   ]
+  }
+ ],
+ "announcements": {
+  "_900661_1": [
+   {
+    "id": "_ann1_1",
+    "title": "Lokaalwijziging: de les gaat door in 200C 01.12. Of 01.21. We laten het nog weten.",
+    "body": "<p>Dag iedereen,</p><p>Les 5 gaat door in <strong>200C 01.12</strong>. Of 01.21. We laten het nog weten.</p><p>Tot dan (waar dan ook)!</p>",
+    "created": "@iso:-0.3d",
+    "draft": false
+   },
+   {
+    "id": "_ann2_1",
+    "title": "Welkom bij Wiskunde I",
+    "body": "<p>Welkom! Alle info staat onder <em>Les 1</em>. De rest staat onder <em>Les 1 (2)</em>.</p>",
+    "created": "@iso:-40d",
+    "draft": false
+   },
+   {
+    "id": "_ann3_1",
+    "title": "Concept (niet zichtbaar)",
+    "body": "<p>draft</p>",
+    "created": "@iso:-1d",
+    "draft": true
+   }
+  ]
+ },
+ "columns": {
+  "_900661_1": [
+   {
+    "id": "_col1_1",
+    "name": "Opdracht 2 (nieuwe versie, negeer de vorige)",
+    "contentId": "_5020_1",
+    "grading": {
+     "due": "@iso:+1d@23:59"
+    }
+   },
+   {
+    "id": "_col2_1",
+    "name": "Tussentijdse test",
+    "grading": {
+     "due": "@iso:-20d@23:59"
+    }
+   },
+   {
+    "id": "_col3_1",
+    "name": "Aanwezigheid"
+   }
+  ]
+ },
+ "instructors": {
+  "_900661_1": [
+   {
+    "id": "_u1_1",
+    "courseRoleId": "Instructor",
+    "user": {
+     "id": "_u1",
+     "name": {
+      "given": "Prof. A.",
+      "family": "Voorbeeld"
+     },
+     "contact": {
+      "email": "a.voorbeeld@example.edu"
+     }
+    }
+   },
+   {
+    "id": "_u2_1",
+    "courseRoleId": "TeachingAssistant",
+    "user": {
+     "id": "_u2",
+     "name": {
+      "given": "B.",
+      "family": "Assistent"
+     },
+     "contact": {
+      "email": "b.assistent@example.edu"
+     }
+    }
+   }
+  ]
+ },
+ "calendarItems": [
+  {
+   "id": "ci1",
+   "type": "GradebookColumn",
+   "title": "Opdracht 2 (nieuwe versie, negeer de vorige)",
+   "calendarId": "_900661_1",
+   "calendarName": "ULTRA-B-DEMO-ZX1001-2627: Wiskunde I [ZX1001]",
+   "start": "@iso:+1d@23:59",
+   "end": "@iso:+1d@23:59"
+  },
+  {
+   "id": "ci2",
+   "type": "GradebookColumn",
+   "title": "Paper: vraag en aanbod — indienen via Toledo (of mail, of papier, zie les)",
+   "calendarId": "_900662_1",
+   "calendarName": "ULTRA-B-DEMO-ZX1002-2627: Inleiding tot de economie [ZX1002]",
+   "start": "@iso:+6d@12:00",
+   "end": "@iso:+6d@12:00"
+  },
+  {
+   "id": "ci3",
+   "type": "GradebookColumn",
+   "title": "Laboverslag 3",
+   "calendarId": "_900663_1",
+   "calendarName": "ULTRA-B-DEMO-ZX1003-2627: Algemene chemie [ZX1003]",
+   "start": "@iso:+3d@09:00",
+   "end": "@iso:+3d@09:00"
+  }
+ ]
+}

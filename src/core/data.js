@@ -416,6 +416,7 @@
       if (checkStale()) return { ok: false, errors: {}, auth: authExpired, stale: true };
       await flushPendingRead().catch(() => {});
       const keys = PORTAL_KEYS.concat('ultraDeadlines');
+      loadUser().catch(() => {}); // greeting name: best-effort, never blocks or flags the session
       const res = await Promise.allSettled(keys.map((k) => load(k, { force: true })));
       const errors = {};
       res.forEach((r, i) => { if (r.status === 'rejected') errors[keys[i]] = r.reason; });
@@ -1266,18 +1267,55 @@
     return p;
   }
 
+  // ---------------------------------------------------------------- user's first name (greeting)
+  // Source: Blackboard Ultra `GET /learn/api/public/v1/users/me` → name.given (same origin on Ultra, relay on
+  // the portal; no portal profile endpoint is known). Cached in state.me = {given, t} (chrome.storage.local,
+  // never synced, never sent anywhere – telemetry/feedback don't read it). Refreshed at most once a week;
+  // one attempt per tab after a failure. Failure is silent and does not touch the session/auth state.
+  const ME_TTL = 7 * DAY;
+  let meTried = false;
+  let meInflight = null;
+  function firstName(u) {
+    const n = (u && u.name) || {};
+    const raw = typeof n.given === 'string' && n.given.trim() ? n.given : '';
+    // first given name only ("Alex Jan" → "Alex"), no control characters, bounded length
+    const first = raw.replace(/[\u0000-\u001F\u007F]/g, '').trim().split(/\s+/)[0] || '';
+    return first.slice(0, 40);
+  }
+  function userName() {
+    const me = ST().me;
+    return me && typeof me.given === 'string' ? me.given : '';
+  }
+  function loadUser(opts = {}) {
+    if (meInflight) return meInflight;
+    const me = ST().me || {};
+    if (!opts.force && ((me.given && me.t && Date.now() - me.t < ME_TTL) || meTried)) return Promise.resolve(userName());
+    if (stale) return Promise.resolve(userName());
+    meTried = true;
+    meInflight = ultra(BB + '/v1/users/me')
+      .then((u) => {
+        const given = firstName(u);
+        if (given && (given !== me.given || !me.t || Date.now() - me.t > DAY)) setState({ me: { given, t: Date.now() } });
+        return given || userName();
+      })
+      .catch(() => userName())
+      .finally(() => { meInflight = null; });
+    return meInflight;
+  }
+
   TP.data = {
     KEYS,
     init, peek, load, refresh, maybeRefresh, flush, lastUpdated, status: getStatus, on, off,
     authExpired: () => authExpired, loginUrl, isStale: () => stale,
     courses, course, feed, kindOf, deadlines, announcements, schedule, link, quickLinks,
     markRead, markFeedSeen, setPinned, toggleDone, addCustomDeadline, removeCustomDeadline, addRecent, ics,
+    userName, loadUser,
     ultraCourse, ultraTree, ultraDownload, ultraOpen, ultraAnnouncement, resolveCourseId, clearCourseCache, ultraItemUrl: itemLink,
     // exposed for unit tests only
     _test: {
       hash, normTitle, parseCalendarName, mapCalendarItem, icsFold, icsText, icsStamp, legacyKey, toledoKey, ultraKey,
-      trimEntry, calWindows, migrateDoneKeys, pruneState, flushPendingRead, markStale, cfg,
-      _reset() { mem = {}; courseCache.clear(); courseData.clear(); aliasMap = new Map(); wantDays = 0; lazyAt = 0; lazyDays = 0; authExpired = false; for (const k of Object.keys(status)) delete status[k]; },
+      trimEntry, calWindows, firstName, migrateDoneKeys, pruneState, flushPendingRead, markStale, cfg,
+      _reset() { mem = {}; courseCache.clear(); courseData.clear(); aliasMap = new Map(); wantDays = 0; lazyAt = 0; lazyDays = 0; authExpired = false; meTried = false; meInflight = null; for (const k of Object.keys(status)) delete status[k]; },
       _put(k, v, extra) { mem[k] = Object.assign({ v, t: Date.now(), rev: 0 }, extra || {}); },
       _entry(k) { return mem[k]; },
       courseCacheSize: () => courseCache.size,

@@ -5,7 +5,12 @@
         'kuloket:icsUrl', or pasted by the student) when KU Loket answers with a login page.
      3. Exams: ZC_IER_SRV/EvaluationSet (+ $expand=toLocation,toStaff when supported).
    Cache: chrome.storage.local 'kuloket:lessons:<YYYY-Www>' = {t, source, items}, 'kuloket:exams' = {t, items},
-   'kuloket:meta' = {weeks:[keys], lessons:status, exams:status}. Stale-while-revalidate, refresh after 6 h.
+   'kuloket:meta' = {weeks:[keys], lessons:status, exams:status}, 'kuloket:icsUrlT' = when the link was last read from
+   KU Loket (re-read ≥ 7 days later while signed in). Stale-while-revalidate, refresh after 6 h; the last good timetable
+   stays cached (≤ 26 weeks back) so the agenda renders instantly, also offline / signed out.
+   Signed out (SSO session expired) + a known iCal link → the TimeEdit feed is used automatically (status.needsLogin);
+   a week that came from KU Loket earlier keeps its richer details (room, address, teachers, group) when the
+   feed has the same lesson.
    Times: KU Loket gives the day as UTC midnight + a wall-clock duration ("PT09H00M00S") in Europe/Brussels;
    we convert with the EU DST rule so results don't depend on the browser's time zone.
    Never throws to views; never logs the iCal link (it is a personal secret). */
@@ -23,6 +28,9 @@
   const CHUNK_WEEKS = 6;
   const KEEP_WEEKS = 26;        // drop cached weeks older than this
   const P = 'kuloket:';
+  const LINK_TTL = 7 * DAY;     // re-read the iCal link from KU Loket this often (it changes per academic year)
+  const ICS_MEMO = 15 * 60e3;   // reuse a downloaded feed for this long (signed out: every new week would refetch it)
+  const AUTH_SKIP = 2 * 60e3;   // right after a 'not signed in' answer, go straight to the feed
 
   // ------------------------------------------------------------------ Europe/Brussels time (EU DST rule)
   const lastSunday = (y, m) => { const d = new Date(Date.UTC(y, m + 1, 0)); return d.getUTCDate() - d.getUTCDay(); };
@@ -318,7 +326,7 @@
 
   // ------------------------------------------------------------------ storage
   const hasStore = () => typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local;
-  const mem = { weeks: new Map(), exams: null, icsUrl: '', meta: { weeks: [] } };
+  const mem = { weeks: new Map(), exams: null, icsUrl: '', icsUrlT: 0, meta: { weeks: [] }, ics: null, authAt: 0 };
   function sget(keys) {
     return new Promise((res) => {
       if (!hasStore()) { res({}); return; }
@@ -339,7 +347,7 @@
   }
 
   const status = {
-    lessons: { ok: null, error: null, t: null, source: null },
+    lessons: { ok: null, error: null, t: null, source: null, needsLogin: false },
     exams: { ok: null, error: null, t: null },
   };
 
@@ -356,12 +364,13 @@
   let loaded = false;
   const ready = (async () => {
     try {
-      const a = await sget([P + 'meta', P + 'exams', P + 'icsUrl']);
+      const a = await sget([P + 'meta', P + 'exams', P + 'icsUrl', P + 'icsUrlT']);
       const meta = a[P + 'meta'] || {};
       if (meta.lessons && typeof meta.lessons === 'object') Object.assign(status.lessons, meta.lessons);
       if (meta.exams && typeof meta.exams === 'object') Object.assign(status.exams, meta.exams);
       if (a[P + 'exams'] && Array.isArray(a[P + 'exams'].items)) mem.exams = a[P + 'exams'];
       if (typeof a[P + 'icsUrl'] === 'string' && isIcsUrl(a[P + 'icsUrl'])) mem.icsUrl = a[P + 'icsUrl'];
+      if (mem.icsUrl) mem.icsUrlT = Number(a[P + 'icsUrlT']) || 0;
       const cutoff = weekKeyOf(Date.now() - KEEP_WEEKS * 7 * DAY);
       const keys = (Array.isArray(meta.weeks) ? meta.weeks : []).filter((k) => typeof k === 'string');
       const keep = keys.filter((k) => k >= cutoff);
@@ -392,7 +401,7 @@
             if (nv && Array.isArray(nv.items) && (!mem.exams || (nv.t || 0) > (mem.exams.t || 0))) { mem.exams = nv; changed = true; }
           } else if (k === P + 'icsUrl') {
             const u = typeof nv === 'string' && isIcsUrl(nv) ? nv : '';
-            if (u !== mem.icsUrl) { mem.icsUrl = u; changed = true; }
+            if (u !== mem.icsUrl) { mem.icsUrl = u; mem.ics = null; changed = true; }
           }
         }
         if (changed) emit('change', 'storage');
@@ -454,6 +463,8 @@
     }
     const p = (async () => {
       let authFail = false, netFail = null;
+      // Just told "not signed in": don't ask KU Loket again for every week, use the feed straight away.
+      if (mem.icsUrl && Date.now() - mem.authAt < AUTH_SKIP) { authFail = true; chunks.length = 0; }
       for (const c of chunks) {
         c.forEach((w) => lastTry.set(w.key, Date.now()));
         const filter = `(date ge datetime'${c[0].mon}T00:00:00' and date le datetime'${c[c.length - 1].sun}T00:00:00')`;
@@ -469,19 +480,20 @@
             if (byWeek.has(k)) byWeek.get(k).push(l);
           }
           for (const [k, items] of byWeek) await putWeek(k, { t: now, source: 'kuloket', items: items.sort((a, b) => a.start - b.start) });
-          setLessonStatus({ ok: true, error: null, t: now, source: 'kuloket' });
+          mem.authAt = 0;
+          setLessonStatus({ ok: true, error: null, t: now, source: 'kuloket', needsLogin: false });
         } catch (e) {
-          if (e.kind === 'auth') { authFail = true; break; }
+          if (e.kind === 'auth') { authFail = true; mem.authAt = Date.now(); break; }
           netFail = e.kind || 'network';
         }
       }
       if (authFail) {
         const ok = mem.icsUrl ? await fetchIcs(todo) : false;
-        if (!ok) setLessonStatus({ ok: false, error: mem.icsUrl ? 'ics' : 'auth' });
+        if (!ok) setLessonStatus({ ok: false, error: mem.icsUrl ? 'ics' : 'auth', needsLogin: true });
       } else if (netFail) {
         setLessonStatus({ ok: false, error: netFail });
-      } else if (!mem.icsUrl) {
-        fetchIcsLink(); // remember the iCal link while we have a session (fallback for later)
+      } else if (!mem.icsUrl || Date.now() - (mem.icsUrlT || 0) > LINK_TTL) {
+        fetchIcsLink(); // remember (or refresh) the iCal link while we have a session: the fallback for later
       }
       await persistMeta();
       emit('change', 'lessons');
@@ -491,38 +503,82 @@
     return Promise.all([p, ...wait]).then(() => {});
   }
 
-  /** Download + parse the TimeEdit feed; fill every week it covers (plus the requested ones). → ok */
-  async function fetchIcs(requested) {
+  /** Lessons from the feed grouped per ISO week; the parsed feed is reused for ICS_MEMO. → Map|null */
+  async function icsWeeks() {
     const url = mem.icsUrl;
-    if (!url || !TP.net || !TP.net.text) return false;
+    if (!url || !TP.net || !TP.net.text) return null;
+    if (mem.ics && mem.ics.url === url && Date.now() - mem.ics.t < ICS_MEMO) return mem.ics.byWeek;
     lastTry.set('ics', Date.now());
     let txt;
-    try { txt = await TP.net.text(url); } catch (_) { return false; }
-    if (!/BEGIN:VCALENDAR/i.test(String(txt || ''))) return false;
-    const now = Date.now();
-    const byWeek = new Map((requested || []).map((w) => [w.key, []]));
+    try { txt = await TP.net.text(url); } catch (_) { return null; }
+    if (!/BEGIN:VCALENDAR/i.test(String(txt || ''))) return null;
+    const byWeek = new Map();
     for (const ev of parseIcs(txt)) {
       const l = mapIcs(ev);
       const k = weekKeyOf(l.start);
       if (!byWeek.has(k)) byWeek.set(k, []);
       byWeek.get(k).push(l);
     }
+    mem.ics = { url, t: Date.now(), byWeek };
+    return byWeek;
+  }
+
+  /** Same lesson in a KU Loket week we saw before? → keep its richer details (room, address, teachers, group). */
+  function enrich(items, prev) {
+    if (!prev || !Array.isArray(prev.items) || !prev.items.length) return items;
+    const pool = prev.source === 'kuloket' ? prev.items : prev.items.filter((x) => x.detailsFrom === 'kuloket');
+    if (!pool.length) return items;
+    return items.map((l) => {
+      const code = normCode(l.courseCode); const name = normName(l.title);
+      const k = pool.find((x) => x.start === l.start && x.end === l.end
+        && ((code && normCode(x.courseCode) === code) || (name && (normName(x.title) === name || normName(x.title).startsWith(name) || name.startsWith(normName(x.title))))));
+      if (!k) return l;
+      const room = l.location && l.location.room;
+      const sameRoom = !room || (k.location && [k.location.room, k.location.mnemonic].some((r) => r && (r.includes(room) || room.includes(r))));
+      return {
+        ...l,
+        title: k.title || l.title,
+        courseCode: l.courseCode || k.courseCode,
+        group: l.group || k.group,
+        form: l.form || k.form,
+        teachers: l.teachers && l.teachers.length ? l.teachers : (k.teachers || []),
+        location: sameRoom && k.location ? { ...k.location } : l.location,
+        url: l.url || k.url || '',
+        detailsFrom: 'kuloket',
+      };
+    });
+  }
+
+  /** Fallback when KU Loket says "not signed in": fill every week the TimeEdit feed covers (plus the requested ones). → ok */
+  async function fetchIcs(requested) {
+    const feed = await icsWeeks();
+    if (!feed) return false;
+    const now = Date.now();
+    const byWeek = new Map((requested || []).map((w) => [w.key, []]));
+    for (const [k, items] of feed) byWeek.set(k, items);
     for (const [k, items] of byWeek) {
       const cur = mem.weeks.get(k);
       if (cur && cur.source === 'kuloket' && now - cur.t < STALE) continue; // fresher, richer data
-      await putWeek(k, { t: now, source: 'ics', items: items.sort((a, b) => a.start - b.start) });
+      await putWeek(k, { t: now, source: 'ics', items: enrich(items, cur).sort((a, b) => a.start - b.start) });
     }
     setLessonStatus({ ok: true, error: null, t: now, source: 'ics', needsLogin: true });
     return true;
   }
 
+  /** Read the personal iCal link (ZC_EP_ICAL_SRV/StudentSet → Schedulelink) while signed in and keep it locally.
+   *  Never logged or shown in full. Re-read after LINK_TTL so a new academic year's link is picked up. */
   async function fetchIcsLink() {
-    if (mem.icsUrl || tooSoon('icslink')) return;
+    if ((mem.icsUrl && Date.now() - (mem.icsUrlT || 0) <= LINK_TTL) || tooSoon('icslink')) return;
     lastTry.set('icslink', Date.now());
     try {
       const rows = results(await odata(`ZC_EP_ICAL_SRV/StudentSet?${Q}`));
-      const link = rows.map((r) => str(r && r.Schedulelink)).find(isIcsUrl);
-      if (link) { mem.icsUrl = link; await sset({ [P + 'icsUrl']: link }); emit('change', 'icsUrl'); }
+      const link = rows.map((r) => str(r && r.Schedulelink).replace(/^webcals?:\/\//i, 'https://')).find(isIcsUrl);
+      if (!link) return;
+      const changed = link !== mem.icsUrl;
+      mem.icsUrl = link; mem.icsUrlT = Date.now();
+      if (changed) mem.ics = null;
+      await sset({ [P + 'icsUrl']: link, [P + 'icsUrlT']: mem.icsUrlT });
+      if (changed) emit('change', 'icsUrl');
     } catch (_) { /* optional */ }
   }
 
@@ -588,6 +644,23 @@
     } catch (_) { return null; }
   }
 
+  /** Sync: cached lessons in range plus where they came from and how old the oldest week is.
+   *  → { items: Lesson[]|null (null = nothing cached for this range yet), t: ms|null, source: 'kuloket'|'ics'|'mixed'|null, complete } */
+  function peekRange(o = {}) {
+    const items = peekLessons(o);
+    const r = range(o);
+    if (!r || !loaded) return { items: null, t: null, source: null, complete: false };
+    const ws = weeksFor(r.from, r.to);
+    const es = ws.map((w) => mem.weeks.get(w.key)).filter(Boolean);
+    const srcs = [...new Set(es.map((e) => e.source))];
+    return {
+      items,
+      t: es.length ? Math.min(...es.map((e) => e.t || 0)) : null,
+      source: srcs.length > 1 ? 'mixed' : (srcs[0] || null),
+      complete: es.length === ws.length,
+    };
+  }
+
   // ------------------------------------------------------------------ public: exams
   let examsInflight = null;
   function fetchExams() {
@@ -633,7 +706,7 @@
   // ------------------------------------------------------------------ public: status, iCal link, links
   function getStatus() {
     return {
-      lessons: { ok: status.lessons.ok, error: status.lessons.error, t: status.lessons.t, source: status.lessons.source },
+      lessons: { ok: status.lessons.ok, error: status.lessons.error, t: status.lessons.t, source: status.lessons.source, needsLogin: !!status.lessons.needsLogin },
       exams: { ok: status.exams.ok, error: status.exams.error, t: status.exams.t },
       icsUrl: !!mem.icsUrl,
       loaded,
@@ -643,12 +716,12 @@
   /** Store (or clear with '') the personal TimeEdit iCal link. → true when accepted. Never logged. */
   async function setIcsUrl(url) {
     const u = str(url).replace(/^webcals?:\/\//i, 'https://');
-    if (!u) { mem.icsUrl = ''; await sremove([P + 'icsUrl']); emit('change', 'icsUrl'); return true; }
+    if (!u) { mem.icsUrl = ''; mem.ics = null; await sremove([P + 'icsUrl', P + 'icsUrlT']); emit('change', 'icsUrl'); return true; }
     if (!isIcsUrl(u)) return false;
-    mem.icsUrl = u;
+    mem.icsUrl = u; mem.icsUrlT = Date.now(); mem.ics = null;
     lastTry.delete('ics');
     for (const k of [...lastTry.keys()]) if (/^\d{4}-W/.test(k)) lastTry.delete(k);
-    await sset({ [P + 'icsUrl']: u });
+    await sset({ [P + 'icsUrl']: u, [P + 'icsUrlT']: mem.icsUrlT });
     emit('change', 'icsUrl');
     return true;
   }
@@ -680,15 +753,16 @@
   /** Force-refresh everything for a range (toolbar/refresh). */
   async function refresh(o = {}) {
     const r = range(o);
+    mem.authAt = 0; mem.ics = null; // ask KU Loket again (the student may just have signed in)
     await Promise.all([r ? lessons({ ...r, force: true }) : null, exams({ force: true })]);
   }
 
   TP.kuloket = {
-    lessons, peekLessons, exams, peekExams, refresh,
+    lessons, peekLessons, peekRange, exams, peekExams, refresh,
     status: getStatus, on, off,
     links, GROUPS, appUrl, scheduleUrl: () => appUrl('zr_0367'), icalAppUrl: () => appUrl('zr_1014'), loginUrl: () => appUrl('zr_0367'),
     setIcsUrl, getIcsUrlMasked,
     ready: () => ready,
-    _test: { bxl, parts, isDst, sapDate, sapDay, duration, sapDateTime, isoWeek, weekKeyOf, weeksFor, mapEvent, mapExam, parseIcs, mapIcs, matchCourse, isIcsUrl, mem, lastTry, status },
+    _test: { bxl, parts, isDst, sapDate, sapDay, duration, sapDateTime, isoWeek, weekKeyOf, weeksFor, mapEvent, mapExam, parseIcs, mapIcs, matchCourse, isIcsUrl, enrich, mem, lastTry, status },
   };
 })();

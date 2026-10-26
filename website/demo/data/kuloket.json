@@ -1,0 +1,221 @@
+{
+ "_comment": "Fictitious KU Loket data for the demo/screenshots (see tests/fixtures/kuloket.json). 'day' = days from today.",
+ "events": [
+  {
+   "day": 0,
+   "start": "PT09H00M00S",
+   "end": "PT11H00M00S",
+   "ola_description": "Wiskunde I",
+   "ects_code": "ZX1001",
+   "workFormDesc": "Hoorcollege",
+   "groupinfo_detail": "Wiskunde I",
+   "teachers": [
+    "Prof. A. Voorbeeld"
+   ],
+   "location": {
+    "roomName": "200C 01.12 (of 01.21)",
+    "roomNumber": "01.12",
+    "buildingName": "Campus Voorbeeld",
+    "street": "Voorbeeldstraat 1",
+    "city": "Leuven",
+    "mnemonic": "200C",
+    "url_location": ""
+   }
+  },
+  {
+   "day": 0,
+   "start": "PT13H00M00S",
+   "end": "PT16H00M00S",
+   "ola_description": "Inleiding tot de economie",
+   "ects_code": "ZX1002",
+   "workFormDesc": "Werkcollege",
+   "groupinfo_detail": "Inleiding tot de economie Groep B Locatie: zie Toledo (of de deur)",
+   "teachers": [
+    "Dr. B. Proef"
+   ],
+   "location": null
+  },
+  {
+   "day": 0,
+   "start": "PT14H00M00S",
+   "end": "PT15H30M00S",
+   "ola_description": "Algemene chemie",
+   "ects_code": "ZX1003",
+   "workFormDesc": "Practicum",
+   "groupinfo_detail": "Algemene chemie Labogroep 3",
+   "teachers": [
+    "Prof. C. Demo"
+   ],
+   "location": {
+    "roomName": "LAB 0.07 (labo)",
+    "roomNumber": "0.07",
+    "buildingName": "Labogebouw",
+    "street": "Voorbeeldstraat 1",
+    "city": "Leuven",
+    "mnemonic": "LAB",
+    "url_location": ""
+   }
+  },
+  {
+   "day": 1,
+   "start": "PT08H30M00S",
+   "end": "PT10H30M00S",
+   "ola_description": "Statistiek",
+   "ects_code": "ZX1005",
+   "workFormDesc": "Hoorcollege",
+   "groupinfo_detail": "Statistiek",
+   "teachers": [
+    "Prof. E. Steekproef"
+   ],
+   "location": {
+    "roomName": "AUD 1.05 (aula)",
+    "roomNumber": "1.05",
+    "buildingName": "Campus Voorbeeld",
+    "street": "Voorbeeldstraat 1",
+    "city": "Leuven",
+    "mnemonic": "AUD",
+    "url_location": ""
+   }
+  },
+  {
+   "day": 2,
+   "start": "PT10H00M00S",
+   "end": "PT12H00M00S",
+   "ola_description": "Programmeren",
+   "ects_code": "ZX1006",
+   "workFormDesc": "Computerpracticum",
+   "groupinfo_detail": "Programmeren Groep P2",
+   "teachers": [
+    "Dr. F. Lus"
+   ],
+   "location": {
+    "roomName": "PC 2.10 (pc-klas)",
+    "roomNumber": "2.10",
+    "buildingName": "Campus Voorbeeld",
+    "street": "Voorbeeldstraat 1",
+    "city": "Leuven",
+    "mnemonic": "PC",
+    "url_location": ""
+   }
+  },
+  {
+   "day": 3,
+   "start": "PT13H00M00S",
+   "end": "PT15H00M00S",
+   "ola_description": "Academisch Engels",
+   "ects_code": "ZX1004",
+   "workFormDesc": "Werkcollege",
+   "groupinfo_detail": "Academisch Engels Groep E1",
+   "teachers": [
+    "Dr. D. Example"
+   ],
+   "location": {
+    "roomName": "Lokaal 0.03",
+    "roomNumber": "0.03",
+    "buildingName": "Campus Voorbeeld",
+    "street": "Voorbeeldstraat 1",
+    "city": "Leuven",
+    "mnemonic": "L003",
+    "url_location": ""
+   }
+  },
+  {
+   "day": 4,
+   "start": "PT10H00M00S",
+   "end": "PT12H00M00S",
+   "ola_description": "Inleiding tot de bureaucratie",
+   "ects_code": "ZX1008",
+   "workFormDesc": "Hoorcollege",
+   "groupinfo_detail": "Inleiding tot de bureaucratie",
+   "teachers": [
+    "Prof. H. Formulier"
+   ],
+   "location": {
+    "roomName": "AUD 1.05 (aula)",
+    "roomNumber": "1.05",
+    "buildingName": "Campus Voorbeeld",
+    "street": "Voorbeeldstraat 1",
+    "city": "Leuven",
+    "mnemonic": "AUD",
+    "url_location": ""
+   }
+  },
+  {
+   "day": 7,
+   "start": "PT09H00M00S",
+   "end": "PT12H00M00S",
+   "ola_description": "Fysica",
+   "ects_code": "ZX1010",
+   "workFormDesc": "Practicum",
+   "groupinfo_detail": "Fysica Groep F3",
+   "teachers": [
+    "Prof. J. Kracht"
+   ],
+   "location": {
+    "roomName": "LAB 0.07 (labo)",
+    "roomNumber": "0.07",
+    "buildingName": "Labogebouw",
+    "street": "Voorbeeldstraat 1",
+    "city": "Leuven",
+    "mnemonic": "LAB",
+    "url_location": ""
+   }
+  },
+  {
+   "day": 8,
+   "start": "PT18H00M00S",
+   "end": "PT20H00M00S",
+   "ola_description": "Sociologie",
+   "ects_code": "ZX1007",
+   "workFormDesc": "Avondcollege",
+   "groupinfo_detail": "Sociologie",
+   "teachers": [
+    "Prof. G. Enquête"
+   ],
+   "location": {
+    "roomName": "AUD 1.05 (aula)",
+    "roomNumber": "1.05",
+    "buildingName": "Campus Voorbeeld",
+    "street": "Voorbeeldstraat 1",
+    "city": "Leuven",
+    "mnemonic": "AUD",
+    "url_location": ""
+   }
+  }
+ ],
+ "exams": [
+  {
+   "day": 30,
+   "start": "PT09H00M00S",
+   "end": "PT12H00M00S",
+   "moduleCode": "ZX1009",
+   "moduleTitle": "Geschiedenis van het moderne denken",
+   "evaluationText": "Schriftelijk examen (onder voorbehoud)",
+   "groupInfo": "Groep 1",
+   "location": {
+    "roomName": "AUD 1.05 (aula)",
+    "buildingName": "Campus Voorbeeld"
+   },
+   "staff": [
+    "Dr. I. Gedachte"
+   ]
+  },
+  {
+   "day": 33,
+   "start": "PT14H00M00S",
+   "end": "PT16H00M00S",
+   "moduleCode": "ZX1001",
+   "moduleTitle": "Wiskunde I",
+   "evaluationText": "Mondeling examen",
+   "groupInfo": "",
+   "location": {
+    "roomName": "200C 01.12 (of 01.21)",
+    "buildingName": "Campus Voorbeeld"
+   },
+   "staff": [
+    "Prof. A. Voorbeeld"
+   ]
+  }
+ ],
+ "icsLink": "https://cloud.timeedit.net/be_kuleuven/web/public/s.ics?sid=7&type=student&field=student.schedule.id&value=0000000000demo"
+}

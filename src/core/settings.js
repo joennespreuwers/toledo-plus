@@ -9,7 +9,7 @@
   const TP = (globalThis.TP ||= {});
 
   const DEFAULTS = {
-    v: 3,
+    v: 4,
     language: 'system',
     appearance: 'system',
     accent: 'blue',
@@ -27,7 +27,9 @@
     custom: [],
   };
   // v3: the pin/favourite concept is gone (no 'pinned' per course, no sync.favoritesToToledo).
-  const COURSE_DEFAULTS = { nickname: '', color: null, hidden: false };
+  // v4: inSidebar — the course is listed in the sidebar's "Vakken" group (local to Toledo+, never sent to Toledo; default off;
+  //     v3 settings have no such flag, so existing users start with an empty group).
+  const COURSE_DEFAULTS = { nickname: '', color: null, hidden: false, inSidebar: false };
   const REMOVED_COURSE_KEYS = ['pinned'];
   // TP.state: each top-level key is its own chrome.storage.local item 'state:<key>' (see below).
   const STATE_DEFAULTS = {
@@ -35,6 +37,7 @@
     feedSeen: { ids: {}, floor: 0 },   // B3: seen feed event ids (bounded) + floor (everything ≤ floor counts as seen)
     read: {},                          // B4: local read-set {eventId: ms}, also used when Toledo sync is off
     pendingRead: {},                   // B7: mark-read PATCHes still to send {eventId: {type, subType, t}}
+    me: {},                            // v1.5: {given, t} first name for the greeting (local only, never synced/sent)
   };
 
   const isObj = (x) => x !== null && typeof x === 'object' && !Array.isArray(x);

@@ -230,7 +230,7 @@
         </span>
       </li>`;
     }).join('');
-    return `<div class="st-view st-sub">
+    return `<div class="st-view st-sub tp-narrow">
       <p><a class="st-back" href="${esc(TP.shell.href('settings'))}" data-route="settings" data-fk="back">${TP.ui.icon('chevronLeft', { size: 16, strokeWidth: 2.4 })}<span>${esc(t('settings.title'))}</span></a></p>
       ${TP.ui.section({ id: 'st-sections', title: esc(t('settings.sections.title')), body: `<ul class="tp-group st-group st-sec-list" role="list">${rows}</ul>`, footer: esc(t('settings.sections.foot')) })}
     </div>`;
@@ -250,7 +250,7 @@
       root.innerHTML = sectionsPage(s);
     } else {
       try { ctx.setTitle && ctx.setTitle(t('settings.title')); } catch { /* ignore */ }
-      root.innerHTML = `<div class="st-view">${language(s)}${look(s)}${overview(s)}${deadlines(s)}${coursesBlock()}${agenda()}${search(s)}${sync(s)}${advanced(s)}${about(s)}</div>`;
+      root.innerHTML = `<div class="st-view tp-narrow">${language(s)}${look(s)}${overview(s)}${deadlines(s)}${coursesBlock()}${agenda()}${search(s)}${sync(s)}${advanced(s)}${about(s)}</div>`;
     }
     restoreFocus(root, focus);
   }

@@ -125,7 +125,7 @@ async function install(ctx, fx, opts = {}) {
     const u = new URL(req.url()); const path = u.pathname;
     if (path.startsWith('/learn/api/')) {
       if (opts.ultraDown) return json(route, { status: 401, message: 'Unauthorized' }, 401);
-      const r = ultraApi(U, path, u, rec);
+      const r = ultraApi(U, path, u, rec, opts);
       if (r && r.redirect && !opts.files) { // no local storage server: serve the file inline
         const t = new URL(r.redirect); const fileName = decodeURIComponent(t.pathname.split('/').pop());
         rec.downloads.push({ url: r.redirect, fileName, headers: {}, via: 'inline' });
@@ -168,10 +168,11 @@ async function install(ctx, fx, opts = {}) {
 function safeIsSW(req) { try { return !!req.serviceWorker(); } catch (_) { return false; } }
 function pick(o, keys) { const r = {}; for (const k of keys) if (o && k in o) r[k] = o[k]; return r; }
 
-function ultraApi(U, path, url, rec) {
+function ultraApi(U, path, url, rec, opts = {}) {
   let m;
   const p = path.replace(/^\/learn\/api\/public\/v\d+/, '');
-  if (p === '/users/me') return { id: '_me_1', userName: 'r0000000', name: { given: 'Student', family: 'Voorbeeld' } };
+  // Fictitious student (greeting "Goedenavond, Alex"); opts.noUser → 404 (no name known)
+  if (p === '/users/me') return opts.noUser ? null : { id: '_me_1', userName: 'r0000000', name: { given: 'Alex Jan', family: 'Voorbeeld', preferredDisplayName: 'GivenName' } };
   if (p === '/calendars/items') {
     const since = Date.parse(url.searchParams.get('since') || 0) || 0; const until = Date.parse(url.searchParams.get('until') || 0) || Infinity;
     return { results: U.calendarItems.filter((i) => { const t = Date.parse(i.end); return t >= since && t <= until; }) };

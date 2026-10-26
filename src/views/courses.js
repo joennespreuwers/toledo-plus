@@ -111,7 +111,13 @@
       </span>
       <span class="cs-trail">${badge}</span>`;
     if (unavailable) return `<li class="cs-card is-unavailable" data-q="${esc(q)}"><div class="cs-card-main" aria-disabled="true">${head}</div></li>`;
-    return `<li class="cs-card" data-q="${esc(q)}"><a class="cs-card-main" href="${esc(TP.shell.href('course', { luId: c.luId }))}" data-fk="open:${esc(c.luId)}">${head}</a></li>`;
+    return `<li class="cs-card" data-q="${esc(q)}"><a class="cs-card-main" href="${esc(TP.shell.href('course', { luId: c.luId }))}" data-fk="open:${esc(c.luId)}">${head}</a>${sbButton(c, name)}</li>`;
+  }
+
+  // "Zet in zijbalk" (v1.5): a small trailing toggle on every card; the sidebar lists only these courses.
+  function sbButton(c, name) {
+    const on = !!TP.settings.course(c.luId).inSidebar;
+    return `<button type="button" class="cs-sb-btn${on ? ' is-on' : ''}" data-action="sidebar" data-lu="${esc(c.luId)}" data-fk="sb:${esc(c.luId)}" aria-pressed="${on}" aria-label="${esc(t('shell.sbToggle', { name }))}" title="${esc(t(on ? 'shell.sbRemove' : 'shell.sbAdd'))}">${TP.ui.icon(on ? 'sidebarRemove' : 'sidebarAdd', { size: 18 })}</button>`;
   }
 
   // Edit mode: one compact row per course.
@@ -140,6 +146,7 @@
             placeholder="${esc(orig)}" autocomplete="off" spellcheck="false" maxlength="60">
           <span class="cs-erow-meta">${esc([c.code, c.available === false ? t('courses.unavailable') : ''].filter(Boolean).join(' · '))}</span>
         </span>
+        <label class="cs-hide cs-insb" title="${esc(t('shell.sbAdd'))}"><span class="cs-hide-label">${esc(t('shell.sbShort'))}</span><input type="checkbox" role="switch" class="tp-switch" name="sidebar${SEP}${lu}"${cs.inSidebar ? ' checked' : ''} aria-label="${esc(t('shell.sbToggle', { name }))}"></label>
         <label class="cs-hide" title="${esc(t('courses.hide'))}"><span class="cs-hide-label">${esc(t('courses.hide'))}</span><input type="checkbox" role="switch" class="tp-switch" name="hide${SEP}${lu}"${cs.hidden ? ' checked' : ''} aria-label="${esc(t('courses.hideName', { name }))}"></label>
         <span class="cs-move">
           <button type="button" class="cs-icon-btn" data-action="move-up" data-lu="${lu}" data-fk="up:${lu}" aria-label="${esc(t('courses.moveUp', { name }))}" ${i === 0 ? 'disabled' : ''}>${TP.ui.icon('arrowUp', { size: 15 })}</button>
@@ -319,6 +326,7 @@
         case 'move-down': return move(lu, 1);
         case 'color-reset': save(TP.settings.setCourse(lu, { color: null })); break;
         case 'unhide': save(TP.settings.setCourse(lu, { hidden: false })); break;
+        case 'sidebar': ev.preventDefault(); TP.shell.setInSidebar(lu); break;
         case 'cs-retry': ev.preventDefault(); Promise.resolve(TP.data.load('enrollments', { force: true })).catch(() => {}); return;
         default: return;
       }
@@ -337,6 +345,7 @@
       if (kind === 'nick') save(TP.settings.setCourse(lu, { nickname: el.value.trim() }));
       else if (kind === 'color') save(TP.settings.setCourse(lu, { color: el.value }));
       else if (kind === 'hide') save(TP.settings.setCourse(lu, { hidden: el.checked }));
+      else if (kind === 'sidebar') TP.shell.setInSidebar(lu, el.checked);
       else return;
       // A nickname commits on blur: repaint after focus has moved on, so it lands on the next control.
       if (kind === 'nick') setTimeout(() => { if (live()) render(cur); }, 0);

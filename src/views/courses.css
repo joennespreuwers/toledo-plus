@@ -22,10 +22,19 @@
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
 }
 
-.cs-card { background: var(--bg-2); border-radius: var(--r-group, 12px); min-width: 0; display: flex; flex-direction: column; }
+.cs-card { position: relative; background: var(--bg-2); border-radius: var(--r-group, 12px); min-width: 0; display: flex; align-items: stretch; }
+.cs-view .cs-card > .cs-card-main { flex: 1 1 auto; }
+/* "Zet in zijbalk" toggle: trailing, 32px target, quiet until hover/focus or on */
+.cs-view .cs-sb-btn {
+  flex: none; align-self: center; display: inline-grid; place-items: center; width: 32px; height: 32px; margin-right: 10px;
+  border: 0; border-radius: 8px; background: none; color: var(--label-2); cursor: pointer;
+}
+.cs-view .cs-sb-btn:hover { background: var(--fill); color: var(--tint-text); }
+.cs-view .cs-sb-btn.is-on { color: var(--tint-text); background: var(--tint-soft); }
+.cs-view .cs-sb-btn:focus-visible { outline: 2px solid var(--tint-text); outline-offset: 2px; }
 .cs-card[hidden] { display: none; }
 .cs-view .cs-card-main {
-  display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 12px 14px;
+  display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 12px 8px 12px 16px;
   color: var(--label); text-decoration: none; border-radius: var(--r-group, 12px); min-width: 0;
 }
 a.cs-card-main:hover { background: var(--fill); }
@@ -75,8 +84,8 @@ a.cs-card-main:focus-visible { outline: 2px solid var(--tint-text, var(--tint));
 @media (max-width: 520px) {
   .cs-erow { flex-wrap: wrap; padding-left: 4px; }
   .cs-nick { flex-basis: calc(100% - 80px); order: 0; }
-  .cs-hide-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-  .cs-hide { margin-left: 30px; }
+  /* two labelled switches (In zijbalk · Verberg): labels stay visible so they can be told apart */
+  .cs-insb { margin-left: 30px; }
   .cs-move { margin-left: auto; }
 }
 

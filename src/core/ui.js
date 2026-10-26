@@ -64,6 +64,8 @@
     location: '<path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/>',
     exam: '<path d="M7 3.5h7.5L19 8v11a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 6 19V5a1.5 1.5 0 0 1 1-1.5z"/><path d="M14.5 3.5V8H19M9 13l2 2 4-4.5"/>',
     sparkle: '<path d="M12 3.5 13.8 10 20.5 12l-6.7 2L12 20.5 10.2 14 3.5 12l6.7-2z"/>',
+    sidebarAdd: '<rect x="3" y="4.5" width="18" height="15" rx="3"/><path d="M9.5 4.5v15M15.25 9.5v5M12.75 12h5"/>',
+    sidebarRemove: '<rect x="3" y="4.5" width="18" height="15" rx="3"/><path d="M9.5 4.5v15M12.75 12h5"/>',
     classic: '<rect x="3" y="4.5" width="18" height="15" rx="3"/><path d="M3 9h18M7 6.8h.01M9.5 6.8h.01"/>',
   };
   const ICONS = Object.keys(P);
