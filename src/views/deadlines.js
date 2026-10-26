@@ -88,7 +88,7 @@
       subtitle: `${TP.ui.dot((c && c.color) || 'var(--label-3)')} <span>${esc([when, loc, e.text].filter(Boolean).join(' · '))}</span>`,
       trailing: `<span class="va-urg${days <= 3 ? ' is-urgent' : ''}">${esc(TP.fmt.rel(e.start))}</span>`,
       q: `${name} ${e.courseCode || ''} ${loc}`.toLowerCase(),
-      cls: 'va-exam has-lead',
+      cls: 'va-exam has-lead' + (days <= 3 ? ' tone-urgent' : ''),
     });
   }
 

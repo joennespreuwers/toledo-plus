@@ -247,7 +247,7 @@
       let urg;
       if (d.done) urg = `<span class="va-urg is-done">${icon('check', { size: 13 })}${esc(t('va.doneWord'))}</span>`;
       else if (overdue) urg = `<span class="va-urg is-overdue">${esc(overdueText(d.due))}</span>`;
-      else if (urgent) urg = `<span class="va-urg is-urgent">${icon('clock', { size: 13 })}<span class="va-sr">${esc(t('va.urgent'))}: </span>${esc(TP.fmt.rel(d.due))}</span>`;
+      else if (urgent) urg = `<span class="va-urg is-urgent"><span class="va-sr">${esc(t('va.urgent'))}: </span>${esc(TP.fmt.rel(d.due))}</span>`;
       else urg = `<span class="va-urg">${esc(TP.fmt.rel(d.due))}</span>`;
 
       let trailing = `<span class="va-urg-wrap">${urg}</span>`;

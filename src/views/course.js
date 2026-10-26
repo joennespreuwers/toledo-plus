@@ -381,12 +381,12 @@
       const tone = d.done ? 'muted' : overdue ? 'overdue' : urgent ? 'urgent' : 'normal';
       const trail = overdue
         ? `<span class="cv-due is-overdue">${esc(TP.viewsA.overdueText(d.due))}</span>`
-        : `<span class="cv-due${urgent ? ' is-urgent' : ''}">${urgent ? TP.ui.icon('clock', { size: 13 }) : ''}${esc(TP.fmt.rel(d.due))}</span>`;
+        : `<span class="cv-due${urgent ? ' is-urgent' : ''}">${urgent ? `<span class="cv-sr">${esc(t('va.urgent'))}: </span>` : ''}${esc(TP.fmt.rel(d.due))}</span>`;
       const inner = `${TP.ui.dateTile(d.due, { tone })}
         <span class="cv-main"><span class="cv-name cv-strong" title="${esc(d.title)}">${esc(d.title)}</span>
         <span class="cv-meta">${esc(TP.fmt.date(d.due, { weekday: 'long' }))} · ${esc(TP.fmt.time(d.due))}</span></span>${trail}`;
       const lq = esc(String(d.title || '').toLowerCase());
-      const cls = `cv-row cv-dl${d.done ? ' is-done' : ''}${overdue ? ' is-overdue' : ''}`;
+      const cls = `cv-row cv-dl${d.done ? ' is-done' : ''}${overdue ? ' is-overdue' : urgent ? ' is-urgent' : ''}`;
       // The row shows the assignment in this course (unfolded + highlighted); a small icon opens it in Toledo.
       const id = itemIdOf(d.url);
       const inTree = id && st.data && findNode(id);

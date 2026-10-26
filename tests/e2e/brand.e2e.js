@@ -88,18 +88,20 @@ describe('brand: identity, type and colour', () => {
     await screenshot(page, 'brand-settings-about');
   });
 
-  it('"binnenkort" is amber (not the accent), "te laat" a red-tinted row with the words (no icon)', async () => {
+  it('"binnenkort" an amber-tinted row, "te laat" a red-tinted row, both with the words and no icon', async () => {
     const page = await openPortal(h, 'overview');
     const r = await inShadow(page, (sr) => {
       const urg = sr.querySelector('.va-urg.is-urgent');
       const ovd = sr.querySelector('.va-urg.is-overdue');
       const row = ovd && ovd.closest('.va-dl');
-      const plain = sr.querySelector('.va-dl:not(.tone-overdue)');
+      const urow = urg && urg.closest('.va-dl');
+      const plain = sr.querySelector('.va-dl:not(.tone-overdue):not(.tone-urgent)');
       const tile = sr.querySelector('.tp-dt-urgent .tp-dt-d');
       // color-mix() comes back as "color(srgb r g b)" on a 0–1 scale; rgb() on 0–255
       const rgb = (c) => { const n = (c.match(/[\d.]+/g) || []).map(Number).slice(0, 3); return c.startsWith('color(') ? n.map((x) => Math.round(x * 255)) : n; };
       return {
-        urgIcon: urg ? getComputedStyle(urg.querySelector('svg')).color : null,
+        urg: urg ? { icon: !!urg.querySelector('svg'), text: urg.textContent.trim() } : null,
+        urgBg: urow ? rgb(getComputedStyle(urow).backgroundColor) : null,
         tile: tile ? getComputedStyle(tile).color : null,
         ovd: ovd ? { color: getComputedStyle(ovd).color, icon: !!ovd.querySelector('svg'), text: ovd.textContent.trim() } : null,
         rowBg: row ? rgb(getComputedStyle(row).backgroundColor) : null,
@@ -107,7 +109,8 @@ describe('brand: identity, type and colour', () => {
         plainTime: plain ? getComputedStyle(plain.querySelector('.va-urg:not(.is-urgent)') || plain).color : null,
       };
     });
-    assert.equal(r.urgIcon, 'rgb(138, 83, 0)', 'urgent clock in amber');
+    assert.ok(r.urg && r.urg.icon === false && r.urg.text.length > 2, `urgent: words, no icon (${JSON.stringify(r.urg)})`);
+    assert.ok(r.urgBg && r.urgBg[0] > r.urgBg[2] + 10 && r.urgBg[1] > r.urgBg[2] + 5, `row tinted amber (${r.urgBg})`);
     assert.equal(r.tile, 'rgb(138, 83, 0)', 'urgent date tile in amber');
     assert.ok(r.ovd, 'an overdue deadline in the fixtures');
     assert.ok(r.rowBg && r.rowBg[0] > r.rowBg[1] + 10 && r.rowBg[0] > r.rowBg[2] + 10, `row tinted red (${r.rowBg})`);

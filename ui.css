@@ -31,6 +31,7 @@
   /* content column: centred in the area right of the sidebar, the same for every view (main + side column) */
   --content-wide: 1240px;
   --overdue-bg: color-mix(in srgb, var(--red-fill) 16%, var(--bg-2)); --overdue-bg-hover: color-mix(in srgb, var(--red-fill) 22%, var(--bg-2));
+  --urgent-bg: color-mix(in srgb, var(--amber-fill) 16%, var(--bg-2)); --urgent-bg-hover: color-mix(in srgb, var(--amber-fill) 22%, var(--bg-2)); /* "binnenkort": same pattern as overdue, in amber */
   --switch-w: 38px; --switch-h: 22px;
   /* brand constants (never follow the accent) */
   --brand-orange: #EE8B35; --brand-magenta: #E3285A; --brand-ink: #1F2430;
