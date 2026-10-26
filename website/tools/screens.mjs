@@ -8,7 +8,7 @@
 //   2. answers every Toledo / Ultra / KU Loket / TimeEdit / api.toledoplus.be request from website/demo/data/*.json
 //      through website/demo/mock.js (the same mock the online demo uses); everything else is blocked,
 //   3. opens the overview (welcome card dismissed, banners/toasts hidden) in light and dark at 1440×900 @2x,
-//   4. writes website/assets/img/overview-{light,dark}.webp, overview-light.png (fallback) and og.png (1200×630),
+//   4. writes website/assets/img/overview-{light,dark}.webp and og.png (1200×630, brand: Inter, ink/orange),
 //   5. writes the version from manifest.json into index.html, en/index.html and fr/index.html,
 //   6. copies the extension into website/demo/ext/ (gitignored) so the demo works locally.
 // Dev-only: website/tools/ is not deployed. Uses `sharp` for smaller PNGs when it is installed, else Chromium's encoder.
@@ -91,6 +91,7 @@ async function main() {
       await settle(page);
       await page.waitForTimeout(1500); // second wave (KU Loket, index) + re-render
       await settle(page);
+      await page.evaluate(() => document.fonts && document.fonts.ready);
       await hideChrome(page);
       await page.waitForTimeout(300);
       shots[scheme] = await page.screenshot({ type: 'png' });
@@ -105,7 +106,6 @@ async function main() {
     const out = {};
     out['overview-light.webp'] = await toWebp(enc, shots.light, 2400, 0.8);
     out['overview-dark.webp'] = await toWebp(enc, shots.dark, 2400, 0.8);
-    out['overview-light.png'] = await toPng(enc, shots.light, sharp ? 1440 : 1200); // lossless without sharp: keep it small
     out['og.png'] = await ogImage(ctx, shots.light);
     await enc.close();
 
@@ -187,24 +187,29 @@ async function toPng(page, buf, width) {
   return canvasEncode(page, buf, width, 'image/png');
 }
 async function ogImage(ctx, shot) {
+  // Brand card: warm light ground, the tile icon + "Toledo+" wordmark in Inter ExtraBold, tagline, the app in a window.
   const page = await ctx.newPage();
   await page.setViewportSize({ width: 1200, height: 630 });
-  const icon = fs.readFileSync(path.join(SITE, 'assets', 'icon128.png')).toString('base64');
+  const font = fs.readFileSync(path.join(SITE, 'assets', 'fonts', 'inter-latin-wght-normal.woff2')).toString('base64');
+  const tile = '<svg width="64" height="64" viewBox="0 0 128 128" aria-hidden="true"><rect x="4" y="4" width="120" height="120" rx="28" fill="#1F2430"/><path d="M44 50H36A14 14 0 0 0 36 78H44Z" fill="#E3285A"/><path d="M84 50H92A14 14 0 0 1 92 78H84Z" fill="#E3285A"/><rect x="50" y="22" width="28" height="84" rx="14" fill="#EE8B35"/></svg>';
   await page.setContent(`<!doctype html><html><head><style>
-    html,body{margin:0;width:1200px;height:630px;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",system-ui,"Segoe UI",Roboto,sans-serif}
-    body{background:linear-gradient(160deg,#eef4ff 0%,#f5f5f7 55%,#e9f0fb 100%);position:relative}
-    .brand{position:absolute;left:64px;top:52px;display:flex;align-items:center;gap:16px;font-weight:700;font-size:44px;letter-spacing:-.02em;color:#1d1d1f}
-    .brand img{width:64px;height:64px;border-radius:15px;box-shadow:0 10px 24px -10px rgba(0,113,227,.6)}
-    .win{position:absolute;left:64px;top:150px;width:1072px;border-radius:14px;overflow:hidden;background:#e8e8ed;
-      box-shadow:0 30px 60px -20px rgba(16,24,40,.35),0 0 0 .5px rgba(0,0,0,.12)}
-    .bar{height:30px;display:flex;align-items:center;gap:7px;padding:0 12px;border-bottom:.5px solid rgba(0,0,0,.1)}
+    @font-face{font-family:"Inter";font-weight:100 900;src:url(data:font/woff2;base64,${font}) format("woff2")}
+    html,body{margin:0;width:1200px;height:630px;overflow:hidden;font-family:Inter,system-ui,sans-serif}
+    body{background:radial-gradient(80% 90% at 85% 0%,rgba(238,139,53,.18),transparent 60%),linear-gradient(160deg,#FBFAF8 0%,#F5F4F2 60%,#EFEDEA 100%);position:relative;color:#1F2430}
+    .brand{position:absolute;left:64px;top:50px;display:flex;align-items:center;gap:18px;font-weight:800;font-size:46px;letter-spacing:-.035em}
+    .brand b{color:#C2410C;font-weight:800}
+    .tag{position:absolute;right:64px;top:66px;font-size:26px;font-weight:600;letter-spacing:-.02em;color:#5A5F6B}
+    .win{position:absolute;left:64px;top:150px;width:1072px;border-radius:14px;overflow:hidden;background:#EAE8E4;
+      box-shadow:0 30px 60px -20px rgba(31,36,48,.35),0 0 0 .5px rgba(31,36,48,.12)}
+    .bar{height:30px;display:flex;align-items:center;gap:7px;padding:0 12px;border-bottom:.5px solid rgba(31,36,48,.1)}
     .bar i{width:11px;height:11px;border-radius:50%;background:#ff5f57}.bar i:nth-child(2){background:#febc2e}.bar i:nth-child(3){background:#28c840}
     .win img{display:block;width:100%}
   </style></head><body>
-    <div class="brand"><img src="data:image/png;base64,${icon}" alt="">Toledo+</div>
+    <div class="brand">${tile}<span>Toledo<b>+</b></span></div>
+    <div class="tag">Toledo, but calm.</div>
     <div class="win"><div class="bar"><i></i><i></i><i></i></div><img src="data:image/png;base64,${shot.toString('base64')}" alt=""></div>
   </body></html>`);
-  await page.evaluate(() => Promise.all([...document.images].map((i) => i.decode())));
+  await page.evaluate(async () => { await document.fonts.ready; await Promise.all([...document.images].map((i) => i.decode())); });
   let png = await page.screenshot({ type: 'png', scale: 'css' }); // 1200×630 regardless of the context's @2x
   await page.close();
   if (sharp) png = await sharp(png).png({ palette: true, quality: 90, compressionLevel: 9, effort: 10 }).toBuffer();

@@ -1,4 +1,7 @@
-# Toledo+
+<p align="center"><img src="docs/brand/toledo-plus-icon-512.png" alt="Toledo+ logo" width="112" height="112"></p>
+
+<h1 align="center">Toledo+</h1>
+<p align="center"><strong>Toledo, but calm.</strong> · Unofficial student project</p>
 
 **A calmer, clearer Toledo.** Toledo+ is a free browser extension for Chrome and Edge that wraps KU Leuven Toledo (the portal *and* the Blackboard Ultra course pages) into one consistent app: deadlines first, one compact feed of what's new, and every course page in the same shape.
 

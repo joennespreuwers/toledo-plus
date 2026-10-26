@@ -118,6 +118,17 @@
         "page.css"
       ],
       "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://toledo.kuleuven.be/",
+        "https://toledo.kuleuven.be/?*",
+        "https://toledo.kuleuven.be/index.html*"
+      ],
+      "js": [
+        "src/landing.js"
+      ],
+      "run_at": "document_start"
     }
   ],
   "web_accessible_resources": [

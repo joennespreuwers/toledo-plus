@@ -45,8 +45,9 @@ test('content scripts follow the documented load order and exist', () => {
   const matches = scripts.flatMap((s) => s.matches);
   assert.ok(matches.some((m) => m.startsWith('https://toledo.kuleuven.be/')), 'portal not matched');
   assert.ok(matches.some((m) => m.startsWith('https://ultra.edu.kuleuven.cloud/')), 'ultra not matched');
-  for (const s of scripts) {
-    for (const f of [...(s.js || []), ...(s.css || [])]) assert.ok(exists(f), `content script file ${f} missing`);
+  for (const s of scripts) for (const f of [...(s.js || []), ...(s.css || [])]) assert.ok(exists(f), `content script file ${f} missing`);
+  // The app bundles (portal + Ultra). src/landing.js is a separate, standalone entry (see the landing test below).
+  for (const s of scripts.filter((x) => (x.js || []).includes('src/boot.js'))) {
     const js = s.js || [];
     const idx = (f) => js.indexOf(f);
     const order = ['src/core/util.js', 'src/core/i18n.js', 'src/core/settings.js', 'src/core/net.js', 'src/core/data.js', 'src/core/index.js', 'src/core/ui.js', 'src/core/motion.js', 'src/core/shell.js', 'src/core/palette.js', 'src/boot.js'];
@@ -84,7 +85,7 @@ test('shadow-root CSS: every view has a stylesheet, listed in TP.shell.CSS and w
 });
 
 test('no remote code or dynamic evaluation in extension sources', () => {
-  const files = ['background.js', ...list('src/core', /\.js$/), ...list('src/views', /\.js$/), ...list('src/i18n', /\.js$/), 'src/boot.js'].filter(exists);
+  const files = ['background.js', 'src/landing.js', ...list('src/core', /\.js$/), ...list('src/views', /\.js$/), ...list('src/i18n', /\.js$/), 'src/boot.js'].filter(exists);
   const bad = [];
   for (const f of files) {
     const s = read(f);
@@ -95,4 +96,15 @@ test('no remote code or dynamic evaluation in extension sources', () => {
     if (/fonts\.googleapis|googletagmanager|google-analytics|sentry\.io|segment\.(io|com)|mixpanel|plausible|hotjar/i.test(s)) bad.push(`${f}: third-party service`);
   }
   assert.deepEqual(bad, []);
+});
+
+test('landing skip: one standalone script, only on the landing URL, never on /portal/*', () => {
+  const entries = (manifest.content_scripts || []).filter((s) => (s.js || []).includes('src/landing.js'));
+  assert.equal(entries.length, 1);
+  const e = entries[0];
+  assert.deepEqual(e.js, ['src/landing.js'], 'standalone: no TP core needed');
+  assert.equal(e.run_at, 'document_start');
+  assert.deepEqual([...e.matches].sort(), ['https://toledo.kuleuven.be/', 'https://toledo.kuleuven.be/?*', 'https://toledo.kuleuven.be/index.html*'].sort());
+  for (const m of e.matches) assert.ok(!/portal|\/\*$/.test(m), `${m} must not match the portal or every path`);
+  for (const s of manifest.content_scripts) if (s !== e) assert.ok(!(s.js || []).includes('src/landing.js'));
 });

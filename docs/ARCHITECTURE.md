@@ -497,3 +497,29 @@ TP.fulltext.on('change'|'progress', fn) → unsubscribe
   in other tabs are kept in sync with a `BroadcastChannel`.
 - **Matching:** lowercase, diacritics stripped (NFKD), ligatures folded; every query word must occur on the same page as a word or a
   word prefix (exact > prefix; title match boosts); best page per file.
+
+## Addendum v1.5 — Landing page skip (`src/landing.js`)
+A standalone content script (own manifest entry, `run_at: document_start`, matches exactly `https://toledo.kuleuven.be/`,
+`https://toledo.kuleuven.be/?*`, `https://toledo.kuleuven.be/index.html*` — never `/portal/*`) that does
+`location.replace('https://toledo.kuleuven.be/portal/')` (the portal starts SSO when needed). It reads `chrome.storage` directly
+(no TP core). It stays put when `settings.wrap.skipLanding === false` (sync `settings` or local `settingsLocal`; absent = skip),
+right after a logout (referrer contains Logout/Shibboleth.sso, a `logout`/`error` URL parameter, or `tp:loggedOutAt` in
+`chrome.storage.local`/`sessionStorage` < 5 min old — set by the shell's logout item), and at most once per 30 s
+(`tp:landingBounceAt`, loop guard). Decision: pure `TPLanding.decide({url, referrer, settings, settingsLocal, loggedOutAt, bouncedAt, now})`.
+
+## Addendum v1.6 — Brand (Agent I)
+
+- **Settings v5:** `DEFAULTS.accent = 'brand'` (`TP.util.PALETTE.brand = '#EE8B35'`, the Toledo+ orange). On load, settings stored with `v < 5` whose
+  `accent` is `'blue'` (the old default) or missing become `'brand'` once; any other accent is kept. `TP.util.accentKey()` falls back to `'brand'`;
+  `TP.util.COURSE_COLORS` = palette keys offered as course colours (everything but `brand`); `TP.util.ACCENT_TEXT.brand = {l:'#C2410C', d:'#F5A35F'}`.
+- **`TP.ui` additions:** `logo({variant:'tile'|'glyph'|'mono', size=28, title?, cls?})` → inline SVG (glyph below 32 px falls back to the tile),
+  `wordmark()` → "Toledo+" (`.tp-wordmark`), `emptyArt(size)` → decorative pill illustration (`TP.ui.empty` shows it; `{art:false}` omits it).
+  Any "T+" text mark should use `TP.ui.logo()` instead (`.tp-mark` stays styled for old markup).
+- **Fonts:** the shell injects `<style id="tp-fonts">` into `document.head` (+ the same rules as an adopted constructable sheet) declaring
+  family **"TP Inter"** from `chrome.runtime.getURL('fonts/inter-latin(-ext)-wght-normal.woff2')` (web_accessible_resources: `fonts/*.woff2`,
+  `fonts/OFL-Inter.txt`). Shadow-root `@font-face` is ignored by Chrome. The demo maps `fonts/…` to `website/assets/fonts/`.
+- **Shell:** sidebar brand = `TP.ui.logo` + wordmark (rail: tile only, the link has `aria-label`), `.tp-tb-brand` (phones), sidebar footer
+  signature with `data-shell="classic-sig"` (same action as the account menu's `classic`), first-boot `.tp-splash` (no cached enrollments,
+  motion on; ≤ 400 ms), deep bar uses the logo, classic pill (`#tplus-switch`) is an ink pill with the tile (page.css data URI).
+- **Tokens:** see DESIGN.md › Tokens and › Brand (`--brand-*`, `--amber*` with `--orange*` as aliases, `--red-tile`, `--tint-tile`,
+  `--shadow-card(-hover)`, `--r-tile`, `--ls-*`, `--fw-title`, `--scrollbar`).

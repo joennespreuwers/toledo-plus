@@ -17,7 +17,7 @@ Distilled from two research passes (sources at the bottom). Follow Apple's Human
 Over-engineering to avoid: drag-and-drop widget builders, themes beyond light/dark + accent, gamification, notification rule editors.
 
 ## Tokens (web translation of HIG)
-- Font: `-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", system-ui, sans-serif`; display sizes use "SF Pro Display". All sizes in rem (shadow host 16px). `font-optical-sizing:auto`.
+- Font (v1.6, brand): **Inter** — `"TP Inter", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif` (see **Brand › Type**). All sizes in rem (shadow host 16px). Large titles 750 (variable, between Bold and ExtraBold), section titles 700, headline 600–650, body 400. Tracking per size from rsms' dynamic metrics (`--ls-*`): large title −0.021em, title 2 −0.017em, body/headline −0.009em, subhead −0.003em, footnote 0, caps labels +0.06em. `tnum` on counts, times and dates.
 - Type scale (density **standard** default; compact = macOS sizes; comfortable = iOS sizes):
   | token | compact | standard | comfortable | weight |
   |---|---|---|---|---|
@@ -30,27 +30,73 @@ Over-engineering to avoid: drag-and-drop widget builders, themes beyond light/da
 - Spacing scale 2 4 8 12 16 20 24 32 48. Content margin 16 (mobile) / 24 (desktop) / 32 (≥1100). Section gap 28.
 - Radii: controls 8, inset groups 12, popovers/sheets 16, pills 999. Concentric: inner = outer − padding.
 - Row: min-height 44 (compact 36), padding 11 16; hairline separators 0.5px inset to text start.
-- Colors (semantic vars only):
-  | var | light | dark |
+- Colors (semantic vars only; v1.6 brand pass — contrast measured on the actual backgrounds, see **Brand › Contrast**):
+  | var | light | dark (on brand ink) |
   |---|---|---|
-  | --bg | #F2F2F7 | #000000 |
-  | --bg-2 (cards) | #FFFFFF | #1C1C1E |
-  | --bg-3 (elevated/popover) | #FFFFFF | #2C2C2E |
-  | --label | #000 | #FFF |
-  | --label-2 | rgba(60,60,67,.76) (.72 is 4.47:1 on --bg) | rgba(235,235,245,.70) |
-  | --label-3 (decoration only) | rgba(60,60,67,.30) | rgba(235,235,245,.30) |
-  | --separator | rgba(60,60,67,.22) | rgba(84,84,88,.6) |
-  | --fill | rgba(120,120,128,.14) | rgba(120,120,128,.28) |
-  | --red | #D70015 (text) / #FF3B30 (fill) | #FF453A |
-  | --orange | #C93400 (text) / #FF9500 (fill) | #FF9F0A |
-  | --green | #248A3D / #34C759 | #30D158 |
-  - `--tint` = chosen accent (PALETTE); `--tint-text` = darkened/lightened variant reaching ≥4.5:1 on --bg-2 (compute in JS; e.g. blue light → #0040DD... #0062CC ok). White text on tint fills at weight ≥600.
+  | --bg | #F5F4F2 (warm neutral) | #12151C |
+  | --bg-2 (cards) | #FFFFFF | #1F2430 (ink) |
+  | --bg-3 (elevated/popover) | #FFFFFF | #283040 |
+  | --label | #1F2430 (ink) | #F4F5F7 |
+  | --label-2 | rgba(31,36,48,.70) — 5.5:1 on --bg | rgba(235,237,245,.68) — 6.1:1 on --bg-3 |
+  | --label-3 (decoration only) | rgba(31,36,48,.30) | rgba(235,237,245,.30) |
+  | --separator | rgba(31,36,48,.13) | rgba(235,237,245,.12) |
+  | --fill / --fill-2 | rgba(118,114,110,.13 / .07) | rgba(150,160,185,.20 / .11) |
+  | --red (text) / --red-fill / --red-tile | #D70015 / #FF3B30 / #B0000F | #FF6B61 / #FF453A / #FF6B61 |
+  | --amber (text) / --amber-fill ("binnenkort") | #8A5300 / #F5B000 | #FFC542 / #FFB800 |
+  | --orange / --orange-fill | aliases of --amber / --amber-fill (legacy names) | idem |
+  | --green | #1E7B36 / fill #34C759 | #30D158 |
+  | --tint (default accent "Toledo+") | #EE8B35 | #EE8B35 |
+  | --tint-text | #C2410C (brandguide) | #F5A35F |
+  | --tint-fill / --on-tint | #EE8B35 / ink #1F2430 (6.2:1) | idem |
+  - `--tint` = chosen accent (`TP.util.PALETTE`, default `brand`); `--tint-text` reaches ≥4.5:1 on --bg and --bg-3 (computed in `TP.shell` themeVars; the brand accent uses the brandguide's #C2410C / #F5A35F). Filled controls: tints that are light enough keep the colour with **ink** text, others darken until white text passes.
+  - Surfaces: light cards get `--shadow-card` (hairline ring + two soft layers), dark cards a hairline ring only; `--r-group` 14, `--r-pop` 18, `--r-tile` 8. Icon tiles: `--tint-tile` (12 % tint over the card; 18 % in dark).
   - `prefers-contrast: more` → use the accessible (darker) variants and stronger separators.
 - Appearance: follow system by default; Settings offers System/Light/Dark.
 
+## Brand (v1.6 — docs/brand, brandguide v1.0)
+The UI must read as **Toledo+, not Toledo**: our own name, mark, type and colour everywhere; never Toledo's or KU Leuven's logo.
+
+**Logo** (`TP.ui.logo({variant, size, title})`, inline SVG, geometry verbatim from `docs/brand/logo/*.svg`):
+- `tile` — the primary icon (woven plus on an ink rounded tile). **Always below 32 px**: sidebar (28), icon rail (28), phone toolbar (28), deep bar (22), classic-mode pill (28, data URI in page.css), favicon/toolbar icons (`icons/*.png`).
+- `glyph` — the plus alone, ≥ 32 px only, on light or dark ground: welcome card (56 on ink), website hero (88). `TP.ui.logo` falls back to the tile when a glyph is asked below 32 px.
+- `mono` — one colour (`currentColor`) for tiny decorative uses only.
+- Clear space ≥ ¼ of the icon width (28 px tile → 10 px gap to the wordmark; 56 px glyph sits in a 64 px box with 18 px gap).
+- Don'ts: no recolouring, rotating, stretching, shadow or glow on the logo; orange always lies on top of magenta; never next to/inside the Toledo or KU Leuven logo.
+
+**Wordmark** (`TP.ui.wordmark()`): "Toledo+" in Inter ExtraBold (800), tracking −0.028em; the plus in brand orange text colour (#C2410C light / #EE8B35 on ink). Always "Toledo+" — plus sign, no space; `toledo-plus` in code/URLs.
+
+**Where the brand shows** (quiet, not loud): sidebar top (tile + wordmark), icon rail (tile), phone toolbar (tile → Overzicht), sidebar footer signature ("**Toledo+** 1.4.0 · Klassiek" — the classic-Toledo escape stays one click away, also in the account menu), deep bar, classic pill (ink pill with tile), Instellingen › Over (logo 44 + wordmark + version + "Onofficieel studentenproject"), the welcome card (ink card with the glyph, short NL/EN/FR intro, three bullets, privacy line, one orange pill button), the first-boot splash (tile 64 + wordmark, ≤ 400 ms, only without cached data, not with motion off, fades only under reduced motion), empty states (`TP.ui.emptyArt()`: three soft pills from the logo's shapes — an illustration, not the logo), document title "… · Toledo+".
+
+**Colours**: orange #EE8B35 (accent, fills, icons), magenta #E3285A (secondary: only in the mark and illustrations — never for text or state, so it can't be mistaken for "te laat"), ink #1F2430 (text in light, cards in dark, the tile), white. Text on white: #C2410C (orange) / #C81E4E (magenta); on ink white and orange may be text.
+- **Accent rules**: default accent `brand` (= orange). Other accents (blue, purple, green, …) stay available; red/pink are never accents (reserved for "te laat"). The brand accent is never a course colour (`TP.util.COURSE_COLORS`).
+- **States never look like the accent**: "te laat" = red + ⚠ icon + the word; "binnenkort" = **amber** (not orange) date tile + clock icon + the relative date in label colour; new = tint-soft badge (never solid). Settings v5 migrates the old default accent `blue` to `brand` once (settings are stored whole, so an explicit "blue" chosen before v5 can't be told apart; it can be re-picked and is kept from then on). Every other stored accent is kept.
+- Focus ring: 2 px `--tint-text` (#C2410C: 4.7:1 on --bg, #F5A35F: 9:1 on dark), 2 px offset. Selection: tint 30 %. Scrollbars: thin, `--scrollbar` (ink 26 % / white 22 %), page scrollbar via page.css.
+
+**Type**: Inter (OFL 1.1, `fonts/` + `fonts/OFL-Inter.txt`, latin + latin-ext variable wght 100–900). Chrome ignores `@font-face` inside shadow roots, so the shell declares the faces once in the **document** (`<style id="tp-fonts">` + an adopted constructable sheet, which a strict page CSP can't block) under the family name **"TP Inter"** (never touches the host page's own fonts); the shadow tokens use `"TP Inter", "Inter", system-ui, …`. The bundled subset has `tnum`/`pnum`/`frac`/`calt` but no `cv*`/`ss*` sets, so no stylistic alternates are used.
+
+**Contrast** (WCAG 2.2 AA, measured; `--label-2` etc. composited on the background):
+| mode | foreground | background | ratio |
+|---|---|---|---|
+| light | label | --bg / --bg-2 | 14.1 / 15.5 |
+| light | label-2 | --bg / --bg-2 | 5.5 / 5.8 |
+| light | tint-text #C2410C | --bg / --bg-2 | 4.7 / 5.2 |
+| light | red / amber / green | --bg | 4.9 / 5.8 / 4.9 |
+| light | overdue date tile (#B0000F, 11 px) | red 16 % tile | 5.9 |
+| light | urgent date tile (amber) | amber 20 % tile | 5.6 |
+| light | tint-text on icon tile / "new" badge | tint-tile / badge | 4.7 / 4.8 |
+| dark | label | --bg / --bg-2 / --bg-3 | 16.7 / 14.2 / 12.1 |
+| dark | label-2 | --bg / --bg-2 / --bg-3 | 7.7 / 6.9 / 6.1 |
+| dark | tint-text #F5A35F | --bg-3 | 6.5 |
+| dark | red #FF6B61 / amber / green | --bg-3 | 4.7 / 8.4 / 6.5 |
+| dark | overdue date tile | red 16 % tile | 4.7 |
+| both | ink on orange (filled buttons, welcome button) | #EE8B35 | 6.2 |
+| both | white on red badge | #D70015 | 5.4 |
+| both | welcome card text (white .78 / privacy .70) | ink #1F2430 | 9.2 / 7.7 |
+| both | toast text | ink | 14.2 |
+
 ## Materials (Liquid Glass)
 - Glass ONLY on the navigation layer: sidebar, toolbar, tab bar, popovers/menus. Never on content cards or page background. No glass on glass (controls on glass use `--fill`).
-- Light: `rgba(255,255,255,.72)` + `backdrop-filter: blur(20px) saturate(180%)` + `.5px solid rgba(0,0,0,.08)` border; Dark: `rgba(30,30,30,.62)`.
+- Light: `rgba(255,255,255,.74)` + `backdrop-filter: blur(20px) saturate(180%)` + `.5px solid rgba(31,36,48,.08)` border; Dark: `rgba(24,28,37,.70)` (ink-tinted).
 - `prefers-reduced-transparency: reduce` → opaque `--bg-3`. `prefers-reduced-motion: reduce` → no transforms/animations (fades only).
 
 ## Components
@@ -62,8 +108,9 @@ Over-engineering to avoid: drag-and-drop widget builders, themes beyond light/da
 - **Row**: leading 28px icon tile (radius 7, --fill) or color dot; title (body, 1 line ellipsis, full name in `title` attr); secondary (subhead, label-2); trailing value/badge/chevron (label-3). Hover = --fill. Whole row is the hit target.
 - **Disclosure** (content tree, feed groups, announcements): chevron trailing (rotates 90°, `--dur-2` `--ease-out`; none under reduced motion), `<details>/<summary>` acceptable (native disclosure semantics); opening animates per **Motion** below. Indent 20px per level, max ~3 levels visible.
 - **Badge**: min 18px tall, padding 0 6, 12px 600, pill; tint for new, red for overdue, gray neutral; "99+"; `aria-label="3 nieuw"`.
+- **Empty state**: `TP.ui.empty(text)` shows the pill illustration above the text (`{art:false}` to omit).
 - **Segmented control**: track --fill, selected segment = one sliding pill (--bg-3 with shadow, `--ease-spring`), 28/32px tall, ≤5 segments; radio inputs.
-- **Switch**: 38×22 desktop (51×31 comfortable), on = --tint; native checkbox with role=switch.
+- **Switch**: 38×22 desktop (51×31 comfortable), on = --tint-fill (brand orange by default); native checkbox with role=switch.
 - **Settings**: inset grouped; label leading, control trailing; changes apply instantly; no "Bijgewerkt" line; group headers: Taal, Weergave, Overzicht (start page, sections with switch + ↑/↓, announcements in Nieuw, courses in Nieuw), Deadlines, Vakken (drill-in per course: nickname, color swatches, pin, hide), Synchronisatie met Toledo (incl. "Vastgezette vakken als favoriet in Toledo"), Toledo-pagina's (portal/vakken/diepere pagina's), Gegevens (export/import/reset), Over (version, GitHub, report issue).
 - *(historical, removed in v1.2 — v1.5 "Zet in zijbalk" is a local sidebar choice, not a favourite)* **Pin = favourite**: one pin control ("Vastzetten", icon pin/pinFill), no separate star. Pinned courses sit in the sidebar "Vastgezet" group and first in lists; with favourite sync on they are the Toledo favourites.
 - **Search**: the toolbar field filters the current view live; on Overview it also searches courses, feed, deadlines.

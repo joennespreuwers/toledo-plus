@@ -82,8 +82,8 @@ async function checkSite(browser, origin) {
           if (!i.ok && !i.lazy) fail(`${tag}: image did not load: ${i.src}`);
         }
         if (p === '/' && w === 1440) {
-          const shot = r.imgs.find((i) => /overview-/.test(i.src));
-          if (!shot || !shot.src.includes(`overview-${scheme}`)) fail(`${tag}: hero screenshot is not the ${scheme} variant (${shot && shot.src})`);
+          const shot = await page.evaluate(() => { const v = [...document.querySelectorAll('img.shot')].find((i) => i.offsetParent !== null); return v && v.src; });
+          if (!shot || !shot.includes(`overview-${scheme}`)) fail(`${tag}: hero screenshot is not the ${scheme} variant (${shot})`);
         }
         if (errs.length) fail(`${tag}: console errors: ${errs.join(' | ')}`);
         if (foreign.length) fail(`${tag}: external requests: ${foreign.join(', ')}`);
@@ -114,6 +114,92 @@ async function checkSite(browser, origin) {
     }
   }
   console.log(`  ${PAGES.length} pages × 2 schemes × ${WIDTHS.length} widths checked`);
+}
+
+// ---------------------------------------------------------------- brand, theme toggle, motion, Lenis
+const hex = (rgb) => { const m = String(rgb).match(/\d+(\.\d+)?/g) || []; return m.slice(0, 3).map(Number); };
+const lum = (c) => { const [r, g, b] = c.map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+const ratio = (a, b) => { const [x, y] = [lum(hex(a)), lum(hex(b))].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+
+async function checkTheme(browser, origin) {
+  console.log('Theme toggle, contrast, motion');
+  for (const scheme of ['light', 'dark']) {
+    const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: scheme });
+    const page = await ctx.newPage();
+    const errs = []; page.on('pageerror', (e) => errs.push(e.message)); page.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
+    await page.goto(origin + '/', { waitUntil: 'load' });
+    const tag = `theme ${scheme}`;
+    const btn = page.locator('[data-theme-toggle]');
+    if (!(await btn.isVisible())) { fail(`${tag}: theme toggle not visible`); await ctx.close(); continue; }
+    const seen = [];
+    for (let i = 0; i < 3; i++) {
+      await btn.click();
+      await page.waitForTimeout(320);
+      const st = await page.evaluate(() => {
+        const cs = (el) => getComputedStyle(el);
+        const body = cs(document.body), lead = cs(document.querySelector('.lead')), link = cs(document.querySelector('.link-arrow, main a:not(.btn)'));
+        const prim = cs(document.querySelector('.btn-primary'));
+        return { attr: document.documentElement.getAttribute('data-theme'), stored: localStorage.getItem('tp-theme'), label: document.querySelector('[data-theme-toggle]').getAttribute('aria-label'),
+          bg: body.backgroundColor, fg: body.color, lead: lead.color, link: link.color, pbg: prim.backgroundColor, pfg: prim.color,
+          tc: [...document.querySelectorAll('meta[name="theme-color"]')].map((m) => m.content) };
+      });
+      seen.push(st.attr || 'system');
+      for (const [what, fg, bg] of [['text', st.fg, st.bg], ['lead', st.lead, st.bg], ['link', st.link, st.bg], ['primary button', st.pfg, st.pbg]]) {
+        const r = ratio(fg, bg);
+        if (r < 4.5) fail(`${tag} → ${st.attr || 'system'}: ${what} contrast ${r.toFixed(2)}:1 (< 4.5)`);
+      }
+      if (st.attr === 'dark' && hex(st.bg).join() !== '18,21,28') fail(`${tag}: data-theme=dark but background ${st.bg}`);
+      if (st.attr === 'light' && hex(st.bg).join() !== '255,255,255') fail(`${tag}: data-theme=light but background ${st.bg}`);
+      if (st.attr && st.stored !== st.attr) fail(`${tag}: choice not stored (${st.stored})`);
+      if (!st.label) fail(`${tag}: toggle without a label`);
+    }
+    if (seen.join() !== 'light,dark,system') fail(`${tag}: toggle cycle was ${seen.join(' → ')}`);
+    // No flash: a stored choice is applied before the stylesheet paints (inline <head> script).
+    await page.evaluate((v) => localStorage.setItem('tp-theme', v), scheme === 'light' ? 'dark' : 'light');
+    await page.goto(origin + '/privacy.html', { waitUntil: 'commit' });
+    await page.waitForSelector('body');
+    const early = await page.evaluate(() => ({ attr: document.documentElement.getAttribute('data-theme'), bg: getComputedStyle(document.documentElement).backgroundColor }));
+    if (early.attr !== (scheme === 'light' ? 'dark' : 'light')) fail(`${tag}: stored theme not applied before paint (${early.attr})`);
+    // Lenis: on (desktop, motion allowed), anchors glide to the target under the sticky nav
+    await page.goto(origin + '/', { waitUntil: 'load' });
+    await page.waitForFunction(() => document.documentElement.classList.contains('lenis'), null, { timeout: 5000 }).catch(() => fail(`${tag}: Lenis did not start`));
+    await page.locator('.nav a[href="#install"], .hero a[href="#install"]').first().click();
+    await page.waitForTimeout(1800);
+    const pos = await page.evaluate(() => ({ top: document.getElementById('install').getBoundingClientRect().top, nav: document.querySelector('.nav').offsetHeight, hash: location.hash, focus: document.activeElement && document.activeElement.id }));
+    if (Math.abs(pos.top - (pos.nav + 16)) > 6) fail(`${tag}: #install landed at ${pos.top.toFixed(0)}px (expected ~${pos.nav + 16})`);
+    if (pos.hash !== '#install') fail(`${tag}: anchor did not update the URL (${pos.hash})`);
+    if (pos.focus !== 'install') fail(`${tag}: focus did not move to #install (${pos.focus})`);
+    await page.keyboard.press('End'); await page.waitForTimeout(400);
+    const atEnd = await page.evaluate(() => Math.abs(window.scrollY + innerHeight - document.documentElement.scrollHeight) < 4);
+    if (!atEnd) fail(`${tag}: keyboard End did not scroll to the bottom with Lenis on`);
+    if (errs.length) fail(`${tag}: console errors: ${errs.join(' | ')}`);
+    await ctx.close();
+  }
+  // Reduced motion: no Lenis, no reveal/hiding, no running animations; everything visible.
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' });
+  const page = await ctx.newPage();
+  const reqs = []; page.on('request', (r) => reqs.push(r.url()));
+  await page.goto(origin + '/', { waitUntil: 'load' });
+  await page.waitForTimeout(600);
+  const rm = await page.evaluate(() => ({
+    lenis: document.documentElement.classList.contains('lenis'), reveal: document.documentElement.classList.contains('reveal-on'),
+    anims: document.getAnimations().filter((a) => a.playState === 'running').length,
+    hidden: [...document.querySelectorAll('main *')].filter((e) => e.getClientRects().length && parseFloat(getComputedStyle(e).opacity) < 1).length,
+  }));
+  if (rm.lenis || reqs.some((u) => /lenis/.test(u))) fail('reduced motion: Lenis was loaded');
+  if (rm.reveal) fail('reduced motion: scroll reveal is on');
+  if (rm.anims) fail(`reduced motion: ${rm.anims} animation(s) running`);
+  if (rm.hidden) fail(`reduced motion: ${rm.hidden} element(s) not fully visible`);
+  await ctx.close();
+  // Without JS: everything visible, native scrolling.
+  const nojs = await browser.newContext({ viewport: { width: 1440, height: 900 }, javaScriptEnabled: false });
+  const p2 = await nojs.newPage();
+  await p2.goto(origin + '/', { waitUntil: 'load' });
+  await p2.waitForTimeout(1200);
+  const hid = await p2.locator('#features .feature').evaluateAll((l) => l.filter((e) => parseFloat(getComputedStyle(e).opacity) < 1).length);
+  if (hid) fail(`no JS: ${hid} feature card(s) hidden`);
+  await nojs.close();
+  console.log('  toggle (light/dark/system), stored choice before paint, contrast, Lenis + anchors + keyboard, reduced motion, no-JS checked');
 }
 
 async function checkDemo(browser, origin) {
@@ -168,6 +254,30 @@ async function checkDemo(browser, origin) {
           if (ok && SHOTS) await page.screenshot({ path: path.join(SHOTS, `demo-palette-${lang}-${scheme}.png`) });
           await page.keyboard.press('Escape');
         }
+        // demo bar: "‹ Terug naar toledoplus.be" (home in this language) and the theme toggle driving the app's appearance
+        const bar = await page.evaluate(() => {
+          const a = document.querySelector('#demo-bar a.demo-back');
+          const r = a && a.getBoundingClientRect();
+          return a ? { href: a.getAttribute('href'), h: r.height, text: a.innerText.trim(), first: document.querySelector('#demo-bar').firstElementChild === a } : null;
+        });
+        const home = { nl: '../', en: '../en/', fr: '../fr/' }[lang];
+        if (!bar) fail(`${tag}: no back link in the demo bar`);
+        else {
+          if (bar.href !== home) fail(`${tag}: back link goes to ${bar.href} (expected ${home})`);
+          if (bar.h < 24) fail(`${tag}: back link target ${bar.h}px (< 24)`);
+          if (!bar.first) fail(`${tag}: back link is not the first item of the demo bar`);
+          if (!/‹/.test(bar.text)) fail(`${tag}: back link text "${bar.text}"`);
+        }
+        if (vp.width === 1440 || lang === 'nl') {
+          const appearance = () => shadow(page, (sr) => sr && sr.querySelector('.tp-app') && sr.querySelector('.tp-app').dataset.appearance);
+          const modes = [];
+          for (let i = 0; i < 3; i++) {
+            await page.locator('#demo-bar [data-theme-toggle]').click();
+            await page.waitForTimeout(250);
+            modes.push(await appearance());
+          }
+          if (modes.join() !== 'light,dark,system') fail(`${tag}: demo theme toggle → app appearance ${modes.join(' → ')}`);
+        }
         const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
         if (overflow > 0) fail(`${tag}: horizontal scroll (${overflow}px)`);
         if (errs.length) fail(`${tag}: console errors: ${[...new Set(errs)].join(' | ')}`);
@@ -177,6 +287,25 @@ async function checkDemo(browser, origin) {
     }
   }
   console.log('  routes, course page and ⌘K checked');
+}
+
+// The demo bar at 320px: the back link shortens to "‹ Home", nothing scrolls sideways, Lenis is never loaded in /demo/.
+async function checkDemoNarrow(browser, origin) {
+  const ctx = await browser.newContext({ viewport: { width: 320, height: 700 } });
+  const page = await ctx.newPage();
+  const reqs = []; page.on('request', (r) => reqs.push(r.url()));
+  await page.goto(`${origin}/demo/?lang=nl`);
+  await page.waitForSelector('#demo-bar a.demo-back');
+  await page.waitForTimeout(1500);
+  const r = await page.evaluate(() => ({ text: document.querySelector('#demo-bar a.demo-back').innerText.trim(), overflow: document.documentElement.scrollWidth - innerWidth,
+    barH: document.querySelector('#demo-bar').getBoundingClientRect().height, motion: document.documentElement.getAttribute('data-tp-motion') }));
+  if (!/Home/.test(r.text) || /toledoplus/.test(r.text)) fail(`demo 320: back link should read "‹ Home" (got "${r.text}")`);
+  if (r.overflow > 0) fail(`demo 320: horizontal scroll (${r.overflow}px)`);
+  if (r.barH > 84) fail(`demo 320: demo bar too tall (${r.barH}px)`);
+  if (r.motion === 'off') fail('demo: the app runs with motion switched off');
+  if (reqs.some((u) => /lenis/.test(u))) fail('demo: Lenis was loaded in /demo/');
+  await ctx.close();
+  console.log('  demo bar at 320px checked');
 }
 
 const sizes = () => {
@@ -192,7 +321,9 @@ const sizes = () => {
   const browser = await chromium.launch();
   try {
     await checkSite(browser, origin);
+    await checkTheme(browser, origin);
     await checkDemo(browser, origin);
+    await checkDemoNarrow(browser, origin);
   } finally {
     await browser.close(); srv.close();
   }

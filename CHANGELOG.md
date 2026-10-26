@@ -7,6 +7,12 @@ Het formaat volgt [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) en he
 ## [Unreleased]
 
 ### Added
+- **Brand (brandguide v1.0)**: Toledo+ now looks like itself, not like Toledo. The woven-plus logo (tile below 32 px, glyph above) and the "Toledo+" wordmark in the sidebar, icon rail, phone toolbar, deep bar, classic-mode pill and Instellingen › Over ("Onofficieel studentenproject" + version); a quiet "Toledo+ 1.4.0 · Klassiek" signature at the bottom of the sidebar.
+- **Inter** everywhere in the app (self-hosted, OFL; declared in the document because Chrome ignores fonts inside shadow roots), with per-size tracking and tabular numbers for counts, times and dates.
+- **Welcome card** is a branded intro: ink card with the logo, a short "this isn't Toledo, it's Toledo+" line, the three tips, the privacy line and one orange button.
+- First start without cached data shows a short branded splash (≤ 0.4 s; fades only with reduced motion) instead of an empty shell. Empty states get a small illustration made from the logo's pills.
+- Website: Inter self-hosted, brand colours and logo, dark mode on ink, a light/dark/system **theme toggle** (remembered, applied before the first paint, also drives the demo), entrance and scroll-reveal motion with the app's timings, smooth wheel scrolling (Lenis, self-hosted; off with reduced motion and on touch), animated FAQ and "Gekopieerd" feedback. The demo bar gets "‹ Terug naar toledoplus.be" and the same theme toggle; the og image is rebranded.
+
 - **"Zet in zijbalk"**: choose which courses appear in the sidebar's "Vakken" group (and the icon rail) — from the course page header ("Zet in zijbalk" / "Uit zijbalk"), the small toggle on each course card, or the "In zijbalk" switch in Vakken › Bewerk. Purely local, nothing changes in Toledo. ⌘K still searches every course.
 - **Mail button** back in the toolbar: envelope with a small grey unread count, opens Outlook web in a new tab. On phones it sits in the "Meer" sheet; the account menu keeps it too.
 - **Greeting with your first name** ("Goedenavond, Alex"), read from Ultra (`users/me`) and kept only in local storage — never synced, never sent anywhere. Without a name the plain greeting stays.
@@ -19,6 +25,11 @@ Het formaat volgt [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) en he
 - Keyboard shortcuts in the Agenda (t, d, w, m, a/l, j/k, n/p, ←/→, g, ?; arrow keys between events). Swipe left/right in the phone day view. Periods slide in the direction you move.
 
 ### Changed
+- **Colours**: the default accent is now Toledo+ orange (links #C2410C in light, #F5A35F in dark; filled buttons orange with ink text). Settings v5 switches installs that still had the old default blue to the brand accent once; other accent choices stay, and blue can be picked again. Light mode uses warm neutrals and ink text; dark mode sits on brand ink (#12151C / #1F2430 / #283040) instead of black and grey. Cards get soft layered shadows in light and hairlines in dark; icon tiles, switches, selection, focus ring and scrollbars follow the brand.
+- **"Binnenkort" is amber, not orange** (clock icon + date), so a deadline state never looks like the accent; "te laat" keeps red with a warning icon and the word.
+- Course page rows and teacher links: the accessible name now starts with the visible text ("Slides.pdf, openen") instead of "Open Slides.pdf" (WCAG 2.5.3); same for the ⌘K button in the search field.
+- Loading shimmer stops after a few sweeps and the refresh spinner after ~10 s, so nothing keeps repainting the page; FLIP ghosts measure before they write (one layout instead of one per removed row).
+
 - The sidebar "Vakken" group lists only the courses you added and is hidden when there are none (settings v4: existing installs start with an empty group).
 - **Layout on wide screens**: one centred content column (max 1240 px: main + side column) right of the sidebar instead of a strip next to an empty area; list views (Deadlines, Mededelingen, KU Loket, Instellingen) use a centred 760 px column. The toolbar's controls line up with the content edge at every width.
 - Spacing pass along the design scale: welcome card padding and button spacing, side column width (280–340 px), day headers aligned with section titles, settings section gap.
@@ -27,6 +38,8 @@ Het formaat volgt [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) en he
 - KU Loket signed out: the timetable switches to your iCal feed on its own, keeps room, address and teachers for weeks seen earlier in KU Loket, and says so in one quiet line. The iCal link is re-read from KU Loket every 7 days.
 
 ### Fixed
+- The overdue date tile's month label reaches 5.9:1 (was 4.35:1 at 11 px).
+
 - The sidebar (and icon rail / tab bar) could scroll horizontally; long course names now ellipsize and badges no longer push the width.
 - Dutch greetings are spelled "Goedemorgen / Goedemiddag / Goedenavond" (was "Goeie…").
 - Segmented controls (e.g. Mededelingen filter) no longer overflow at 320 px.

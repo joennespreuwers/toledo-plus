@@ -1,4 +1,7 @@
-# Toledo+
+<p align="center"><img src="docs/brand/toledo-plus-icon-512.png" alt="Toledo+ logo" width="112" height="112"></p>
+
+<h1 align="center">Toledo+</h1>
+<p align="center"><strong>Toledo, but calm.</strong> · Onofficieel studentenproject</p>
 
 **Een rustigere, duidelijkere Toledo.** Toledo+ is een gratis browserextensie voor Chrome en Edge die KU Leuven Toledo (het portaal én de Blackboard Ultra-vakpagina's) in één overzichtelijke app giet: deadlines eerst, één compacte feed met wat er nieuw is, en elke vakpagina in dezelfde vorm.
 
