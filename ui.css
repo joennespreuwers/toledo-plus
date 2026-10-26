@@ -1,52 +1,71 @@
 /* Toledo+ — design tokens, shared components and the app shell. Loaded inside shadow roots only.
    Tokens live on .tp-theme (the shell root .tp-app and the deep-bar root both carry it).
    data-appearance: system|light|dark · data-density: compact|standard|comfortable
-   --tint / --tint-text-l / --tint-text-d / --tint-fill / --on-tint are set from JS (contrast-checked). */
+   --tint / --tint-text-l / --tint-text-d / --tint-fill / --on-tint are set from JS (contrast-checked).
+   Brand (docs/brand, DESIGN.md › Brand): Inter, orange #EE8B35 · magenta #E3285A · ink #1F2430. */
 
 :host { all: initial; display: block; }
 
 /* ========================================================================== tokens */
 .tp-theme {
-  /* type */
-  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", system-ui, "Segoe UI", Roboto, sans-serif;
-  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro", system-ui, "Segoe UI", Roboto, sans-serif;
+  /* type — Inter (brand). "TP Inter" is declared by the shell in the DOCUMENT scope (<style id="tp-fonts">:
+     Chrome ignores @font-face inside shadow roots); a locally installed Inter is the next best thing. */
+  --font: "TP Inter", "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: var(--font);
   --fs-large-title: 1.875rem; --lh-large-title: 2.25rem;
   --fs-title2: 1.25rem;      --lh-title2: 1.5625rem;
   --fs-headline: .9375rem;   --lh-headline: 1.25rem;
   --fs-body: .9375rem;       --lh-body: 1.25rem;
   --fs-subhead: .8125rem;    --lh-subhead: 1.125rem;
   --fs-footnote: .75rem;     --lh-footnote: 1rem;
+  /* Inter tracking (rsms' dynamic metrics: -0.0223 + 0.185·e^(-0.1745·px) em), per size */
+  --ls-large-title: -.021em; --ls-title2: -.017em; --ls-headline: -.009em; --ls-body: -.009em;
+  --ls-subhead: -.003em; --ls-footnote: 0em; --ls-caps: .06em;
+  --fw-title: 750;          /* Bold–ExtraBold (variable wght) for large titles; sections 700 */
   /* metrics */
   --row-min: 44px; --row-py: 11px; --row-px: 16px; --lead: 28px; --gap: 12px;
   --inset: calc(var(--row-px) + var(--lead) + var(--gap));
-  --r-control: 8px; --r-group: 12px; --r-pop: 16px; --r-pill: 999px;
+  --r-control: 8px; --r-group: 14px; --r-pop: 18px; --r-pill: 999px; --r-tile: 8px;
   --margin: 16px; --section-gap: 28px;
   --toolbar-h: 44px; --sidebar-w: 240px; --rail-w: 64px; --list-max: 760px;
   /* content column (v1.5): centred in the area right of the sidebar; wide = main + side column, narrow = list views */
   --content-wide: 1240px; --content-narrow: calc(var(--list-max) + 2 * var(--margin));
   --switch-w: 38px; --switch-h: 22px;
-  /* color — light */
-  --bg: #F2F2F7; --bg-2: #FFFFFF; --bg-3: #FFFFFF;
-  --label: #000000; --label-2: rgba(60, 60, 67, .76); /* .72 dips to 4.47:1 on --bg */ --label-3: rgba(60, 60, 67, .30);
-  --separator: rgba(60, 60, 67, .22); --separator-strong: rgba(60, 60, 67, .36);
-  --fill: rgba(120, 120, 128, .14); --fill-2: rgba(120, 120, 128, .08);
+  /* brand constants (never follow the accent) */
+  --brand-orange: #EE8B35; --brand-magenta: #E3285A; --brand-ink: #1F2430;
+  --brand-orange-text: #C2410C; --brand-magenta-text: #C81E4E;
+  /* color — light: calm neutrals, warmed a touch toward the brand; text in brand ink */
+  --bg: #F5F4F2; --bg-2: #FFFFFF; --bg-3: #FFFFFF;
+  --label: #1F2430; --label-2: rgba(31, 36, 48, .70); /* 5.5:1 on --bg */ --label-3: rgba(31, 36, 48, .30);
+  --separator: rgba(31, 36, 48, .13); --separator-strong: rgba(31, 36, 48, .28);
+  --fill: rgba(118, 114, 110, .13); --fill-2: rgba(118, 114, 110, .07);
+  /* status: red = "te laat" (always icon + word), amber = "binnenkort" (clock + date), green = done */
   --red: #D70015; --red-fill: #FF3B30;
-  --orange: #C93400; --orange-fill: #FF9500;
-  --green: #248A3D; --green-fill: #34C759;
-  --tint: #007AFF; --tint-text-l: #0062CC; --tint-text-d: #409CFF; --tint-fill: #0062CC; --on-tint: #FFFFFF;
+  --amber: #8A5300; --amber-fill: #F5B000;
+  --orange: var(--amber); --orange-fill: var(--amber-fill); /* legacy names: "urgent" is amber since the brand made orange the accent */
+  --green: #1E7B36; --green-fill: #34C759;
+  --tint: #EE8B35; --tint-text-l: #C2410C; --tint-text-d: #F5A35F; --tint-fill: #EE8B35; --on-tint: #1F2430;
   --tint-text: var(--tint-text-l);
   --tint-soft: color-mix(in srgb, var(--tint) 15%, transparent);
-  --glass: rgba(255, 255, 255, .72); --glass-border: rgba(0, 0, 0, .08);
-  --glass-pop: rgba(250, 250, 252, .96); /* popovers/sheets float over content: more opaque for legibility */
+  --tint-tile: color-mix(in srgb, var(--tint) 12%, var(--bg-2)); /* icon tiles */
+  --glass: rgba(255, 255, 255, .74); --glass-border: rgba(31, 36, 48, .08);
+  --glass-pop: rgba(252, 251, 250, .96); /* popovers/sheets float over content: more opaque for legibility */
   --glass-filter: blur(20px) saturate(180%);
-  --shadow-pop: 0 10px 30px rgba(0, 0, 0, .14), 0 1px 3px rgba(0, 0, 0, .08);
-  --shadow-seg: 0 1px 3px rgba(0, 0, 0, .14), 0 0 0 .5px rgba(0, 0, 0, .04);
-  --scrim: rgba(0, 0, 0, .28);
+  /* surfaces: layered, soft shadows on cards in light; hairlines in dark */
+  --card-ring: 0 0 0 .5px rgba(31, 36, 48, .07);
+  --shadow-card: 0 0 0 .5px rgba(31, 36, 48, .06), 0 1px 2px rgba(31, 36, 48, .04), 0 2px 10px -2px rgba(31, 36, 48, .06);
+  --shadow-card-hover: 0 0 0 .5px rgba(31, 36, 48, .08), 0 2px 4px rgba(31, 36, 48, .05), 0 8px 20px -6px rgba(31, 36, 48, .12);
+  --shadow-pop: 0 0 0 .5px rgba(31, 36, 48, .06), 0 12px 32px -4px rgba(31, 36, 48, .16), 0 2px 6px rgba(31, 36, 48, .06);
+  --shadow-seg: 0 1px 3px rgba(31, 36, 48, .14), 0 0 0 .5px rgba(31, 36, 48, .04);
+  --scrim: rgba(18, 21, 28, .32);
+  --scrollbar: rgba(31, 36, 48, .26);
   --hairline: .5px;
   color-scheme: light;
   font-family: var(--font);
-  font-size: var(--fs-body); line-height: var(--lh-body);
+  font-size: var(--fs-body); line-height: var(--lh-body); letter-spacing: var(--ls-body);
   font-optical-sizing: auto;
+  font-feature-settings: "calt" 1;
+  font-synthesis: none;
   color: var(--label);
   -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
   text-size-adjust: 100%;
@@ -80,34 +99,46 @@
 
 /* dark tokens: explicit, or system when the OS is dark */
 .tp-theme[data-appearance="dark"] {
-  --bg: #000000; --bg-2: #1C1C1E; --bg-3: #2C2C2E;
-  --label: #FFFFFF; --label-2: rgba(235, 235, 245, .70); --label-3: rgba(235, 235, 245, .30);
-  --separator: rgba(84, 84, 88, .6); --separator-strong: rgba(120, 120, 128, .8);
-  --fill: rgba(120, 120, 128, .28); --fill-2: rgba(120, 120, 128, .18);
-  --red: #FF453A; --red-fill: #FF453A; --orange: #FF9F0A; --orange-fill: #FF9F0A; --green: #30D158; --green-fill: #30D158;
+  /* dark on brand ink: page #12151C, cards = ink #1F2430, elevated #283040 */
+  --bg: #12151C; --bg-2: #1F2430; --bg-3: #283040;
+  --label: #F4F5F7; --label-2: rgba(235, 237, 245, .68); /* 6.1:1 on --bg-3 */ --label-3: rgba(235, 237, 245, .30);
+  --separator: rgba(235, 237, 245, .12); --separator-strong: rgba(235, 237, 245, .26);
+  --fill: rgba(150, 160, 185, .20); --fill-2: rgba(150, 160, 185, .11);
+  --red: #FF6B61; --red-fill: #FF453A; --amber: #FFC542; --amber-fill: #FFB800; --green: #30D158; --green-fill: #30D158;
   --tint-text: var(--tint-text-d);
-  --tint-soft: color-mix(in srgb, var(--tint) 24%, transparent);
-  --glass: rgba(30, 30, 30, .62); --glass-border: rgba(255, 255, 255, .10);
-    --glass-pop: rgba(36, 36, 38, .96);
-  --shadow-pop: 0 10px 30px rgba(0, 0, 0, .5), 0 0 0 .5px rgba(255, 255, 255, .08);
+  --tint-soft: color-mix(in srgb, var(--tint) 22%, transparent);
+  --tint-tile: color-mix(in srgb, var(--tint) 18%, var(--bg-2));
+  --glass: rgba(24, 28, 37, .70); --glass-border: rgba(235, 237, 245, .09);
+  --glass-pop: rgba(34, 40, 53, .96);
+  --card-ring: 0 0 0 .5px rgba(235, 237, 245, .08);
+  --shadow-card: 0 0 0 .5px rgba(235, 237, 245, .07);
+  --shadow-card-hover: 0 0 0 .5px rgba(235, 237, 245, .14);
+  --shadow-pop: 0 0 0 .5px rgba(235, 237, 245, .10), 0 16px 40px -6px rgba(0, 0, 0, .6);
   --shadow-seg: 0 1px 3px rgba(0, 0, 0, .4);
-  --scrim: rgba(0, 0, 0, .5);
+  --scrim: rgba(6, 8, 12, .56);
+  --scrollbar: rgba(235, 237, 245, .22);
   color-scheme: dark;
 }
 @media (prefers-color-scheme: dark) {
   .tp-theme[data-appearance="system"] {
-    --bg: #000000; --bg-2: #1C1C1E; --bg-3: #2C2C2E;
-    --label: #FFFFFF; --label-2: rgba(235, 235, 245, .70); --label-3: rgba(235, 235, 245, .30);
-    --separator: rgba(84, 84, 88, .6); --separator-strong: rgba(120, 120, 128, .8);
-    --fill: rgba(120, 120, 128, .28); --fill-2: rgba(120, 120, 128, .18);
-    --red: #FF453A; --red-fill: #FF453A; --orange: #FF9F0A; --orange-fill: #FF9F0A; --green: #30D158; --green-fill: #30D158;
+    /* dark on brand ink: page #12151C, cards = ink #1F2430, elevated #283040 */
+    --bg: #12151C; --bg-2: #1F2430; --bg-3: #283040;
+    --label: #F4F5F7; --label-2: rgba(235, 237, 245, .68); /* 6.1:1 on --bg-3 */ --label-3: rgba(235, 237, 245, .30);
+    --separator: rgba(235, 237, 245, .12); --separator-strong: rgba(235, 237, 245, .26);
+    --fill: rgba(150, 160, 185, .20); --fill-2: rgba(150, 160, 185, .11);
+    --red: #FF6B61; --red-fill: #FF453A; --amber: #FFC542; --amber-fill: #FFB800; --green: #30D158; --green-fill: #30D158;
     --tint-text: var(--tint-text-d);
-    --tint-soft: color-mix(in srgb, var(--tint) 24%, transparent);
-    --glass: rgba(30, 30, 30, .62); --glass-border: rgba(255, 255, 255, .10);
-    --glass-pop: rgba(36, 36, 38, .96);
-    --shadow-pop: 0 10px 30px rgba(0, 0, 0, .5), 0 0 0 .5px rgba(255, 255, 255, .08);
+    --tint-soft: color-mix(in srgb, var(--tint) 22%, transparent);
+    --tint-tile: color-mix(in srgb, var(--tint) 18%, var(--bg-2));
+    --glass: rgba(24, 28, 37, .70); --glass-border: rgba(235, 237, 245, .09);
+    --glass-pop: rgba(34, 40, 53, .96);
+    --card-ring: 0 0 0 .5px rgba(235, 237, 245, .08);
+    --shadow-card: 0 0 0 .5px rgba(235, 237, 245, .07);
+    --shadow-card-hover: 0 0 0 .5px rgba(235, 237, 245, .14);
+    --shadow-pop: 0 0 0 .5px rgba(235, 237, 245, .10), 0 16px 40px -6px rgba(0, 0, 0, .6);
     --shadow-seg: 0 1px 3px rgba(0, 0, 0, .4);
-    --scrim: rgba(0, 0, 0, .5);
+    --scrim: rgba(6, 8, 12, .56);
+    --scrollbar: rgba(235, 237, 245, .22);
     color-scheme: dark;
   }
 }
@@ -137,19 +168,19 @@
 /* increased contrast: stronger secondary text and separators */
 @media (prefers-contrast: more) {
   .tp-theme {
-    --label-2: rgba(60, 60, 67, .92); --label-3: rgba(60, 60, 67, .6);
-    --separator: rgba(60, 60, 67, .5); --fill: rgba(120, 120, 128, .24);
-    --glass-border: rgba(0, 0, 0, .3);
+    --label-2: rgba(31, 36, 48, .90); --label-3: rgba(31, 36, 48, .6);
+    --separator: rgba(31, 36, 48, .45); --fill: rgba(118, 114, 110, .24);
+    --glass-border: rgba(31, 36, 48, .3);
   }
   .tp-theme[data-appearance="dark"] {
-    --label-2: rgba(235, 235, 245, .9); --label-3: rgba(235, 235, 245, .6);
-    --separator: rgba(160, 160, 166, .7); --glass-border: rgba(255, 255, 255, .35);
+    --label-2: rgba(235, 237, 245, .9); --label-3: rgba(235, 237, 245, .6);
+    --separator: rgba(170, 176, 192, .7); --glass-border: rgba(235, 237, 245, .35);
   }
 }
 @media (prefers-contrast: more) and (prefers-color-scheme: dark) {
   .tp-theme[data-appearance="system"] {
-    --label-2: rgba(235, 235, 245, .9); --label-3: rgba(235, 235, 245, .6);
-    --separator: rgba(160, 160, 166, .7); --glass-border: rgba(255, 255, 255, .35);
+    --label-2: rgba(235, 237, 245, .9); --label-3: rgba(235, 237, 245, .6);
+    --separator: rgba(170, 176, 192, .7); --glass-border: rgba(235, 237, 245, .35);
   }
 }
 
