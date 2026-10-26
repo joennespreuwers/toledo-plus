@@ -198,7 +198,32 @@ export function validateFeedback(b) {
 
 /** Obvious test submissions from the feedback form: store as spam, do not create a GitHub issue. */
 export function isTestFeedback(text) {
-  return /^\s*(?:just\s+)?test(?:ing)?(?:\s+this\s+feature)?(?:\s*@\s*\d{1,2}:\d{2})?\s*[.!?]*\s*$/i.test(String(text || ''));
+  let t = String(text || '').toLowerCase().trim();
+  while (t && '.!?'.includes(t[t.length - 1])) t = t.slice(0, -1).trimEnd();
+  const at = t.lastIndexOf('@');
+  if (at >= 0) {
+    const clock = t.slice(at + 1).trim();
+    const parts = clock.split(':');
+    const hh = parts.length === 2 ? Number(parts[0]) : NaN;
+    const mm = parts.length === 2 ? Number(parts[1]) : NaN;
+    const validClock = parts.length === 2 &&
+      /^\d{1,2}$/.test(parts[0]) &&
+      /^\d{2}$/.test(parts[1]) &&
+      Number.isInteger(hh) &&
+      Number.isInteger(mm) &&
+      hh >= 0 && hh <= 23 &&
+      mm >= 0 && mm <= 59;
+    if (validClock) t = t.slice(0, at).trim();
+  }
+  t = t.replace(/\s+/g, ' ');
+  return t === 'test' ||
+    t === 'testing' ||
+    t === 'just test' ||
+    t === 'just testing' ||
+    t === 'test this feature' ||
+    t === 'testing this feature' ||
+    t === 'just test this feature' ||
+    t === 'just testing this feature';
 }
 
 // ---------------------------------------------------------------- GitHub
