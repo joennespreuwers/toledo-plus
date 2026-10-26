@@ -109,6 +109,7 @@ The UI must read as **Toledo+, not Toledo**: our own name, mark, type and colour
 - **Disclosure** (content tree, feed groups, announcements): chevron trailing (rotates 90°, `--dur-2` `--ease-out`; none under reduced motion), `<details>/<summary>` acceptable (native disclosure semantics); opening animates per **Motion** below. Indent 20px per level, max ~3 levels visible.
 - **Badge**: min 18px tall, padding 0 6, 12px 600, pill; tint for new, red for overdue, gray neutral; "99+"; `aria-label="3 nieuw"`.
 - **Help text sits next to what it explains**: a section footer (`TP.ui.section({footer})`, directly under its group) or the toast right after the action. No page-bottom footnotes; a page-level fact goes in the subtitle under the large title.
+- **Same thing, same row**: an exam is drawn by one row (`TP.viewsA.examRow`: date tile, course dot, when · room, relative time) in Deadlines and KU Loket; a lesson by one row (`TP.viewsA.lessonRow`: times, course bar, room · teachers) in Overzicht and KU Loket.
 - **Empty state**: `TP.ui.empty(text)` shows the pill illustration above the text (`{art:false}` to omit).
 - **Segmented control**: track --fill, selected segment = one sliding pill (--bg-3 with shadow, `--ease-spring`), 28/32px tall, ≤5 segments; radio inputs.
 - **Switch**: 38×22 desktop (51×31 comfortable), on = --tint-fill (brand orange by default); native checkbox with role=switch.

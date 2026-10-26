@@ -92,6 +92,8 @@
     });
   }
 
+  VA().examRow = examRow; // KU Loket's exam list uses the same row
+
   function courseOptions() {
     let courses = [];
     try { courses = TP.data.courses({ currentOnly: true }) || []; } catch { courses = []; }

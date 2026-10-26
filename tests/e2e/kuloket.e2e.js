@@ -26,11 +26,12 @@ describe('KU Loket hub (desktop, light)', () => {
     const exams = page.locator(`${ROOT} section[data-section="kl-exams"]`);
     await exams.locator('.tp-row', { hasText: 'Filmgeschiedenis 1' }).waitFor({ timeout: 10000 });
     assert.equal(await exams.locator('.tp-row').count(), 2);
+    assert.equal(await exams.locator('.va-exam').count(), 2, 'same exam row as Deadlines');
     assert.ok((await exams.innerText()).includes(nl()['agenda.exam']), 'labelled as exam');
     assert.ok((await exams.innerText()).includes('A101'), 'room from $expand=toLocation');
     const today = page.locator(`${ROOT} section[data-section="kl-today"]`);
-    await today.locator('.kl-lesson', { hasText: 'Filmtaal 1' }).waitFor();
-    assert.equal(await today.locator('.kl-lesson').count(), 3);
+    await today.locator('.va-lesson', { hasText: 'Filmtaal 1' }).waitFor();
+    assert.equal(await today.locator('.va-lesson').count(), 3);
     assert.match(await today.locator('a.tp-btn').getAttribute('href'), /tplus=agenda/);
     for (const g of ['study', 'enrol', 'agenda', 'survey', 'safety', 'support']) {
       const sec = page.locator(`${ROOT} section[data-section="kl-${g}"]`);
