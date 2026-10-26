@@ -6,6 +6,9 @@ Het formaat volgt [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) en he
 
 ## [Unreleased]
 
+### Fixed
+- Worker feedback triage now keeps obvious test-only submissions (for example “testing this feature @ 23:29”) as internal `spam` rows instead of opening public GitHub issues.
+
 ## [1.5.1] - 2026-10-26
 
 ### Changed

@@ -86,6 +86,8 @@ With `GITHUB_TOKEN` set, every feedback becomes an issue titled `[Idea|Bug|Feedb
 `feedback`, `needs-triage` and `bug` (kind `bug`) or `enhancement` (kinds `idea`, `other`), and a table with kind,
 version, browser, language, page and the D1 feedback id. The triage agent handles them like every other
 `needs-triage` issue (AGENTS.md §5): `gh issue list --label feedback --label needs-triage --state open`.
+Obvious test-only submissions (for example “testing this feature @ 23:29”) are stored with `status = 'spam'` and are
+not mirrored to GitHub.
 Reporters cannot be asked for more information on GitHub; if a reply is needed, the maintainer looks up the contact
 by feedback id:
 

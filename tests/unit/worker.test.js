@@ -266,6 +266,22 @@ test('feedback: stored with contact in D1; GitHub issue without contact, with la
   assert.equal(fetched, false, 'no GITHUB_TOKEN → no GitHub call');
 });
 
+test('feedback: obvious test messages are stored as spam and do not open a GitHub issue', { skip: SKIP }, async () => {
+  const W = await loadWorker(); const s = setup({ GITHUB_TOKEN: 'ghp_test' });
+  let fetched = false;
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async () => { fetched = true; return new Response('{}', { status: 201 }); };
+  try {
+    const r = await call(W, s, 'POST', '/v1/feedback', { body: fb({ text: 'TESTING THIS FEATURE @ 23:29' }) });
+    assert.equal(r.status, 201);
+    assert.deepEqual(r.json, { ok: true });
+  } finally { globalThis.fetch = realFetch; }
+  assert.equal(fetched, false, 'test-only feedback is not mirrored to GitHub');
+  const row = s.env.DB.rows('SELECT * FROM feedback')[0];
+  assert.equal(row.status, 'spam');
+  assert.equal(row.github_issue, null);
+});
+
 test('privacy: no raw IP anywhere in D1; IP key rotates daily', { skip: SKIP }, async () => {
   const W = await loadWorker(); const s = setup();
   await call(W, s, 'POST', '/v1/ping', { body: ping() });

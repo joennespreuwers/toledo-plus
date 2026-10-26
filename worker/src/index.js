@@ -196,6 +196,11 @@ export function validateFeedback(b) {
   return out;
 }
 
+/** Obvious test submissions from the feedback form: store as spam, do not create a GitHub issue. */
+export function isTestFeedback(text) {
+  return /^\s*(?:just\s+)?test(?:ing)?(?:\s+this\s+feature)?(?:\s*@\s*\d{1,2}:\d{2})?\s*[.!?]*\s*$/i.test(String(text || ''));
+}
+
 // ---------------------------------------------------------------- GitHub
 
 /** Neutralise @mentions so public issues never ping people. */
@@ -268,11 +273,12 @@ async function feedback(request, env, ctx, ms) {
   if (fb.honeypot) return respond(201, { ok: true }); // pretend success, store nothing
   if (fb.links > 3) throw new HttpError(422, 'spam');
   await enforce(env, 'feedback', ['install', 'global'], { install: fb.id }, ms);
+  const status = isTestFeedback(fb.text) ? 'spam' : 'new';
   const row = await env.DB.prepare(
     'INSERT INTO feedback (created, install_id, kind, text, contact, version, browser, lang, page, status) ' +
-    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'new') RETURNING id",
-  ).bind(ms, fb.id || null, fb.kind, fb.text, fb.contact || null, fb.v || null, fb.browser || null, fb.lang || null, fb.page || null).first();
-  if (env.GITHUB_TOKEN && row && row.id != null) {
+    'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id',
+  ).bind(ms, fb.id || null, fb.kind, fb.text, fb.contact || null, fb.v || null, fb.browser || null, fb.lang || null, fb.page || null, status).first();
+  if (status === 'new' && env.GITHUB_TOKEN && row && row.id != null) {
     const job = createIssue(env, fb, row.id).catch((e) => console.log('github issue failed:', String(e && e.message || e)));
     if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(job); else await job;
   }
