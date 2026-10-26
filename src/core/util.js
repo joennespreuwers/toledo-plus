@@ -95,8 +95,9 @@
   let seq = 0;
   const uid = () => Date.now().toString(36) + (seq++).toString(36) + Math.random().toString(36).slice(2, 7);
 
+  // 'brand' = the Toledo+ accent (brand orange, v1.6 default). Accent only: never handed out as a course colour.
   const PALETTE = {
-    blue: '#007AFF', purple: '#AF52DE', pink: '#FF2D55', red: '#FF3B30', orange: '#FF9500', yellow: '#FFCC00',
+    brand: '#EE8B35', blue: '#007AFF', purple: '#AF52DE', pink: '#FF2D55', red: '#FF3B30', orange: '#FF9500', yellow: '#FFCC00',
     green: '#34C759', mint: '#00C7BE', teal: '#30B0C7', cyan: '#32ADE6', indigo: '#5856D6', brown: '#A2845E', graphite: '#8E8E93',
   };
   // Toledo color numbers 1..16 → palette keys (deterministic; graphite reserved for "no course").
@@ -105,7 +106,11 @@
   // Accent colours: red and pink are reserved for "te laat" (N7) and never offered as accent.
   const NO_ACCENT = ['red', 'pink'];
   const ACCENTS = Object.keys(PALETTE).filter((k) => !NO_ACCENT.includes(k));
-  const accentKey = (k) => (PALETTE[k] && !NO_ACCENT.includes(k) ? k : 'blue');
+  const accentKey = (k) => (PALETTE[k] && !NO_ACCENT.includes(k) ? k : 'brand');
+  /** Palette keys offered as course colours (everything except the brand accent). */
+  const COURSE_COLORS = Object.keys(PALETTE).filter((k) => k !== 'brand');
+  // Brand-specified text colours (brandguide: orange text on white = #C2410C; on ink the lighter orange).
+  const ACCENT_TEXT = { brand: { l: '#C2410C', d: '#F5A35F' } };
   // Free colours for duplicates: red/pink last (they read as "overdue").
   const SPARE = ['blue', 'green', 'indigo', 'orange', 'purple', 'teal', 'yellow', 'mint', 'cyan', 'brown', 'pink', 'red'];
 
@@ -189,7 +194,7 @@
 
   TP.util = {
     esc, abs, sanitize, plain, courseName, courseCode, pool, debounce, uid,
-    PALETTE, ACCENTS, accentKey, colorForIndex, colorKeyForIndex, courseColorKey, safeColor, contrast, ensureContrast,
+    PALETTE, ACCENTS, COURSE_COLORS, ACCENT_TEXT, accentKey, colorForIndex, colorKeyForIndex, courseColorKey, safeColor, contrast, ensureContrast,
   };
 
   // ---------------- TP.fmt ----------------

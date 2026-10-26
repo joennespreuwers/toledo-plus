@@ -54,11 +54,11 @@ describe('settings', () => {
     for (const sel of ['input[name="s:wrap.portal"]', 'input[name="s:wrap.courses"]', 'input[name="s:wrap.deepBar"]', '[data-action="export"]', 'input[name="st-import"]', '[data-action="reset"]']) {
       assert.equal(await adv.locator(sel).count(), 1, `${sel} in Geavanceerd`);
     }
-    // a stored red/pink accent is migrated to blue
+    // a stored red/pink accent is migrated to the default (brand)
     await h.setSettings({ accent: 'pink' });
     await page.reload();
     await openPortal(h, 'settings');
-    assert.equal((await waitSettings(h, (x) => x.accent === 'blue'))?.accent, 'blue', 'pink accent migrated to blue');
+    assert.equal((await waitSettings(h, (x) => x.accent === 'brand'))?.accent, 'brand', 'pink accent migrated to the brand default');
   });
 
   it('language → English changes UI text and lang', async () => {

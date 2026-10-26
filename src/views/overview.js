@@ -220,7 +220,7 @@
 
       let urg;
       if (d.done) urg = `<span class="va-urg is-done">${icon('check', { size: 13 })}${esc(t('va.doneWord'))}</span>`;
-      else if (overdue) urg = `<span class="va-urg is-overdue">${icon('clock', { size: 13 })}${esc(t('va.overdue'))}</span>`;
+      else if (overdue) urg = `<span class="va-urg is-overdue">${icon('warning', { size: 13 })}${esc(t('va.overdue'))}</span>`;
       else if (urgent) urg = `<span class="va-urg is-urgent">${icon('clock', { size: 13 })}<span class="va-sr">${esc(t('va.urgent'))}: </span>${esc(TP.fmt.rel(d.due))}</span>`;
       else urg = `<span class="va-urg">${esc(TP.fmt.rel(d.due))}</span>`;
 
@@ -440,12 +440,16 @@
   function onboardingCard() {
     if (onboarded()) return '';
     const li = (k) => `<li>${icon('checkCircle', { size: 16 })}<span>${esc(t(k))}</span></li>`;
+    // Branded intro (v1.6): an ink card in both themes with the glyph (clear space ≥ ¼ of its width), short copy,
+    // the three bullets, the privacy line and one primary button. Premium, not loud: no gradients on the logo, no glow.
+    const glyph = TP.ui.logo ? TP.ui.logo({ variant: 'glyph', size: 56 }) : '';
     return `<section class="va-onboard" aria-labelledby="va-onboard-h" data-va-nofilter>
-      <div class="va-onboard-head"><span class="tp-mark" aria-hidden="true">T+</span><h2 id="va-onboard-h">${esc(t('overview.onboard.title'))}</h2>
-        <button type="button" class="tp-tb-btn" data-action="ov-onboard-close" aria-label="${esc(t('overview.onboard.close'))}">${icon('xmark', { size: 16 })}</button></div>
+      <button type="button" class="va-onboard-x" data-action="ov-onboard-close" aria-label="${esc(t('overview.onboard.close'))}">${icon('xmark', { size: 16 })}</button>
+      <div class="va-onboard-head"><span class="va-onboard-glyph">${glyph}</span>
+        <div class="va-onboard-titles"><h2 id="va-onboard-h">${esc(t('overview.onboard.title'))}</h2><p class="va-onboard-lead">${esc(t('overview.onboard.lead'))}</p></div></div>
       <ul>${li('overview.onboard.what')}${li('overview.onboard.classic')}${li('overview.onboard.read')}</ul>
       <p class="va-onboard-privacy">${esc(t('telemetry.onboarding'))}</p>
-      <div class="va-onboard-actions">${TP.ui.button(t('overview.onboard.ok'), { kind: 'filled', action: 'ov-onboard-close' })}</div>
+      <div class="va-onboard-actions"><button type="button" class="tp-btn va-onboard-ok" data-action="ov-onboard-close"><span>${esc(t('overview.onboard.ok'))}</span></button></div>
     </section>`;
   }
 

@@ -92,7 +92,7 @@
   }
   const colorOptions = () => {
     const P = TP.util.PALETTE;
-    return Object.keys(P).map((k) => ({ value: k, color: P[k], label: t('courses.colors.' + k) }));
+    return (TP.util.COURSE_COLORS || Object.keys(P)).map((k) => ({ value: k, color: P[k], label: t('courses.colors.' + k) }));
   };
 
   // ---------- render ----------

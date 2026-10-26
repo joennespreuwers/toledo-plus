@@ -77,6 +77,28 @@
     return `<svg${cls} width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${P[name] || P.circle}</svg>`;
   }
 
+  // ---------------- brand (docs/brand/logo/*.svg — geometry copied verbatim; never recolour, rotate, shadow or glow) ----------------
+  // tile  = primary icon on the ink tile (always below 32 px) · glyph = the woven plus alone (≥ 32 px, light or dark ground)
+  // mono  = one-colour plus (currentColor) for tiny decorative uses. Orange always lies on top of magenta.
+  const LOGO = {
+    tile: '<rect x="4" y="4" width="120" height="120" rx="28" fill="#1F2430"/><path d="M44 50H36A14 14 0 0 0 36 78H44Z" fill="#E3285A"/><path d="M84 50H92A14 14 0 0 1 92 78H84Z" fill="#E3285A"/><rect x="50" y="22" width="28" height="84" rx="14" fill="#EE8B35"/>',
+    glyph: '<path d="M39 46H28A18 18 0 0 0 28 82H39Z" fill="#E3285A"/><path d="M89 46H100A18 18 0 0 1 100 82H89Z" fill="#E3285A"/><rect x="46" y="10" width="36" height="108" rx="18" fill="#EE8B35"/>',
+    mono: '<rect x="10" y="46" width="108" height="36" rx="18" fill="currentColor"/><rect x="46" y="10" width="36" height="108" rx="18" fill="currentColor"/>',
+  };
+  /** Toledo+ logo as inline SVG. o.variant 'tile'|'glyph'|'mono' (below 32 px a glyph request falls back to the tile),
+   *  o.size px (default 28), o.title → role=img + accessible name (otherwise decorative), o.cls extra class. */
+  function logo(o = {}) {
+    const size = Math.max(8, Number(o.size) || 28);
+    let v = LOGO[o.variant] ? o.variant : 'tile';
+    if (v === 'glyph' && size < 32) v = 'tile';
+    const a11y = o.title ? ` role="img" aria-label="${esc(o.title)}"` : ' aria-hidden="true" focusable="false"';
+    return `<svg class="tp-logo tp-logo-${v}${o.cls ? ' ' + esc(o.cls) : ''}" width="${size}" height="${size}" viewBox="0 0 128 128"${a11y}>${LOGO[v]}</svg>`;
+  }
+  /** "Toledo+" wordmark (Inter ExtraBold, tight tracking); the plus in brand orange. Text stays real text. */
+  const wordmark = (o = {}) => `<span class="tp-wordmark${o.cls ? ' ' + esc(o.cls) : ''}">Toledo<span class="tp-wordmark-plus">+</span></span>`;
+  /** Empty-state illustration: three soft pills (the logo's shapes, loosely stacked — not the logo). Decorative. */
+  const emptyArt = (size = 44) => `<svg class="tp-empty-art" width="${size}" height="${Math.round(size * 0.64)}" viewBox="0 0 44 28" aria-hidden="true" focusable="false"><rect class="b" x="2" y="10" width="17" height="8" rx="4"/><rect class="b" x="25" y="10" width="17" height="8" rx="4"/><rect class="a" x="17.5" y="1" width="9" height="26" rx="4.5"/></svg>`;
+
   // Attributes object → string. true → bare attribute; false/null/undefined → skipped.
   function attrs(obj) {
     if (!obj) return '';
@@ -156,7 +178,8 @@
       const ms = opts.timestamp === true ? TP.data?.lastUpdated?.() : opts.timestamp;
       if (ms) ts = `<p class="tp-empty-ts">${esc(t('common.updated', { time: TP.fmt.time(ms) }))}</p>`;
     }
-    return `<div class="tp-empty"><p>${esc(text)}</p>${ts}</div>`;
+    const art = opts.art === false ? '' : emptyArt();
+    return `<div class="tp-empty">${art}<p>${esc(text)}</p>${ts}</div>`;
   }
 
   /** Search empty state (Apple style): centered magnifier, "Geen resultaten", "voor “x”". One per view. */
@@ -227,7 +250,7 @@
     `<div class="tp-cols"><div class="tp-col-main">${mainHtml ?? ''}</div>${sideHtml ? `<div class="tp-col-side">${sideHtml}</div>` : ''}</div>`;
 
   TP.ui = {
-    icon, ICONS, attrs, section, group, row, disclosure, badge, dot, dateTile, empty, noResults, skeleton, errorRow,
+    icon, ICONS, logo, wordmark, emptyArt, attrs, section, group, row, disclosure, badge, dot, dateTile, empty, noResults, skeleton, errorRow,
     button, segmented, toggle, select, swatches, cols,
   };
 })();

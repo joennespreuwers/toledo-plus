@@ -181,15 +181,19 @@
   function themeVars() {
     const s = settings();
     const P = TP.util.PALETTE;
-    const tint = P[TP.util.accentKey ? TP.util.accentKey(s.accent) : s.accent] || P.blue; // red/pink are no accents (N7)
+    const key = TP.util.accentKey ? TP.util.accentKey(s.accent) : s.accent;
+    const tint = P[key] || P.brand || P.blue; // red/pink are no accents (N7)
     const U = TP.util;
-    // Text-on-background variants: stricter of card and page backgrounds per theme.
-    const textL = U.ensureContrast(tint, '#F2F2F7', 4.5, 'dark');
-    const textD = U.ensureContrast(tint, '#2C2C2E', 4.5, 'light');
-    // Filled controls: light tints keep the color with black text; others darken until white text passes.
-    const blackOk = U.contrast('#000000', tint) >= 7;
-    const fill = blackOk ? tint : U.ensureContrast(tint, '#FFFFFF', 4.5, 'dark');
-    const onTint = blackOk ? '#000000' : '#FFFFFF';
+    // Text-on-background variants: stricter of card and page backgrounds per theme (light page #F5F4F2, dark elevated #283040).
+    // The brand accent uses the brandguide's text colours (#C2410C on light; the lighter orange on ink).
+    const own = (U.ACCENT_TEXT || {})[key];
+    const textL = own ? own.l : U.ensureContrast(tint, '#F5F4F2', 4.5, 'dark');
+    const textD = own ? own.d : U.ensureContrast(tint, '#283040', 4.5, 'light');
+    // Filled controls: light tints keep the colour with ink text (brand orange: ink on orange 6.2:1); others darken until white passes.
+    const INK = '#1F2430';
+    const darkOk = U.contrast('#000000', tint) >= 7;
+    const fill = darkOk ? tint : U.ensureContrast(tint, '#FFFFFF', 4.5, 'dark');
+    const onTint = darkOk ? (U.contrast(INK, tint) >= 4.5 ? INK : '#000000') : '#FFFFFF';
     return { '--tint': tint, '--tint-text-l': textL, '--tint-text-d': textD, '--tint-fill': fill, '--on-tint': onTint };
   }
   const isDark = () => {
@@ -213,6 +217,58 @@
   }
   try { mqDark.addEventListener('change', applyThemeAll); } catch (_) { /* old browsers */ }
 
+  // ---------------- fonts (brand: Inter) ----------------
+  // Chrome ignores @font-face inside shadow roots, so the faces are declared once in the DOCUMENT: <style id="tp-fonts">
+  // in <head> (plus the same rules as an adopted constructable sheet, which a strict page CSP can't block). The family is
+  // "TP Inter" so the host page's own fonts are never touched; ui.css falls back to a local Inter, then system-ui.
+  const FONT_FILES = [
+    ['fonts/inter-latin-wght-normal.woff2', 'U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD'],
+    ['fonts/inter-latin-ext-wght-normal.woff2', 'U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF'],
+  ];
+  function fontCss() {
+    return FONT_FILES.map(([f, range]) => `@font-face{font-family:"TP Inter";font-style:normal;font-weight:100 900;font-display:swap;src:url("${chrome.runtime.getURL(f)}") format("woff2");unicode-range:${range};}`).join('\n');
+  }
+  let fontsDone = false;
+  function ensureFonts() {
+    if (fontsDone || document.getElementById('tp-fonts')) { fontsDone = true; return; }
+    const css = safe(fontCss, '');
+    if (!css) return;
+    fontsDone = true;
+    const st = document.createElement('style');
+    st.id = 'tp-fonts';
+    st.textContent = css;
+    (document.head || document.documentElement).appendChild(st);
+    safe(() => {
+      const sh = new CSSStyleSheet();
+      sh.replaceSync(css);
+      document.adoptedStyleSheets = [...document.adoptedStyleSheets, sh];
+    });
+  }
+
+  // ---------------- brand ----------------
+  const logo = (o) => safe(() => TP.ui.logo(o), '');
+  const wordmark = () => safe(() => TP.ui.wordmark(), 'Toledo+');
+  const version = () => safe(() => chrome.runtime.getManifest().version, '') || '';
+
+  // First boot without cached data: a brief branded splash (tile fades/settles in, then the shell fades in under it;
+  // ≤ 400 ms in total, never blocks input). Not with motion off (tests) and fades only under reduced motion.
+  function splash() {
+    if (!app || M()?.disabled) return;
+    const cached = safe(() => TP.data?.peek?.('enrollments'), null);
+    if (cached) return;
+    const el = document.createElement('div');
+    el.className = 'tp-splash';
+    el.setAttribute('aria-hidden', 'true');
+    el.innerHTML = `<div class="tp-splash-mark">${logo({ size: 64 })}${wordmark()}</div>`;
+    app.appendChild(el);
+    const reduced = !!safe(() => TP.motion.reduced(), false);
+    if (!reduced) motion('animate', el.firstElementChild, [{ opacity: 0, scale: 0.94 }, { opacity: 1, scale: 1 }], { duration: 200, easing: TP.motion.EASE.out });
+    setTimeout(() => {
+      if (!M()) { el.remove(); return; }
+      motion('leave', el, { to: 'none', duration: TP.motion.DUR[1], onDone: () => el.remove() });
+    }, reduced ? 160 : 260);
+  }
+
   // ---------------- mount ----------------
   function whenBody(fn) {
     if (document.body) fn();
@@ -232,7 +288,8 @@
     buildChrome();
     applyThemeAll();
     motion('sync', app);
-    styleRoot(shadow, CSS_FILES).then(() => { app.hidden = false; });
+    ensureFonts();
+    styleRoot(shadow, CSS_FILES).then(() => { app.hidden = false; splash(); });
     shadow.addEventListener('click', onShellClick);
     shadow.addEventListener('input', onShellInput);
     shadow.addEventListener('keydown', onShellKeydown);
@@ -255,7 +312,7 @@
 <div class="tp-scrim" data-shell="scrim" hidden></div>
 <nav class="tp-sidebar tp-glass" id="tp-sidebar" aria-label="${esc(t('nav.label'))}">
   <div class="tp-sb-brand">
-    <a class="tp-brand" href="${esc(href('overview'))}" data-route="overview" title="Toledo+"><span class="tp-mark" aria-hidden="true">T+</span><span class="tp-brand-name">Toledo+</span></a>
+    <a class="tp-brand" href="${esc(href('overview'))}" data-route="overview" title="Toledo+" aria-label="${esc(t('brand.home'))}">${logo({ size: 28 })}<span class="tp-brand-name">${wordmark()}</span></a>
   </div>
   <div class="tp-sb-scroll" data-shell-region="sb-main"></div>
   <div class="tp-sb-foot" data-shell-region="sb-foot"></div>
@@ -263,6 +320,7 @@
 <div class="tp-body">
   <header class="tp-toolbar tp-glass">
     <button type="button" class="tp-tb-btn tp-sb-toggle" data-shell="sidebar" aria-controls="tp-sidebar" aria-expanded="${!isRail()}" aria-label="${esc(t('shell.toggleSidebar'))}" title="${esc(t('shell.toggleSidebar'))} (${MOD}\\)">${icon('sidebar', { size: 20 })}</button>
+    <a class="tp-tb-brand" href="${esc(href('overview'))}" data-route="overview" aria-label="${esc(t('brand.home'))}" title="Toledo+">${logo({ size: 28 })}</a>
     <a class="tp-tb-back" href="${esc(href('courses'))}" data-route="courses" hidden>${icon('chevronLeft', { size: 20, strokeWidth: 2.2 })}<span>${esc(t('nav.courses'))}</span></a>
     <div class="tp-tb-title" aria-hidden="true"></div>
     <div class="tp-tb-spacer"></div>
@@ -432,7 +490,12 @@
     const main = app.querySelector('[data-shell-region="sb-main"]');
     if (main) main.innerHTML = `<ul class="tp-sb-list">${NAV.map((r) => navItem(r, counts)).join('')}</ul>${coursesGroup()}`;
     const foot = app.querySelector('[data-shell-region="sb-foot"]');
-    if (foot) foot.innerHTML = `<ul class="tp-sb-list">${navItem('settings', counts)}</ul>`;
+    if (foot) {
+      const v = version();
+      foot.innerHTML = `<ul class="tp-sb-list">${navItem('settings', counts)}</ul>`
+        + `<p class="tp-sb-sig"><span class="tp-sb-sig-name" title="${esc(t('brand.unofficialLong'))}"><strong>Toledo+</strong>${v ? ' ' + esc(v) : ''}</span>`
+        + `<button type="button" class="tp-link-btn" data-shell="classic-sig" title="${esc(t('brand.classicTitle'))}">${esc(t('brand.classicShort'))}</button></p>`;
+    }
 
     const tabbar = app.querySelector('[data-shell-region="tabbar"]');
     if (tabbar) {
@@ -1012,6 +1075,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     whenBody(() => {
       let b = document.getElementById('tplus-switch');
       if (!show) { b?.remove(); return; }
+      ensureFonts();
       if (!b) {
         b = document.createElement('button');
         b.id = 'tplus-switch';
@@ -1051,6 +1115,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
         deepHost = document.createElement('div');
         deepHost.id = 'tplus-deep';
         deepShadow = deepHost.attachShadow({ mode: 'open' });
+        ensureFonts();
         const root = document.createElement('div');
         root.className = 'tp-theme tp-deep-root';
         root.hidden = true;
@@ -1065,7 +1130,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
       const known = cid ? courseNames.get(cid) : '';
       const backLabel = known || t('deep.course');
       root.innerHTML = `<nav class="tp-deep tp-glass" aria-label="${esc(t('deep.label'))}">
-  <a class="tp-deep-mark" href="${esc(href('overview'))}" aria-label="${esc(t('deep.home'))}"><span class="tp-mark" aria-hidden="true">T+</span><span class="tp-deep-name">Toledo+</span></a>
+  <a class="tp-deep-mark" href="${esc(href('overview'))}" aria-label="${esc(t('deep.home'))}">${logo({ size: 22 })}<span class="tp-deep-name">${wordmark()}</span></a>
   ${cid ? `<a class="tp-deep-back" href="${esc(href('course', { cid }))}">${icon('chevronLeft', { size: 16, strokeWidth: 2.4 })}<span class="tp-deep-back-label">${esc(backLabel)}</span><span class="tp-sr">${esc(t('deep.back', { course: backLabel }))}</span></a>` : ''}
   <span class="tp-deep-spacer"></span>
   <a class="tp-deep-link" href="${esc(href('deadlines'))}">${icon('deadlines', { size: 16 })}<span>${esc(t('deep.deadlines'))}</span></a>
@@ -1140,6 +1205,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
         case 'refresh': doRefresh(); return;
         case 'menu': { const m = $('.tp-menu'); if (m?.hidden || motion('leaving', m)) { m.style.pointerEvents = ''; openMenu(ev.detail === 0); } else closeMenu(false); return; }
         case 'classic':
+        case 'classic-sig':
           closeMenu(false);
           safe(() => TP.settings.set({ wrap: origin === 'ultra' ? { courses: false } : { portal: false } }));
           return;
@@ -1347,8 +1413,8 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && mode === 'shell' && typeof TP.data?.maybeRefresh !== 'function') backgroundRefresh();
     });
-    // N7: red/pink are no longer accent colours → migrate a stored one to blue.
-    safe(() => { const a = settings().accent; if (a && TP.util.accentKey && TP.util.accentKey(a) !== a) TP.settings.set({ accent: 'blue' }); });
+    // N7: red/pink are no longer accent colours → migrate a stored one to the default (brand).
+    safe(() => { const a = settings().accent; if (a && TP.util.accentKey && TP.util.accentKey(a) !== a) TP.settings.set({ accent: TP.util.accentKey(a) }); });
     let lastErrToast = 0;
     safe(() => TP.data?.on?.('error', () => {
       if (mode !== 'shell') return;

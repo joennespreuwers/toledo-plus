@@ -6,8 +6,9 @@ html.tplus-on {
   font-size: 100% !important;               /* rem inside the shadow root = 16px (Ultra shrinks the root size) */
   scroll-padding-top: 64px;                 /* focus never hides under the sticky toolbar */
   scroll-padding-bottom: 104px;             /* …or under the mobile tab bar */
-  background: #F2F2F7 !important;
+  background: #F5F4F2 !important;           /* = --bg (ui.css) */
   color-scheme: light;
+  scrollbar-color: rgba(31, 36, 48, .26) transparent; /* subtle page scrollbar */
 }
 html.tplus-on, html.tplus-on body {
   height: auto !important; min-height: 100% !important; max-height: none !important;
@@ -21,8 +22,8 @@ html.tplus-on body {
   overflow: visible !important; contain: none !important; filter: none !important; perspective: none !important;
   padding: 0 !important; margin: 0 !important; background: transparent !important; transform: none !important;
 }
-html.tplus-on.tplus-dark { background: #000 !important; color-scheme: dark; }
-@media (prefers-color-scheme: dark) { html.tplus-on:not(.tplus-light) { background: #000 !important; color-scheme: dark; } }
+html.tplus-on.tplus-dark { background: #12151C !important; color-scheme: dark; scrollbar-color: rgba(235, 237, 245, .22) transparent; }
+@media (prefers-color-scheme: dark) { html.tplus-on:not(.tplus-light) { background: #12151C !important; color-scheme: dark; scrollbar-color: rgba(235, 237, 245, .22) transparent; } }
 
 #tplus-root { display: block !important; position: relative; z-index: 1; }
 html:not(.tplus-on) #tplus-root { display: none !important; }
@@ -40,22 +41,27 @@ html.tplus-deep body {
 }
 
 /* ---- Classic mode: pill to switch Toledo+ back on ---- */
+/* Brand: an ink pill with the tile icon (data URI of docs/brand/logo/toledo-plus-icon.svg — no remote file) and the name. */
 #tplus-switch {
   position: fixed; right: 20px; bottom: 20px; z-index: 2147483000;
-  font: 600 15px/1 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
-  height: 44px; padding: 0 18px; border-radius: 22px; border: 0.5px solid rgba(0, 0, 0, 0.12);
-  background: rgba(255, 255, 255, 0.78); color: #0062CC; cursor: pointer;
-  -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
-  margin: 0; text-transform: none; letter-spacing: normal; min-width: 0; width: auto;
+  display: inline-flex; align-items: center; gap: 8px;
+  font: 700 15px/1 "TP Inter", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif; letter-spacing: -.01em;
+  height: 44px; padding: 0 18px 0 8px; border-radius: 22px; border: 0.5px solid rgba(255, 255, 255, 0.10);
+  background: #1F2430; color: #FFFFFF; cursor: pointer;
+  box-shadow: 0 10px 28px -6px rgba(18, 21, 28, 0.45), 0 2px 6px rgba(18, 21, 28, 0.18);
+  margin: 0; text-transform: none; min-width: 0; width: auto;
+  transition: transform 120ms cubic-bezier(.25, .1, .25, 1), box-shadow 120ms cubic-bezier(.25, .1, .25, 1);
 }
+#tplus-switch::before {
+  content: ''; flex: none; width: 28px; height: 28px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect x='4' y='4' width='120' height='120' rx='28' fill='%231F2430'/%3E%3Cpath d='M44 50H36A14 14 0 0 0 36 78H44Z' fill='%23E3285A'/%3E%3Cpath d='M84 50H92A14 14 0 0 1 92 78H84Z' fill='%23E3285A'/%3E%3Crect x='50' y='22' width='28' height='84' rx='14' fill='%23EE8B35'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+#tplus-switch:hover { box-shadow: 0 14px 32px -6px rgba(18, 21, 28, 0.5), 0 2px 6px rgba(18, 21, 28, 0.2); }
+#tplus-switch:active { transform: scale(.97); }
 #tplus-switch.left { right: auto; left: 20px; }
-#tplus-switch:focus-visible { outline: 2px solid #0062CC; outline-offset: 2px; }
-#tplus-switch.dark { background: rgba(30, 30, 30, 0.78); color: #409CFF; border-color: rgba(255, 255, 255, 0.14); }
-#tplus-switch.dark:focus-visible { outline-color: #409CFF; }
+#tplus-switch:focus-visible { outline: 2px solid #C2410C; outline-offset: 3px; }
+#tplus-switch.dark { background: #283040; border-color: rgba(235, 237, 245, 0.14); }
+#tplus-switch.dark:focus-visible { outline-color: #F5A35F; }
 html.tplus-on #tplus-switch { display: none; }
-@media (prefers-reduced-transparency: reduce) {
-  #tplus-switch { background: #fff; -webkit-backdrop-filter: none; backdrop-filter: none; }
-  #tplus-switch.dark { background: #2C2C2E; }
-}
+@media (prefers-reduced-motion: reduce) { #tplus-switch { transition: none; } #tplus-switch:active { transform: none; } }
 @media print { #tplus-switch, #tplus-deep { display: none !important; } }

@@ -102,3 +102,10 @@
 .st-sec-row.drop-after { box-shadow: inset 0 -2px 0 var(--tint-text); }
 .st-sec-row > .tp-toggle { padding-left: 4px; }
 .st-strong { color: var(--tint-text, var(--tint)); font-weight: 600; }
+
+/* Over: brand row (logo + wordmark + "Onofficieel studentenproject") */
+.st-view .st-brand-row { justify-content: flex-start; flex-wrap: nowrap; gap: 14px; padding-top: 14px; padding-bottom: 14px; }
+.st-brand-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.st-brand-name .tp-wordmark { font-size: 1.25rem; }
+.st-brand-meta { color: var(--label-2); font-size: var(--fs-subhead, .8125rem); }
+@media (max-width: 480px) { .st-view .st-row.st-brand-row.st-brand-row { flex-direction: row; align-items: center; } }

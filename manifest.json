@@ -119,7 +119,8 @@
       "resources": [
         "ui.css",
         "src/views/*.css",
-        "fonts/*.woff2"
+        "fonts/*.woff2",
+        "fonts/OFL-Inter.txt"
       ],
       "matches": [
         "https://toledo.kuleuven.be/*",

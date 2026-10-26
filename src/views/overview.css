@@ -11,8 +11,8 @@
 
 .va-tile {
   display: inline-flex; align-items: center; justify-content: center; flex: none;
-  width: 28px; height: 28px; border-radius: 7px;
-  background: var(--fill); color: var(--tint-text, var(--tint));
+  width: 28px; height: 28px; border-radius: var(--r-tile, 8px);
+  background: var(--tint-tile, var(--fill)); color: var(--tint-text, var(--tint));
 }
 .va-muted { color: var(--label-2); }
 .va-foot {
@@ -92,7 +92,8 @@
   display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
   color: var(--label-2); font-size: var(--fs-subhead, .8125rem);
 }
-.va-urg.is-urgent { color: var(--orange); font-weight: 600; }
+.va-urg.is-urgent { color: var(--label); font-weight: 600; }
+.va-urg.is-urgent .tp-ic { color: var(--amber); }
 .va-urg.is-overdue { color: var(--red); font-weight: 600; }
 .va-urg.is-done { color: var(--green); }
 .va-ext { color: var(--label-2); }
@@ -131,21 +132,55 @@
 }
 .va-filters .tp-field { display: inline-flex; align-items: center; gap: 8px; }
 
-/* ---------- overview: onboarding (F10) ---------- */
-/* card padding 16/20 (row inset), 12 between blocks, 16 above the button; the close button sits in the corner */
+/* ---------- overview: onboarding (F10) — branded intro (v1.6) ---------- */
+/* An ink card in light and dark (brand: white + orange text on ink). Padding 20/24, 12 between blocks, 16 above the button. */
 .va-onboard {
-  margin: 0 0 var(--section-gap, 28px); padding: 16px 20px 20px; border-radius: var(--r-group, 12px);
-  background: var(--bg-2); box-shadow: inset 3px 0 0 var(--tint);
+  position: relative; margin: 0 0 var(--section-gap, 28px); padding: 22px 24px 24px; border-radius: var(--r-pop, 18px);
+  background: var(--brand-ink, #1F2430); color: #F4F5F7; color-scheme: dark;
+  box-shadow: 0 0 0 .5px rgba(255, 255, 255, .06), 0 10px 30px -10px rgba(18, 21, 28, .45);
+  overflow: hidden; isolation: isolate;
 }
-.va-onboard-head { display: flex; align-items: center; gap: 10px; margin: -4px -8px 12px 0; }
-.va-onboard-head h2 { flex: 1; min-width: 0; font: 700 var(--fs-headline)/var(--lh-headline) var(--font-display); }
-.va-onboard ul { display: grid; gap: 8px; margin: 0; }
-.va-onboard li { display: flex; gap: 10px; align-items: flex-start; font-size: var(--fs-subhead); line-height: var(--lh-subhead); color: var(--label); }
-.va-onboard li .tp-ic { flex: none; margin-top: 1px; color: var(--tint-text); }
+/* a quiet light falloff in the corner (on the card, not on the logo) */
+.va-onboard::before {
+  content: ''; position: absolute; z-index: -1; inset: -40% -20% auto auto; width: 70%; height: 140%;
+  background: radial-gradient(closest-side, rgba(238, 139, 53, .12), transparent 70%); pointer-events: none;
+}
+.va-onboard-head { display: flex; align-items: center; gap: 18px; margin: 0 40px 16px 0; }
+.va-onboard-glyph { flex: none; display: grid; place-items: center; width: 64px; height: 64px; } /* 56px glyph + clear space */
+.va-onboard-titles { min-width: 0; }
+.va-onboard-head h2 { font: 800 1.375rem/1.75rem var(--font-display); letter-spacing: -.02em; color: #FFFFFF; }
+.va-onboard-lead { margin: 4px 0 0; color: rgba(244, 245, 247, .78); font-size: var(--fs-subhead); line-height: var(--lh-subhead); }
+.va-onboard ul { display: grid; gap: 10px; margin: 0; }
+.va-onboard li { display: flex; gap: 10px; align-items: flex-start; font-size: var(--fs-subhead); line-height: var(--lh-subhead); color: rgba(244, 245, 247, .92); }
+.va-onboard li .tp-ic { flex: none; margin-top: 1px; color: var(--brand-orange, #EE8B35); }
 .va-onboard p { margin: 0; }
-.va-onboard .va-onboard-privacy { margin-top: 12px; padding-top: 12px; border-top: var(--hairline) solid var(--separator); font: var(--fs-footnote)/var(--lh-footnote) var(--font); color: var(--label-2); }
-.va-onboard-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
-.va-onboard-actions .tp-btn { min-height: 36px; padding-inline: 16px; }
+.va-onboard .va-onboard-privacy {
+  margin-top: 14px; padding-top: 14px; border-top: .5px solid rgba(255, 255, 255, .14);
+  font: var(--fs-footnote)/var(--lh-footnote) var(--font); color: rgba(244, 245, 247, .70);
+}
+.va-onboard-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.va-onboard .va-onboard-ok {
+  min-height: 38px; padding-inline: 18px; border-radius: var(--r-pill, 999px);
+  background: var(--brand-orange, #EE8B35); color: var(--brand-ink, #1F2430) !important; font-weight: 700;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25);
+}
+.va-onboard .va-onboard-ok:hover { filter: brightness(1.06); }
+.va-onboard :focus-visible { outline-color: #F5A35F; }
+.va-onboard-x {
+  position: absolute; top: 12px; right: 12px; display: grid; place-items: center; width: 32px; height: 32px;
+  border: 0; border-radius: 50%; background: rgba(255, 255, 255, .08); color: rgba(244, 245, 247, .8); cursor: pointer;
+  transition: background-color var(--dur-1, 120ms) var(--ease, ease);
+}
+.va-onboard-x:hover { background: rgba(255, 255, 255, .16); color: #FFFFFF; }
+@media (max-width: 480px) {
+  .va-onboard { padding: 18px 18px 20px; }
+  .va-onboard-head { gap: 14px; align-items: flex-start; }
+  .va-onboard-head h2 { font-size: 1.25rem; line-height: 1.5rem; }
+}
+/* dark: cards are ink too — lift the intro a step and give it a faint warm edge so it still reads as the brand moment */
+.tp-theme[data-appearance="dark"] .va-onboard { background: #252B39; box-shadow: 0 0 0 1px rgba(238, 139, 53, .20), 0 12px 32px -12px rgba(0, 0, 0, .7); }
+@media (prefers-color-scheme: dark) { .tp-theme[data-appearance="system"] .va-onboard { background: #252B39; box-shadow: 0 0 0 1px rgba(238, 139, 53, .20), 0 12px 32px -12px rgba(0, 0, 0, .7); } }
+@media (prefers-contrast: more) { .va-onboard-lead, .va-onboard li, .va-onboard .va-onboard-privacy { color: #FFFFFF; } }
 
 /* ---------- overview: feed ---------- */
 .va-feed .tp-summary .tp-row-sub {
@@ -172,10 +207,11 @@
 }
 .va-ccard {
   display: flex; align-items: center; gap: 10px; min-height: 48px;
-  padding: 10px 12px; border-radius: 12px;
-  background: var(--bg-2); color: var(--label); text-decoration: none;
+  padding: 10px 12px; border-radius: var(--r-group, 14px);
+  background: var(--bg-2); color: var(--label); text-decoration: none; box-shadow: var(--shadow-card);
+  transition: box-shadow var(--dur-1) var(--ease), translate var(--dur-1) var(--ease), background-color var(--dur-1) var(--ease);
 }
-.va-ccard:hover { background: color-mix(in srgb, var(--bg-2) 92%, var(--label) 8%); text-decoration: none; }
+.va-ccard:hover { box-shadow: var(--shadow-card-hover); text-decoration: none; }
 .va-ccard.is-dim { color: var(--label-2); }
 .va-swatch { flex: none; width: 12px; height: 28px; border-radius: 4px; background: var(--c, var(--tint)); }
 .va-cname {

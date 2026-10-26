@@ -39,7 +39,7 @@
 /* ---------- shared calendar surface */
 .ag-calwrap { position: relative; }
 .ag-calwrap[aria-busy="true"] .ag-cal { opacity: .7; }
-.ag-cal { background: var(--bg-2); border-radius: var(--r-group); overflow: hidden; touch-action: pan-y; }
+.ag-cal { background: var(--bg-2); border-radius: var(--r-group); overflow: hidden; touch-action: pan-y; box-shadow: var(--shadow-card); }
 .ag-list.ag-cal { background: none; border-radius: 0; overflow: visible; }
 .ag-empty {
   position: absolute; left: 50%; top: 55%; transform: translate(-50%, -50%); z-index: 4; display: flex; align-items: center; gap: 8px;

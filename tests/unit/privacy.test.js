@@ -7,7 +7,7 @@ const path = require('path');
 const { ROOT } = require('../helpers/sandbox');
 
 const SCAN = ['tests', 'docs', 'src', 'README.md', 'README.en.md', 'AGENTS.md', 'CONTRIBUTING.md'];
-const SKIP = new Set(['artifacts', 'node_modules']);
+const SKIP = new Set(['artifacts', 'node_modules', 'vendor']); // src/vendor = unmodified third-party builds (pdf.js)
 const EMAIL_OK = /@(example\.(edu|org|com|net|invalid|test)|users\.noreply\.github\.com|anthropic\.com)$/i;
 
 function files() {

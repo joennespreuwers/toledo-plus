@@ -14,7 +14,7 @@
 .kl-time { width: 44px; text-align: right; font-size: var(--fs-subhead); line-height: 1.25; font-variant-numeric: tabular-nums; }
 .kl-time small { color: var(--label-2); font-size: var(--fs-footnote); }
 .kl-bar { width: 4px; border-radius: 2px; background: var(--c); }
-.kl-tile { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 7px; color: #fff; background: var(--kl, #8E8E93); }
+.kl-tile { display: grid; place-items: center; width: 28px; height: 28px; border-radius: var(--r-tile, 8px); color: #fff; background: var(--kl, #8E8E93); }
 .kl-g-study { --kl: #007AFF; }
 .kl-g-enrol { --kl: #5856D6; }
 .kl-g-agenda { --kl: #FF3B30; }

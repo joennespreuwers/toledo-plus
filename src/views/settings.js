@@ -207,7 +207,9 @@
     const link = (href, label, icon) => `<a class="st-row st-link-row" href="${esc(href)}" target="_blank" rel="noopener">
         <span class="st-label">${esc(label)}</span><span class="st-trail">${TP.ui.icon(icon, { size: 15 })}<span class="st-sr">${esc(t('settings.newTab'))}</span></span></a>`;
     return block('about', t('settings.about'),
-      `<div class="st-row"><span class="st-label">${esc(t('settings.about.version'))}</span><span class="st-value">${esc(version || '—')}</span></div>`
+      // brand (Agent I, v1.6): logo + name + version + "Onofficieel studentenproject"
+      `<div class="st-row st-brand-row">${TP.ui.logo ? TP.ui.logo({ size: 44 }) : ''}<span class="st-brand-text"><span class="st-brand-name">${TP.ui.wordmark ? TP.ui.wordmark() : 'Toledo+'}</span><span class="st-brand-meta">${esc(t('brand.unofficial'))}</span></span></div>`
+      + `<div class="st-row"><span class="st-label">${esc(t('settings.about.version'))}</span><span class="st-value">${esc(version || '—')}</span></div>`
       + link(REPO, t('settings.about.github'), 'external')
       + link(ISSUE, t('settings.about.issue'), 'external')
       + toggleRow('s:privacy.telemetry', s.privacy?.telemetry !== false, t('telemetry.setting.label'), t('telemetry.setting.desc'))

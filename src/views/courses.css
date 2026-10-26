@@ -22,7 +22,8 @@
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
 }
 
-.cs-card { position: relative; background: var(--bg-2); border-radius: var(--r-group, 12px); min-width: 0; display: flex; align-items: stretch; }
+.cs-card { position: relative; background: var(--bg-2); border-radius: var(--r-group, 14px); min-width: 0; display: flex; align-items: stretch; box-shadow: var(--shadow-card); transition: box-shadow var(--dur-1) var(--ease); }
+.cs-card:hover { box-shadow: var(--shadow-card-hover); }
 .cs-view .cs-card > .cs-card-main { flex: 1 1 auto; }
 /* "Zet in zijbalk" toggle: trailing, 32px target, quiet until hover/focus or on */
 .cs-view .cs-sb-btn {
@@ -54,7 +55,7 @@ a.cs-card-main:focus-visible { outline: 2px solid var(--tint-text, var(--tint));
 .cs-trail { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; color: var(--label-2); }
 
 /* ---------- edit mode: compact list ---------- */
-.cs-edit-list { list-style: none; margin: 0; padding: 0; background: var(--bg-2); border-radius: var(--r-group, 12px); max-width: var(--list-max, 760px); }
+.cs-edit-list { list-style: none; margin: 0; padding: 0; background: var(--bg-2); border-radius: var(--r-group, 14px); box-shadow: var(--shadow-card); max-width: var(--list-max, 760px); }
 .cs-erow {
   position: relative; display: flex; align-items: center; gap: 8px 10px; min-height: 56px; padding: 6px 10px 6px 6px;
 }
@@ -110,7 +111,7 @@ a.cs-card-main:focus-visible { outline: 2px solid var(--tint-text, var(--tint));
   outline: 2px solid var(--tint-text, var(--tint)); outline-offset: 2px;
 }
 
-.cs-hidden { margin-top: 12px; background: var(--bg-2); border-radius: var(--r-group, 12px); }
+.cs-hidden { margin-top: 12px; background: var(--bg-2); border-radius: var(--r-group, 14px); box-shadow: var(--shadow-card); }
 .cs-hidden-sum {
   list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 8px;
   min-height: var(--row-min, 44px); padding: 0 16px; cursor: pointer; color: var(--label-2); font-weight: 600; border-radius: var(--r-group, 12px);

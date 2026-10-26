@@ -9,10 +9,10 @@
   const TP = (globalThis.TP ||= {});
 
   const DEFAULTS = {
-    v: 4,
+    v: 5,
     language: 'system',
     appearance: 'system',
-    accent: 'blue',
+    accent: 'brand',
     density: 'standard',
     startPage: 'overview',
     wrap: { portal: true, courses: true, deepBar: true },
@@ -29,6 +29,10 @@
   // v3: the pin/favourite concept is gone (no 'pinned' per course, no sync.favoritesToToledo).
   // v4: inSidebar — the course is listed in the sidebar's "Vakken" group (local to Toledo+, never sent to Toledo; default off;
   //     v3 settings have no such flag, so existing users start with an empty group).
+  // v5 (brand, v1.6): the default accent is 'brand' (Toledo+ orange). Settings are stored whole, so a stored 'blue' from
+  //     v ≤ 4 can't be told apart from the old default; it is moved to 'brand' once (an explicit blue can be re-picked).
+  //     Every other accent is an explicit choice and stays. From v5 on a stored 'blue' is always kept.
+  const OLD_DEFAULT_ACCENT = 'blue';
   const COURSE_DEFAULTS = { nickname: '', color: null, hidden: false, inSidebar: false };
   const REMOVED_COURSE_KEYS = ['pinned'];
   // TP.state: each top-level key is its own chrome.storage.local item 'state:<key>' (see below).
@@ -216,6 +220,7 @@
     if (Array.isArray(storedCustom)) next.custom = clone(storedCustom);
     else if (isObj(stored) && Array.isArray(stored.custom) && stored.custom.length) migrate = true; // v1: inside 'settings'
     if (isObj(stored) && (stored.v || 1) < DEFAULTS.v) migrate = true;
+    if (isObj(stored) && (stored.v || 1) < 5 && (stored.accent == null || stored.accent === OLD_DEFAULT_ACCENT)) next.accent = DEFAULTS.accent;
     next.v = DEFAULTS.v;
     settings = freeze(normalize(next));
     lastWritten = isObj(stored) && !migrate ? JSON.stringify(stored) : '';

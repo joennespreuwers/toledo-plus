@@ -59,7 +59,7 @@ test('v1 settings with custom deadlines inside are migrated to the separate key'
   await tick(50);
   assert.deepEqual(w.stores.sync.custom, old, "moved to sync key 'custom'");
   assert.equal(w.stores.sync.settings.custom, undefined, "removed from 'settings'");
-  assert.equal(w.stores.sync.settings.v, 4);
+  assert.equal(w.stores.sync.settings.v, 5);
   assert.equal(w.stores.sync.settings.accent, 'green');
   const TP2 = await boot(w);
   assert.equal(TP2.settings.get().custom.length, 1);
@@ -70,14 +70,14 @@ test('v2 → v4: pins and favourite sync are dropped; nickname/color/hidden/orde
     courses: { sort: 'manual', order: [lu(2), lu(1)], items: { [lu(1)]: { pinned: true, nickname: 'Een' }, [lu(2)]: { pinned: false } } } } } });
   const TP = await boot(w);
   const s = TP.settings.get();
-  assert.equal(s.v, 4);
+  assert.equal(s.v, 5);
   assert.deepEqual(plain(s.sync), { markReadInToledo: false });
   assert.deepEqual(plain(TP.settings.course(lu(1))), { nickname: 'Een', color: null, hidden: false, inSidebar: false });
   assert.equal('pinned' in TP.settings.course(lu(2)), false);
   assert.deepEqual(plain(s.courses.order), [lu(2), lu(1)]);
   await tick(50);
   const stored = w.stores.sync.settings;
-  assert.equal(stored.v, 4);
+  assert.equal(stored.v, 5);
   assert.equal(stored.sync.favoritesToToledo, undefined);
   assert.deepEqual(stored.courses.items, { [lu(1)]: { nickname: 'Een' } }, 'empty entries compacted away');
   // Old UI code calling setCourse(…, {pinned}) during the transition can't bring it back.
@@ -89,12 +89,12 @@ test('v2 → v4: pins and favourite sync are dropped; nickname/color/hidden/orde
 test('v3 → v4: courses start out of the sidebar (inSidebar false); adding one stores only that flag', async () => {
   const w = world({ sync: { settingsSavedAt: 1, settings: { v: 3, courses: { sort: 'name', items: { [lu(1)]: { nickname: 'Een' } } } } } });
   const TP = await boot(w);
-  assert.equal(TP.settings.get().v, 4);
+  assert.equal(TP.settings.get().v, 5);
   assert.equal(TP.settings.course(lu(1)).inSidebar, false, 'existing users: nothing in the sidebar');
   assert.equal(TP.settings.course(lu(2)).inSidebar, false);
   await TP.settings.setCourse(lu(2), { inSidebar: true });
   await tick(50);
-  assert.equal(w.stores.sync.settings.v, 4);
+  assert.equal(w.stores.sync.settings.v, 5);
   assert.deepEqual(w.stores.sync.settings.courses.items, { [lu(1)]: { nickname: 'Een' }, [lu(2)]: { inSidebar: true } }, 'default false is not stored');
   await TP.settings.setCourse(lu(2), { inSidebar: false });
   await tick(1100);
@@ -193,4 +193,20 @@ test('state writes are no-ops (no throw) after the extension context is invalida
   await TP.settings.set({ accent: 'green' });
   await TP.state.flush();
   assert.equal(w.writes.length, n);
+});
+
+test('v4 → v5 (brand): the old default accent "blue" becomes "brand"; explicit other accents stay; v5 blue is kept', async () => {
+  const w = world({ sync: { settingsSavedAt: 1, settings: { v: 4, accent: 'blue', density: 'compact' } } });
+  const TP = await boot(w);
+  assert.equal(TP.settings.get().accent, 'brand');
+  assert.equal(TP.settings.get().density, 'compact');
+  await tick(50);
+  assert.equal(w.stores.sync.settings.accent, 'brand', 'migration persisted');
+  assert.equal(w.stores.sync.settings.v, 5);
+  const w2 = world({ sync: { settingsSavedAt: 1, settings: { v: 4, accent: 'teal' } } });
+  assert.equal((await boot(w2)).settings.get().accent, 'teal', 'explicit choice kept');
+  const w3 = world({ sync: { settingsSavedAt: 1, settings: { v: 5, accent: 'blue' } } });
+  assert.equal((await boot(w3)).settings.get().accent, 'blue', 'blue chosen after v5 is kept');
+  const w4 = world();
+  assert.equal((await boot(w4)).settings.get().accent, 'brand', 'new users get the brand accent');
 });

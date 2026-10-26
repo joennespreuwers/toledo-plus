@@ -144,7 +144,7 @@
   const filtersActive = () => !S.prefs.show.lesson || !S.prefs.show.exam || !S.prefs.show.deadline || S.prefs.hidden.length > 0;
 
   // ------------------------------------------------------------------ data
-  const PAL = () => Object.entries(TP.util.PALETTE).filter(([k]) => k !== 'graphite').map(([, v]) => v);
+  const PAL = () => Object.entries(TP.util.PALETTE).filter(([k]) => k !== 'graphite' && k !== 'brand').map(([, v]) => v);
   function hashColor(s) { let h = 0; for (const c of String(s || '')) h = (h * 31 + c.charCodeAt(0)) | 0; const p = PAL(); return p[Math.abs(h) % p.length]; }
   const courseOf = (luId) => { try { return luId && TP.data.course ? TP.data.course(luId) : null; } catch (_) { return null; } };
   const colorFor = (luId, key) => { const c = courseOf(luId); return (c && c.color) || hashColor(key); };

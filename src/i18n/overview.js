@@ -251,6 +251,7 @@
   if (TP.i18n && TP.i18n.add) TP.i18n.add({
     nl: {
       'overview.onboard.title': 'Welkom bij Toledo+',
+      'overview.onboard.lead': 'Dit is niet Toledo, maar Toledo+: dezelfde vakken en bestanden, rustiger geordend.',
       'overview.onboard.what': 'Toledo+ toont je Toledo rustiger: deadlines eerst, wat nieuw is per vak, en je vakken in één overzicht.',
       'overview.onboard.classic': 'Iets niet gevonden? Kies “Klassieke Toledo” in het accountmenu rechtsboven om de originele pagina te zien.',
       'overview.onboard.read': 'Wat je hier als gelezen markeert, wordt ook in Toledo als gelezen gemarkeerd.',
@@ -282,6 +283,7 @@
     },
     en: {
       'overview.onboard.title': 'Welcome to Toledo+',
+      'overview.onboard.lead': 'This isn’t Toledo, it’s Toledo+: the same courses and files, arranged more calmly.',
       'overview.onboard.what': 'Toledo+ shows Toledo more calmly: deadlines first, what’s new per course, and all your courses in one place.',
       'overview.onboard.classic': 'Can’t find something? Choose “Classic Toledo” in the account menu (top right) to see the original page.',
       'overview.onboard.read': 'What you mark as read here is also marked as read in Toledo.',
@@ -313,6 +315,7 @@
     },
     fr: {
       'overview.onboard.title': 'Bienvenue dans Toledo+',
+      'overview.onboard.lead': 'Ce n’est pas Toledo, c’est Toledo+ : les mêmes cours et fichiers, rangés plus calmement.',
       'overview.onboard.what': 'Toledo+ affiche Toledo plus calmement : les échéances d’abord, les nouveautés par cours et tous tes cours en un seul endroit.',
       'overview.onboard.classic': 'Tu ne trouves pas quelque chose ? Choisis « Toledo classique » dans le menu du compte (en haut à droite) pour voir la page d’origine.',
       'overview.onboard.read': 'Ce que tu marques comme lu ici est aussi marqué comme lu dans Toledo.',

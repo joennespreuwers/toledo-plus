@@ -17,7 +17,7 @@ const API = 'https://api.toledoplus.be';
 function build() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tplus-fb-ext-'));
   const copy = (rel) => { const to = path.join(dir, rel); fs.mkdirSync(path.dirname(to), { recursive: true }); fs.copyFileSync(path.join(ROOT, rel), to); };
-  for (const d of ['src', 'icons']) fs.cpSync(path.join(ROOT, d), path.join(dir, d), { recursive: true });
+  for (const d of ['src', 'icons', 'fonts']) if (fs.existsSync(path.join(ROOT, d))) fs.cpSync(path.join(ROOT, d), path.join(dir, d), { recursive: true });
   for (const f of ['manifest.json', 'background.js', 'page.css', 'ui.css']) copy(f);
 
   const m = JSON.parse(fs.readFileSync(path.join(dir, 'manifest.json'), 'utf8'));
