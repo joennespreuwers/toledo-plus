@@ -157,23 +157,10 @@
       }
     },
 
-    /** Remember which control had focus so a re-render can restore it. */
-    focusKey(root) {
-      const host = root.getRootNode && root.getRootNode();
-      const a = host && host.activeElement;
-      if (!a || !root.contains(a)) return null;
-      const parts = [];
-      for (const at of ['data-action', 'data-key', 'data-id', 'data-eid', 'data-lu', 'name', 'value']) {
-        const v = a.getAttribute(at);
-        if (v != null) parts.push(`[${at}="${cssEsc(v)}"]`);
-      }
-      if (a.id) return '#' + cssEsc(a.id);
-      return parts.length ? a.tagName.toLowerCase() + parts.join('') : null;
-    },
-    restoreFocus(root, key) {
-      if (!key) return;
-      try { const el = root.querySelector(key); if (el) el.focus({ preventScroll: true }); } catch { /* ignore */ }
-    },
+    /** Remember which control had focus so a re-render can restore it (TP.shell.focus: the same control by its
+        keys; when it is gone — e.g. "Mark all read" removed its own button — the next row or the section heading). */
+    focusKey(root) { return TP.shell.focus.snap(root); },
+    restoreFocus(root, key) { TP.shell.focus.restore(key, { scope: root }); },
 
     /** Replace root content, preserving focus. Rows that stay glide to their new place, new ones fade up,
         removed ones fade out (TP.motion.flip; a no-op inside the shell's own re-render flip). */

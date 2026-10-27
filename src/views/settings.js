@@ -22,27 +22,10 @@
   const save = (p) => { Promise.resolve(p).catch(() => {}); };
   const cssEsc = (s) => (globalThis.CSS && CSS.escape ? CSS.escape(String(s)) : String(s).replace(/["\\]/g, '\\$&'));
 
-  // ---------- focus preservation across re-renders ----------
-  function snapFocus(root) {
-    const a = root.getRootNode().activeElement;
-    if (!a || !root.contains(a)) return null;
-    if (a.dataset && a.dataset.fk) return { fk: a.dataset.fk };
-    if (a.name) return { name: a.name, value: a.type === 'radio' ? a.value : null };
-    if (a.tagName === 'SUMMARY' && a.parentElement && a.parentElement.dataset.id) return { sum: a.parentElement.dataset.id };
-    return null;
-  }
-  function restoreFocus(root, f) {
-    if (!f) return;
-    let el = null;
-    if (f.fk) el = root.querySelector(`[data-fk="${cssEsc(f.fk)}"]`);
-    else if (f.sum) el = root.querySelector(`details[data-id="${cssEsc(f.sum)}"] > summary`);
-    else if (f.name) el = root.querySelector(`[name="${cssEsc(f.name)}"]${f.value != null ? `[value="${cssEsc(f.value)}"]` : ''}`);
-    if (el && !el.disabled) el.focus({ preventScroll: true });
-    else if (f.fk && /^(up|down):/.test(f.fk)) {
-      const other = f.fk.replace(/^(up|down)/, (m) => (m === 'up' ? 'down' : 'up'));
-      root.querySelector(`[data-fk="${cssEsc(other)}"]`)?.focus({ preventScroll: true });
-    }
-  }
+  // ---------- focus preservation across re-renders (TP.shell.focus: the same control by its keys; when it is gone
+  // the next row or the section heading, never <body>) ----------
+  const snapFocus = (root) => TP.shell.focus.snap(root);
+  const restoreFocus = (root, f, fallback) => TP.shell.focus.restore(f, { scope: root, fallback });
 
   // ---------- building blocks ----------
   let seq = 0;
@@ -444,7 +427,11 @@
       else if (act === 'ics-edit') { ui.icsEdit = true; rerender(); cur?.root.querySelector('input[name="st-ics"]')?.focus(); }
       else if (act === 'ics-cancel') { ui.icsEdit = false; rerender(); cur?.root.querySelector('[data-fk="ics-edit"]')?.focus(); }
       else if (act === 'ics-remove') {
-        Promise.resolve(TP.kuloket && TP.kuloket.setIcsUrl('')).catch(() => {}).finally(() => { TP.shell.toast?.(t('settings.agenda.icsRemoved')); rerender(); });
+        const f = snapFocus(root);
+        Promise.resolve(TP.kuloket && TP.kuloket.setIcsUrl('')).catch(() => {}).finally(() => {
+          TP.shell.toast?.(t('settings.agenda.icsRemoved')); rerender();
+          if (cur) restoreFocus(cur.root, f, 'input[name="st-ics"]'); // the button is gone: the paste field
+        });
       } else if (act === 'ft-wipe') onFullTextWipe();
       else if (act === 'reindex') {
         if (b.getAttribute('aria-busy') === 'true') return;

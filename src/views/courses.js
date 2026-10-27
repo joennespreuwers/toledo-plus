@@ -21,25 +21,10 @@
   const save = (p) => { Promise.resolve(p).catch(() => {}); };
   const cssEsc = (s) => (globalThis.CSS && CSS.escape ? CSS.escape(String(s)) : String(s).replace(/["\\]/g, '\\$&'));
 
-  function snapFocus(root) {
-    const a = root.getRootNode().activeElement;
-    if (!a || !root.contains(a)) return null;
-    if (a.dataset && a.dataset.fk) return { fk: a.dataset.fk };
-    if (a.name) return { name: a.name, value: a.type === 'radio' ? a.value : null };
-    return null;
-  }
-  function restoreFocus(root, f) {
-    if (!f) return;
-    let el = null;
-    if (f.fk) el = root.querySelector(`[data-fk="${cssEsc(f.fk)}"]`);
-    else if (f.name) el = root.querySelector(`[name="${cssEsc(f.name)}"]${f.value != null ? `[value="${cssEsc(f.value)}"]` : ''}`);
-    if (el && !el.disabled) el.focus({ preventScroll: true });
-    else if (f.fk && /^(up|down):/.test(f.fk)) {
-      // A moved row hit the top/bottom: keep focus on its other move button.
-      const other = f.fk.replace(/^(up|down)/, (m) => (m === 'up' ? 'down' : 'up'));
-      root.querySelector(`[data-fk="${cssEsc(other)}"]`)?.focus({ preventScroll: true });
-    }
-  }
+  // Focus across re-renders: TP.shell.focus finds the same control by its data-fk (so it follows a moved row), else
+  // the next row or the section heading — never <body>.
+  const snapFocus = (root) => TP.shell.focus.snap(root);
+  const restoreFocus = (root, f) => TP.shell.focus.restore(f, { scope: root });
 
   function allCourses() {
     return TP.data.courses({ includeHidden: true, includeCommunities: true, currentOnly: false }) || [];
@@ -185,7 +170,7 @@
     cur = ctx;
     const root = ctx.root;
     bind(root);
-    ctx.setActions([{ id: 'edit', label: t(ui.edit ? 'courses.done' : 'courses.edit'), icon: ui.edit ? 'check' : undefined, onClick: toggleEdit }]);
+    ctx.setActions([{ id: 'edit', label: t(ui.edit ? 'courses.done' : 'courses.edit'), icon: ui.edit ? 'check' : 'pencil', onClick: toggleEdit }]);
 
     const focus = snapFocus(root);
     const s = TP.settings.get();
