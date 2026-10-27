@@ -66,6 +66,7 @@
     sparkle: '<path d="M12 3.5 13.8 10 20.5 12l-6.7 2L12 20.5 10.2 14 3.5 12l6.7-2z"/>',
     sidebarAdd: '<rect x="3" y="4.5" width="18" height="15" rx="3"/><path d="M9.5 4.5v15M15.25 9.5v5M12.75 12h5"/>',
     sidebarRemove: '<rect x="3" y="4.5" width="18" height="15" rx="3"/><path d="M9.5 4.5v15M12.75 12h5"/>',
+    pencil: '<path d="M4.5 19.5h4l10-10a2.8 2.8 0 0 0-4-4l-10 10z"/><path d="m13.5 6.5 4 4"/>',
     classic: '<rect x="3" y="4.5" width="18" height="15" rx="3"/><path d="M3 9h18M7 6.8h.01M9.5 6.8h.01"/>',
   };
   const ICONS = Object.keys(P);
@@ -115,7 +116,10 @@
   // ---------------- structure ----------------
   function section({ id, title, count, actions, body, footer, cls } = {}) {
     const hid = `tp-h-${esc(id || TP.util.uid())}`;
-    const cnt = count != null && count !== '' && count !== 0 ? ` <span class="tp-count">${esc(count)}</span>` : '';
+    // The count is not part of the heading's name ("Week van 16 nov 1" read as a date): shown, but announced as
+    // ", 1 item" (headings list / region name stay readable).
+    const cnt = count != null && count !== '' && count !== 0
+      ? ` <span class="tp-count" aria-hidden="true">${esc(count)}</span><span class="tp-sr">${esc(typeof count === 'number' ? t('common.items', { n: count }) : `, ${count}`)}</span>` : '';
     const acts = (actions || []).map((a) => button(a.label, { action: a.action, icon: a.icon, kind: 'plain', attrs: a.attrs })).join('');
     return `<section class="tp-section${cls ? ' ' + esc(cls) : ''}"${id ? ` data-section="${esc(id)}"` : ''} aria-labelledby="${hid}">
   <div class="tp-sec-head"><h2 id="${hid}" class="tp-sec-title">${title ?? ''}${cnt}</h2>${acts ? `<div class="tp-sec-actions">${acts}</div>` : ''}</div>
@@ -184,10 +188,18 @@
     return `<div class="tp-empty">${art}<p>${esc(text)}</p>${ts}</div>`;
   }
 
+  // debounced like the shell's result count, so typing doesn't make the screen reader stutter
+  let nrTimer = 0;
+  const sayNoResults = (q) => {
+    clearTimeout(nrTimer);
+    nrTimer = setTimeout(() => { try { TP.shell?.announce?.(t('common.noResults', { q })); } catch (_) { /* no shell */ } }, 700);
+  };
   /** Search empty state (Apple style): centered magnifier, "Geen resultaten", "voor “x”". One per view. */
   // a pasted essay is not echoed back in full (TP-082)
   const clip = (q) => { const s = String(q ?? ''); return s.length > 60 ? s.slice(0, 59).trimEnd() + '…' : s; };
   function noResults(q) {
+    // role=status inserted together with its text is often not read (NVDA/VoiceOver): say it via the shell's live region too
+    sayNoResults(q);
     return `<div class="tp-noresults-state" role="status">${icon('search', { size: 32 })}`
       + `<p class="tp-nr-title">${esc(t('common.noResults.title'))}</p>`
       + `<p class="tp-nr-sub">${esc(t('common.noResults.for', { q: clip(q) }))}</p></div>`;
@@ -231,8 +243,11 @@
   }
 
   function toggle(name, checked, label, o = {}) {
-    const did = o.description ? `tp-d-${TP.util.uid()}` : '';
-    return `<label class="tp-toggle"><span class="tp-toggle-text"><span class="tp-toggle-label">${esc(label)}</span>${o.description ? `<span class="tp-toggle-desc" id="${did}">${esc(o.description)}</span>` : ''}</span><input type="checkbox" role="switch" class="tp-switch" name="${esc(name)}"${checked ? ' checked' : ''}${did ? ` aria-describedby="${did}"` : ''}${attrs(o.attrs)}></label>`;
+    // The switch is named by its title only (aria-labelledby); the help text is its description, not part of the name
+    // (screen readers, voice control). The whole row stays the <label> hit target.
+    const uid = TP.util.uid();
+    const lid = `tp-l-${uid}`, did = o.description ? `tp-d-${uid}` : '';
+    return `<label class="tp-toggle"><span class="tp-toggle-text"><span class="tp-toggle-label" id="${lid}">${esc(label)}</span>${o.description ? `<span class="tp-toggle-desc" id="${did}">${esc(o.description)}</span>` : ''}</span><input type="checkbox" role="switch" class="tp-switch" name="${esc(name)}"${checked ? ' checked' : ''} aria-labelledby="${lid}"${did ? ` aria-describedby="${did}"` : ''}${attrs(o.attrs)}></label>`;
   }
 
   function select(name, options, value, o = {}) {
@@ -250,6 +265,50 @@
     return `<div class="tp-swatches" role="radiogroup">${items}</div>`;
   }
 
+  /** Roving focus in a grid of buttons (APG date picker): one tab stop (tabindex=0, the rest -1); ←/→ ±1, ↑/↓ ±one row,
+   *  Home/End start/end of the row, PageUp/PageDown press the container's [data-roving-prev]/[data-roving-next].
+   *  Markup: a container [data-roving="<columns>"] around buttons [data-roving-item]. Call from a keydown handler
+   *  (the shell does it for the whole app); → true when the key was handled. */
+  function rovingKey(ev) {
+    const tg = (ev.composedPath && ev.composedPath()[0]) || ev.target;
+    const item = tg && tg.closest && tg.closest('[data-roving-item]');
+    const box = item && item.closest('[data-roving]');
+    if (!box || ev.altKey || ev.ctrlKey || ev.metaKey) return false;
+    const items = [...box.querySelectorAll('[data-roving-item]')];
+    const cols = Math.max(1, Number(box.getAttribute('data-roving')) || items.length);
+    const i = items.indexOf(item);
+    const k = ev.key;
+    let j = null;
+    if (k === 'ArrowRight') j = i + 1;
+    else if (k === 'ArrowLeft') j = i - 1;
+    else if (k === 'ArrowDown') j = i + cols;
+    else if (k === 'ArrowUp') j = i - cols;
+    else if (k === 'Home') j = i - (i % cols);
+    else if (k === 'End') j = i - (i % cols) + cols - 1;
+    else if (k === 'PageUp' || k === 'PageDown') {
+      const b = box.querySelector(k === 'PageUp' ? '[data-roving-prev]' : '[data-roving-next]');
+      if (!b) return false;
+      ev.preventDefault();
+      b.click();
+      // the grid repaints (other month): put focus on its tab stop once it is there
+      const doc = box.getRootNode();
+      let n = 0;
+      const again = () => {
+        const to = box.isConnected ? null : doc.querySelector('[data-roving] [data-roving-item][tabindex="0"]');
+        if (to) to.focus(); else if (++n < 12) setTimeout(again, 40);
+      };
+      setTimeout(again, 0);
+      return true;
+    } else return false;
+    ev.preventDefault();
+    const to = items[Math.max(0, Math.min(items.length - 1, j))];
+    if (to && to !== item) {
+      items.forEach((x) => x.setAttribute('tabindex', x === to ? '0' : '-1'));
+      to.focus();
+    }
+    return true;
+  }
+
   const cols = (mainHtml, sideHtml) =>
     `<div class="tp-cols"><div class="tp-col-main">${mainHtml ?? ''}</div>${sideHtml ? `<div class="tp-col-side">${sideHtml}</div>` : ''}</div>`;
 
@@ -261,6 +320,6 @@
 
   TP.ui = {
     icon, ICONS, logo, wordmark, emptyArt, attrs, section, group, row, disclosure, badge, dot, dateTile, empty, noResults, skeleton, errorRow,
-    button, segmented, toggle, select, swatches, cols, undoToast,
+    button, segmented, toggle, select, swatches, cols, undoToast, rovingKey,
   };
 })();
