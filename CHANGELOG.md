@@ -18,6 +18,9 @@ Het formaat volgt [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) en he
 ### Fixed
 - The first-start splash now always removes itself shortly after its planned end, even if its fade-out animation never reports back.
 - Keyboard hints follow your OS: ⌘ on macOS, Ctrl+ on Windows/Linux. On a Mac Toledo+ showed "Ctrl K" because Chromium reports the platform as "macOS" (lowercase "mac"); every "⌘" in texts (⌘K, ⌘↵, ⌘\) now adapts.
+- Website, installer: step 2 now says how to unzip (Windows: right-click → *Alles uitpakken*; Mac: double-click) and warns not to load Toledo+ from inside the zip; steps 2/5 and "Updaten" match the zip (a folder `toledo-plus` with `manifest.json`); Edge visitors see `edge://extensions` and Edge wording; an honest "a few minutes" with the developer-mode note up front; phones get a "install on a computer" note.
+- Website: a menu on narrow screens instead of losing the section links; the header button says "Installeren" (it scrolls to the guide); the language switch keeps the section you are on; header links and copy feedback are accessible (≥ 24 px, "Gekopieerd" announced, forced-colors borders); the theme toggle's name says what it does and no longer shows as a dead circle on the privacy/terms pages; the 404 page speaks your language and has a working theme toggle; NL demo links open the Dutch demo; the FAQ puts "remove the extension" first; the search card says file contents are opt-in.
+- Demo: the demo bar sits inside `<body>` with a skip link, follows a language change made in the app's settings (bar, URL, `<html lang>`, title), shows a loading line while the app starts, and "Klassieke Toledo" shows a short explanation with a way back instead of an empty page.
 
 ## [1.6.0] - 2026-10-27
 
