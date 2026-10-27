@@ -46,6 +46,52 @@ function load({ origin = 'https://toledo.kuleuven.be', telemetry, updateCheck, l
 
 const pings = (calls) => calls.filter((c) => c.url === 'https://api.toledoplus.be/v1/ping');
 
+test('forget: a failed /v1/forget stays queued and is retried on the next boot (TP-139); a 4xx is dropped', async () => {
+  const { TP, calls, stores, setFail } = load();
+  await TP.telemetry.ping();
+  const id = stores.local['telemetry:id'];
+  setFail((u) => (u.endsWith('/v1/forget') ? 503 : null));
+  assert.equal(await TP.telemetry.forget(), true);
+  assert.equal(stores.local['telemetry:id'], undefined, 'deleted locally right away');
+  assert.deepEqual([...stores.local['telemetry:forget']], [id], 'kept for a retry');
+  // next boot (another sandbox on the same profile) retries and clears the queue
+  const next = load({ w: undefined });
+  next.stores.local['telemetry:forget'] = [id];
+  next.TP.telemetry._cfg.idleDelay = 0;
+  assert.equal(await next.TP.telemetry.flushForget(), 'sent');
+  assert.deepEqual(next.calls.filter((c) => c.url.endsWith('/v1/forget')).map((c) => c.body), [{ id }]);
+  assert.equal(next.stores.local['telemetry:forget'], undefined);
+  // a 400 means there is nothing to delete: do not retry forever
+  setFail((u) => (u.endsWith('/v1/forget') ? 400 : null));
+  stores.local['telemetry:forget'] = [id];
+  assert.equal(await TP.telemetry.flushForget(), 'sent');
+  assert.equal(stores.local['telemetry:forget'], undefined);
+  void calls;
+});
+
+test('forget queue is sent on boot even with the usage signal off (it is a deletion, not a signal)', async () => {
+  const { TP, calls, stores, clock } = load({ telemetry: false });
+  stores.local['telemetry:forget'] = ['3f2b8c1e-5d4a-4c3b-9a8e-1b2c3d4e5f60'];
+  TP.telemetry._cfg.idleDelay = 0;
+  TP.telemetry.schedule();
+  clock.add(10);
+  await tick(30);
+  assert.equal(calls.filter((c) => c.url.endsWith('/v1/forget')).length, 1);
+  assert.equal(pings(calls).length, 0, 'still no ping');
+});
+
+test('update URL: only this project on GitHub or toledoplus.be; "../" escapes fall back to the releases page (TP-178)', () => {
+  const { TP } = load();
+  const R = 'https://github.com/joennespreuwers/toledo-plus/releases/latest';
+  assert.equal(TP.telemetry.safeUrl('https://github.com/joennespreuwers/toledo-plus/releases/tag/v1.7.0'), 'https://github.com/joennespreuwers/toledo-plus/releases/tag/v1.7.0');
+  assert.equal(TP.telemetry.safeUrl('https://toledoplus.be/#update'), 'https://toledoplus.be/#update');
+  assert.equal(TP.telemetry.safeUrl('https://github.com/joennespreuwers/toledo-plus/../../evil-org/evil-repo/releases/latest'), R);
+  assert.equal(TP.telemetry.safeUrl('https://github.com/joennespreuwers/toledo-plus/%2e%2e/%2e%2e/evil/x'), R);
+  assert.equal(TP.telemetry.safeUrl('https://toledoplus.be.evil.example/'), R);
+  assert.equal(TP.telemetry.safeUrl('https://github.com/joennespreuwers/toledo-plus-evil/x'), R);
+  assert.equal(TP.telemetry.safeUrl('javascript:alert(1)'), R);
+});
+
 test('ping: payload is exactly {id, v, browser, lang}; id is a stored uuid v4; POST to the API', async () => {
   const { TP, calls, stores } = load();
   assert.equal(await TP.telemetry.ping(), 'sent');
@@ -173,17 +219,19 @@ test('update check does not send the install id or any body', async () => {
   assert.ok(!g.url.includes('?'));
 });
 
-test('feedback: fields, id only while telemetry is on, meta optional, error mapping', async () => {
+test('feedback: fields, never the install id (TP-179), page only with the meta box, error mapping', async () => {
   const { TP, calls } = load();
   await TP.telemetry.ping();
   const r = await TP.telemetry.sendFeedback({ kind: 'bug', text: '  De agenda is leeg op maandag  ', contact: 'student.a@example.edu', page: 'agenda', website: '' });
   assert.deepEqual(JSON.parse(JSON.stringify(r)), { ok: true });
   const f = calls.filter((c) => c.url.endsWith('/v1/feedback'));
   assert.equal(f[0].method, 'POST');
-  assert.deepEqual(Object.keys(f[0].body).sort(), ['browser', 'contact', 'id', 'kind', 'lang', 'page', 'text', 'v', 'website']);
+  assert.deepEqual(Object.keys(f[0].body).sort(), ['browser', 'contact', 'kind', 'lang', 'page', 'text', 'v', 'website'], 'no install id, even with telemetry on');
   assert.equal(f[0].body.text, 'De agenda is leeg op maandag');
-  await TP.telemetry.sendFeedback({ kind: 'idea', text: 'Een idee zonder metadata', includeMeta: false, page: 'https://x' });
-  assert.deepEqual(Object.keys(calls.at(-1).body).sort(), ['id', 'kind', 'text', 'website'], 'no meta, invalid page dropped');
+  await TP.telemetry.sendFeedback({ kind: 'idea', text: 'Een idee zonder metadata', includeMeta: false, page: 'agenda' });
+  assert.deepEqual(Object.keys(calls.at(-1).body).sort(), ['kind', 'text', 'website'], 'meta off: no version/browser/language/page');
+  await TP.telemetry.sendFeedback({ kind: 'idea', text: 'Een idee met een rare pagina', page: 'https://x' });
+  assert.equal(calls.at(-1).body.page, undefined, 'invalid page dropped');
 
   const off = load({ telemetry: false });
   assert.deepEqual(JSON.parse(JSON.stringify(await off.TP.telemetry.sendFeedback({ kind: 'other', text: 'Werkt ook zonder telemetrie' }))), { ok: true });

@@ -145,6 +145,7 @@ describe('feedback', () => {
     assert.equal(call.body.contact, 'student.a@example.edu');
     assert.equal(call.body.page, 'overview');
     assert.equal(call.body.website, '');
+    assert.equal(call.body.id, undefined, 'never the install id (TP-179)');
     assert.equal(call.body.lang, 'nl');
     assert.ok(['chrome', 'other'].includes(call.body.browser));
     await page.keyboard.press('Escape');

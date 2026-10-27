@@ -1,8 +1,8 @@
 /* Toledo+ — TP.feedback: the in-extension feedback sheet.
    TP.feedback.open({page, opener}) → <dialog> (modal; inside the shell's shadow root, or its own shadow host when the
    shell isn't mounted, e.g. under the deep bar). Kind (Idee/Probleem/Iets anders), message with counter, optional
-   contact, "send version/browser/language" (default on), a honeypot field. Sends via TP.telemetry.sendFeedback — also
-   when the usage signal is off: sending feedback is explicit consent. Never throws. */
+   contact, "send version/browser/language/page" (default on), a honeypot field. Sends via TP.telemetry.sendFeedback — also
+   when the usage signal is off: sending feedback is explicit consent. The install id is never sent with feedback. Never throws. */
 (() => {
   'use strict';
   const TP = (globalThis.TP ||= {});
@@ -95,12 +95,12 @@ textarea.tp-fb-input { min-height: 132px; resize: vertical; }
   }
 
   function version() { try { return chrome.runtime.getManifest().version; } catch (_) { return ''; } }
-  function metaDetails() {
+  function metaDetails(page) {
     const b = { chrome: 'Chrome', edge: 'Edge', brave: 'Brave', opera: 'Opera', other: '' }[TP.telemetry?.browser?.() || 'other'];
-    return [`Toledo+ ${version()}`, b, (TP.i18n?.lang?.() || 'nl').toUpperCase()].filter(Boolean).join(' · ');
+    return [`Toledo+ ${version()}`, b, (TP.i18n?.lang?.() || 'nl').toUpperCase(), page ? t('feedback.meta.page', { page }) : ''].filter(Boolean).join(' · ');
   }
 
-  function markup(uid) {
+  function markup(uid, page) {
     const ui = TP.ui;
     const kinds = KINDS.map((k) => ({ value: k, label: t('feedback.kind.' + k) }));
     return `
@@ -121,7 +121,7 @@ textarea.tp-fb-input { min-height: 132px; resize: vertical; }
       spellcheck="false" aria-describedby="${uid}-note">
     <p class="tp-fb-note" id="${uid}-note">${esc(t('feedback.contact.note'))}</p>
   </div>
-  ${ui.group(ui.toggle('tp-fb-meta', true, t('feedback.meta.label'), { description: t('feedback.meta.desc', { details: metaDetails() }) }))}
+  ${ui.group(ui.toggle('tp-fb-meta', true, t('feedback.meta.label'), { description: t('feedback.meta.desc', { details: metaDetails(page) }) }))}
   <div class="tp-fb-hp" aria-hidden="true"><label>Website <input name="website" type="text" tabindex="-1" autocomplete="off"></label></div>
   <p class="tp-fb-public" id="${uid}-public">${esc(t('feedback.public'))}</p>
   <p class="tp-fb-error" role="alert" aria-live="assertive"></p>
@@ -240,8 +240,8 @@ textarea.tp-fb-input { min-height: 132px; resize: vertical; }
       const d = document.createElement('dialog');
       d.className = 'tp-sheet tp-glass tp-fb';
       d.setAttribute('aria-labelledby', `${uid}-title`);
-      d.innerHTML = markup(uid);
       const page = typeof opts.page === 'string' && /^[a-z][a-z0-9-]{0,31}$/.test(opts.page) ? opts.page : (TP.shell?.route?.route || undefined);
+      d.innerHTML = markup(uid, page);
       wire(d, page);
       host.appendChild(d);
       dlg = d;
