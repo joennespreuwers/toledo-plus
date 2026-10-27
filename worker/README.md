@@ -6,7 +6,7 @@ A small Cloudflare Worker (plain ES module, no framework, no runtime dependencie
 |---|---|---|
 | `POST /v1/ping` | Anonymous daily usage signal `{id, v, browser, lang}` → `204` | extension origin; 10/hour per hashed IP |
 | `POST /v1/forget` | Opt-out: deletes the install id's rows → `204` | extension origin; 10/hour per hashed IP |
-| `POST /v1/feedback` | In-extension feedback → D1 (+ optional GitHub issue) → `201 {ok:true}` | extension origin; 5/hour + 20/day per hashed IP, 500/day global; public issues: 3/day per hashed IP, 25/day global (over the cap: stored, no issue) |
+| `POST /v1/feedback` | In-extension feedback → D1 (+ optional GitHub issue) → `201 {ok:true}` | extension origin; 5/hour + 20/day per hashed IP, 500/day global; public issues: 10/day per hashed IP, 100/day global (over the cap: stored, no issue) |
 | `GET /v1/latest` | `{version, url, notes}` for the update banner | public, `Cache-Control: public, max-age=600` |
 | `GET /v1/stats` | JSON: installs, 1/7/28-day actives, by version/browser/language, feedback counts | `Authorization: Bearer $STATS_TOKEN` |
 | `GET /v1/stats.html` | Dashboard page; asks for the token, keeps it in `sessionStorage`, calls `/v1/stats` | token never in a URL |
@@ -19,7 +19,7 @@ A rate-limited request gets `429` with `Retry-After` (seconds).
 unpacked extension (the way Toledo+ is installed) has no fixed id, so `EXTENSION_IDS` can only be pinned once the
 extension is published with a stable id (store listing or a `key` in the manifest). No limit trusts the Origin or the
 client-chosen install id: limits key on the hashed IP — **for IPv6 the /64 prefix**, since one end site gets a whole /64 —
-plus global caps. Feedback is stored first; only up to 3 per IP prefix and 25 per day become public GitHub issues, the
+plus global caps. Feedback is stored first; only up to 10 per IP prefix and 100 per day become public GitHub issues, the
 rest waits in D1 (`status = 'new'`) for the maintainer. User text in an issue is a fenced code block (no links, images,
 `#refs`, SHAs or HTML); the title has `@`, `#123` and SHAs broken with a zero-width space. More than 3 links in any
 spelling (`https://`, `//host`, `www.`, `](`, `<a`/`<img`) → `422`. `/v1/latest` only returns a `url` on

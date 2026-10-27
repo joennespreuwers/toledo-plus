@@ -48,8 +48,8 @@ export const LIMITS = {
   ],
   // Public GitHub issues created from feedback (checked only when GITHUB_TOKEN is set; over the cap → stored, no issue).
   issue: [
-    { scope: 'ip', window: DAY_S, limit: 3 },
-    { scope: 'global', window: DAY_S, limit: 25 },
+    { scope: 'ip', window: DAY_S, limit: 10 },
+    { scope: 'global', window: DAY_S, limit: 100 },
   ],
 };
 

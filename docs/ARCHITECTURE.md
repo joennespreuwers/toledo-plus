@@ -647,6 +647,6 @@ TP.index.highlight(root, q|m, selector) → n ; TP.index.unmark(root)   // <mark
   **`TP.data.calendarItems({from, to})`** → `[{id, title, type, start, end, courseLuId, courseTitle, cid, url}]` (not shown in
   any view yet). The policy is explained in Settings › Deadlines (footer).
 - **Worker**: rate-limit key = hashed IP, IPv6 /64 prefix (`ipPrefix`); no limit on the install id; `LIMITS.issue` caps public
-  issues (3/day per IP, 25/day global); issue body = fenced code block, title refs/SHAs broken; spam rule counts `//host`, `](`,
+  issues (10/day per IP, 100/day global); issue body = fenced code block, title refs/SHAs broken; spam rule counts `//host`, `](`,
   `<a`/`<img`; `/v1/latest` url validated by `safeLatestUrl`.
 

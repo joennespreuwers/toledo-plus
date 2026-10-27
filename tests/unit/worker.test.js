@@ -226,13 +226,18 @@ test('feedback → public issues are capped (per IP and per day); over the cap t
   globalThis.fetch = async () => { n++; return new Response(JSON.stringify({ number: n }), { status: 201 }); };
   try {
     for (let i = 0; i < 5; i++) assert.equal((await call(W, s, 'POST', '/v1/feedback', { body: fb() })).status, 201);
-    assert.equal(n, 3, '3 issues per IP per day');
-    assert.equal(s.env.DB.rows('SELECT * FROM feedback').length, 5, 'all feedback stored');
-    assert.equal(s.env.DB.rows("SELECT * FROM feedback WHERE status = 'new'").length, 2);
+    assert.equal(n, 5, 'under the per-IP cap (10/day) every feedback becomes an issue');
+    // Per-IP cap reached (10/day): the next feedback from that IP is stored, no issue.
+    s.env.DB._db.prepare("UPDATE ratelimit SET count = 10 WHERE key LIKE 'issue:ip:%'").run();
+    s.env.DB._db.prepare("UPDATE ratelimit SET count = 0 WHERE key LIKE 'feedback:%'").run();
+    assert.equal((await call(W, s, 'POST', '/v1/feedback', { body: fb() })).status, 201);
+    assert.equal(n, 5, 'per-IP issue cap');
+    assert.equal(s.env.DB.rows('SELECT * FROM feedback').length, 6, 'all feedback stored');
+    assert.equal(s.env.DB.rows("SELECT * FROM feedback WHERE status = 'new'").length, 1);
     const win = Math.floor(T0 / 1000 / 86400) * 86400;
-    s.env.DB._db.prepare('INSERT OR REPLACE INTO ratelimit (key, window, count) VALUES (?, ?, ?)').run('issue:global:86400:all', win, 25);
+    s.env.DB._db.prepare('INSERT OR REPLACE INTO ratelimit (key, window, count) VALUES (?, ?, ?)').run('issue:global:86400:all', win, 100);
     assert.equal((await call(W, s, 'POST', '/v1/feedback', { body: fb(), ip: '198.51.100.9' })).status, 201);
-    assert.equal(n, 3, 'global issue cap');
+    assert.equal(n, 5, 'global issue cap (100/day)');
   } finally { globalThis.fetch = realFetch; }
 });
 
