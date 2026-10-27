@@ -799,3 +799,96 @@ test('a load that was in flight during a wipe is not cached again', async () => 
   await p;
   assert.equal(TP.data.peek('mail'), null);
 });
+
+// ---- bug bash: one markAllRead(scope) with undo (shared pattern 5) ---------------------------------------
+test('markAllRead: {events} marks exactly those (not other courses), {luId} one course, {} all of Nieuw (TP-152, TP-153, TP-158)', async () => {
+  const { D } = await setup();
+  const ann = D.peek('events').filter((e) => e.id === 'e8');
+  const r = await D.markAllRead({ events: ann });
+  assert.equal(r.n, 1);
+  assert.equal(r.unread, 1);
+  assert.equal(D.peek('events').find((e) => e.id === 'e8').read, true);
+  assert.equal(D.peek('events').find((e) => e.id === 'e1').read, false, 'other items untouched');
+  const g = await D.markAllRead({ luId: LU_B });
+  assert.equal(g.unread, 1, 'only e4 of LU_B is new');
+  eq(D.feed().map((x) => x.luId), [LU_A]);
+  const all = await D.markAllRead({});
+  assert.equal(all.unread, 3);
+  eq(D.feed(), []);
+});
+
+test('markAllRead: with "mark as read in Toledo" off, the local read state is still written everywhere (TP-155)', async () => {
+  const { TP, D, calls } = await setup(); // SETTINGS: sync off
+  await TP.settings.set({ feed: { includeAnnouncements: true } });
+  const unreadAnn = () => D.announcements({ filter: 'unread' }).filter((e) => e.subType === 'announcement').length;
+  assert.equal(unreadAnn(), 1);
+  await D.markAllRead({});
+  await settle();
+  assert.equal(unreadAnn(), 0, 'the announcement read in Nieuw is read in Mededelingen too');
+  assert.ok(TP.state.get().read.e8, 'local read-set');
+  assert.equal(calls.filter((c) => c.opts && c.opts.method === 'PATCH').length, 0, 'nothing sent to Toledo');
+});
+
+test('markAllRead: undo restores Nieuw and the unread state; synced=false when Toledo fails (TP-027, TP-149)', async () => {
+  const { TP, D } = await setup({ settings: Object.assign({}, SETTINGS, { sync: { markReadInToledo: true } }) });
+  TP.net.json = async () => { throw Object.assign(new Error('offline'), { status: 0 }); };
+  const before = D.feed().flatMap((g) => g.items.map((e) => e.id)).sort();
+  const dbg = console.debug; console.debug = () => {};
+  let r;
+  try {
+    r = await D.markAllRead({});
+    assert.equal(await r.synced, false, 'the PATCH failed');
+    await settle();
+    assert.ok(Object.keys(TP.state.get().pendingRead || {}).length, 'queued for the next refresh');
+    eq(D.feed(), []);
+    await r.undo();
+    await settle();
+  } finally { console.debug = dbg; }
+  eq(D.feed().flatMap((g) => g.items.map((e) => e.id)).sort(), before, 'back in Nieuw');
+  assert.equal(D.peek('events').find((e) => e.id === 'e1').read, false);
+  assert.equal(Object.keys(TP.state.get().pendingRead || {}).length, 0, 'no stale read PATCH left in the queue');
+});
+
+test('markFeedSeen() = markAllRead({}) and resolves to the sync result', async () => {
+  const { D } = await setup();
+  assert.equal(await D.markFeedSeen(), true);
+  eq(D.feed(), []);
+});
+
+test('courses sharing a Toledo colour number get different default colours (TP-111)', async () => {
+  const { TP, D, T } = await setup();
+  T._put('enrollments', D.peek('enrollments').map((e) => (e.type === 'course' ? Object.assign({}, e, { color: 5 }) : e)));
+  const cur = D.courses();
+  assert.equal(cur.length, 2);
+  assert.notEqual(cur[0].color, cur[1].color, 'unique among the current courses');
+  for (const c of cur) assert.equal(c.colorKey, TP.util.courseColorKey(c.luId, 5));
+});
+
+test('kindOf: forum/journal links are tools and course links are links, not pages (TP-099)', async () => {
+  const { D } = await setup();
+  assert.equal(D.kindOf({ contentHandler: { id: 'resource/x-bb-forumlink' } }), 'tool');
+  assert.equal(D.kindOf({ contentHandler: { id: 'resource/x-bb-journallink' } }), 'tool');
+  assert.equal(D.kindOf({ contentHandler: { id: 'resource/x-bb-courselink' } }), 'link');
+});
+
+test('a nickname longer than the field (e.g. from an import) is cut to 60 characters (TP-008)', async () => {
+  const { TP, D } = await setup();
+  await TP.settings.setCourse(LU_A, { nickname: 'x'.repeat(300) });
+  assert.equal(D.course(LU_A).name.length, 60);
+});
+
+test('ultraDownload: a failed blob fetch resolves false and opens no tab (TP-085)', async () => {
+  const net = {
+    json: async (url) => (/\/attachments$/.test(url) ? { results: [{ id: 'a1', fileName: 'Slides.pdf' }] } : null),
+    isSameOrigin: () => true,
+    blob: async () => { throw Object.assign(new Error('500'), { status: 500 }); },
+  };
+  const opened = [];
+  const { TP, s } = await boot({ net, origin: 'https://ultra.edu.kuleuven.cloud' });
+  s.ctx.window = { open: (u) => { opened.push(u); return null; } };
+  const dbg = console.debug; console.debug = () => {};
+  try {
+    assert.equal(await TP.data.ultraDownload('_1_1', '_2_1', 'Slides.pdf'), false);
+  } finally { console.debug = dbg; }
+  assert.deepEqual(opened, [], 'no new tab with the same error');
+});
