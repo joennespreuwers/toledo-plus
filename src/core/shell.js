@@ -262,7 +262,9 @@
     app.appendChild(el);
     const html = document.documentElement;
     html.dataset.tpSplash = 'shown'; // observable from tests / the demo (DOM attributes cross worlds)
-    const gone = () => { el.remove(); html.dataset.tpSplash = 'done'; };
+    let done = false;
+    const gone = () => { if (done) return; done = true; el.remove(); html.dataset.tpSplash = 'done'; };
+    setTimeout(gone, 700); // safety net: never depend only on the leave animation's callback
     const reduced = !!safe(() => TP.motion.reduced(), false);
     if (!reduced) motion('animate', el.firstElementChild, [{ opacity: 0, scale: 0.94 }, { opacity: 1, scale: 1 }], { duration: 200, easing: TP.motion.EASE.out });
     setTimeout(() => {
