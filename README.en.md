@@ -25,7 +25,7 @@
 - **Courses** – current academic year only; communities and older years in the archive. Give courses a **nickname** and **colour**, pin or hide them.
 - **Course page** – recently added, the full content tree as expandable folders, search across all folders, one-click open/download, deadlines, announcements and teachers.
 - **Deadlines** – Toledo deadlines + Ultra calendar + your own deadlines in one list; tick them off; export to your calendar (.ics) with a reminder.
-- **Planning** and **Announcements** (course announcements and Ad Valvas, with filters).
+- **Planning** and **Announcements** (course announcements and Ad Valvas, with filters). An announcement opens in a sheet with its full text – Ad Valvas notices too – and ↑/↓ steps through the list.
 - **Read = read in Toledo**: items you mark as read in Toledo+ are marked read in Toledo too (can be turned off).
 - **Nederlands, English, Français**; light/dark; accent colour; density; show/hide and reorder sections.
 - **⌘K** (or **/**) searches everywhere: courses, deadlines, announcements and **documents in all your courses** (a local index, never shared). ⌘↵ downloads right away; folders and assignments open in their course.

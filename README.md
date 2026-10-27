@@ -25,7 +25,7 @@
 - **Vakken** – alleen de vakken van dit jaar; communities en vorige jaren in het archief. Geef vakken een **bijnaam** en **kleur**, zet ze vast of verberg ze.
 - **Vakpagina** – recent toegevoegd, de volledige inhoud als uitklapbare mappen, zoeken door alle mappen, bestanden openen of downloaden met één klik, deadlines, aankondigingen en docenten.
 - **Deadlines** – Toledo-deadlines + Ultra-kalender + je eigen deadlines in één lijst; afvinken; exporteren naar je agenda (.ics) met herinnering.
-- **Planning** en **Mededelingen** (aankondigingen en Ad Valvas, met filters).
+- **Planning** en **Mededelingen** (aankondigingen en Ad Valvas, met filters). Een mededeling opent in een venster met de volledige tekst – ook Ad Valvas-berichten – en je bladert met ↑/↓.
 - **Gelezen = gelezen in Toledo**: wat je in Toledo+ als gelezen markeert, staat ook in Toledo als gelezen (uit te zetten).
 - **Nederlands, English, Français**; licht/donker; accentkleur; dichtheid; secties aan/uit en herschikken.
 - **⌘K** (of **/**) zoekt overal: vakken, deadlines, mededelingen én **documenten in al je vakken** (een lokale index, nooit gedeeld). ⌘↵ downloadt meteen; mappen en opdrachten openen in hun vak.

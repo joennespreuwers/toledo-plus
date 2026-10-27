@@ -713,17 +713,17 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
   }
 
   // ---------------- detail sheet (HIG sheet/popover; F6 deadline detail) ----------------
-  // TP.shell.detail.open({title, html, onAction(action, el, ev), opener}) → the views build the content;
-  // clicks on [data-detail-action] inside are routed to onAction. Esc / backdrop / close button close it
-  // and return focus to the opener.
-  let detail = null; // { onAction, opener }
+  // TP.shell.detail.open({title, html, onAction(action, el, ev), onKey(ev), opener}) → the views build the content;
+  // clicks on [data-detail-action] inside are routed to onAction, keydowns inside the sheet to onKey (e.g. ↑/↓ through a
+  // list; preventDefault() to claim a key). Esc / backdrop / close button close it and return focus to the opener.
+  let detail = null; // { onAction, onKey, opener }
   function openDetail(o = {}) {
     const d = $('.tp-detail');
     if (!d) return null;
     const opener = o.opener || safe(() => shadow.activeElement, null);
     // The view may re-render while the sheet is open (e.g. "klaar"): remember how to find the opener again.
     const sel = safe(() => ['data-action', 'data-key', 'data-id', 'data-eid'].map((k) => (opener.getAttribute(k) != null ? `[${k}="${CSS.escape(opener.getAttribute(k))}"]` : '')).join(''), '');
-    detail = { onAction: o.onAction || null, opener, sel };
+    detail = { onAction: o.onAction || null, onKey: o.onKey || null, opener, sel };
     d.querySelector('#tp-detail-title').textContent = o.title || '';
     d.querySelector('.tp-detail-body').innerHTML = o.html || '';
     if (!d.open) d.showModal();
@@ -1262,6 +1262,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
   }
 
   function onShellKeydown(ev) {
+    if (detail?.onKey && ev.target?.closest?.('.tp-detail') && !ev.defaultPrevented) safe(() => detail.onKey(ev));
     // Roving focus inside the account menu.
     const menu = $('.tp-menu');
     if (menu && !menu.hidden && menu.contains(ev.target)) {

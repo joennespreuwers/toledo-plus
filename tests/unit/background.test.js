@@ -134,3 +134,28 @@ test('Toledo+ API: only the exact method+path pairs, no query/hash, no cookies',
   }
   assert.equal((await send(msg(API + '/v1/ping', { method: 'PATCH' }))).error, 'blocked-method');
 });
+
+test('Ad Valvas: GET of one message page only (path + "?continue"), cookies included, IdP redirect → "redirected"', async () => {
+  const V = 'https://icts-p-toledo-valvas.cloud.icts.kuleuven.be';
+  const { send, calls } = load(async (url) => res('<!doctype html><h1 class="modal-title">x</h1>', { type: 'text/html', url }));
+  for (const p of ['/student/messages/775906/external', '/student/messages/1/external?continue']) {
+    const r = await send(msg(V + p, { as: 'text' }));
+    assert.equal(r.ok, true, p);
+    assert.match(r.data, /modal-title/);
+  }
+  assert.ok(calls.length === 2 && calls.every((c) => c.init.credentials === 'include'));
+  for (const p of ['/student/messages/775906', '/student/messages/abc/external', '/student/messages/775906/external/x', '/admin/messages/1/external',
+    '/student/messages/775906/external?x=1', '/student/messages/775906/external?continue=1', '/student/messages/775906/external#a', '/', '/student/messages/1/external/../../2/attachments/1']) {
+    assert.equal((await send(msg(V + p, { as: 'text' }))).error, 'blocked-url', p);
+  }
+  for (const m of ['POST', 'PATCH', 'PUT', 'DELETE']) assert.equal((await send(msg(V + '/student/messages/1/external', { method: m }))).error, 'blocked-method', m);
+  assert.equal((await send(msg('https://icts-p-toledo-valvas.cloud.icts.kuleuven.be.evil.com/student/messages/1/external'))).error, 'blocked-url');
+  assert.equal((await send(msg('http://icts-p-toledo-valvas.cloud.icts.kuleuven.be/student/messages/1/external'))).error, 'blocked-url');
+  assert.equal(calls.length, 2, 'nothing blocked was fetched');
+
+  // No valvas session: the page bounces to the KU Leuven IdP (SAML) → 'redirected'; landing on another valvas page → 'redirected' too.
+  const idp = load(async () => res('<form><input name="SAMLRequest"></form>', { type: 'text/html', url: 'https://idp.kuleuven.be/idp/profile/SAML2/Redirect/SSO?execution=e1s1' }));
+  assert.equal((await idp.send(msg(V + '/student/messages/2/external', { as: 'text' }))).error, 'redirected');
+  const home = load(async () => res('<html>home</html>', { type: 'text/html', url: V + '/student/login' }));
+  assert.equal((await home.send(msg(V + '/student/messages/2/external', { as: 'text' }))).error, 'redirected');
+});

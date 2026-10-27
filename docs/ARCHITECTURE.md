@@ -527,3 +527,55 @@ right after a logout (referrer contains Logout/Shibboleth.sso, a `logout`/`error
   motion on; ≤ 400 ms), deep bar uses the logo, classic pill (`#tplus-switch`) is an ink pill with the tile (page.css data URI).
 - **Tokens:** see DESIGN.md › Tokens and › Brand (`--brand-*`, `--amber*` with `--orange*` as aliases, `--red-tile`, `--tint-tile`,
   `--shadow-card(-hover)`, `--r-tile`, `--ls-*`, `--fw-title`, `--scrollbar`).
+
+## Addendum v1.6 — Announcement sheet + Ad Valvas (`TP.annSheet`, `TP.data.advalvasMessage`)
+
+**Ad Valvas (verified live, 2026-10).** Portal events with `subType:'advalvas'` look like `{id:'tol-valven~<n>', source:'Ad Valvas',
+sourceId:'advalvas', type:'advalvas', author, date, read, url:'https://icts-p-toledo-valvas.cloud.icts.kuleuven.be/student/messages/<n>/external'}`.
+That URL is a server-rendered page (jQuery/Bootstrap, `X-Frame-Options: DENY`, `Cache-Control: no-store`): `#messageModalExternal .modal-title`
+(title); in `.modal-body` "Van" → `input#from[value]` ("Naam&nbsp;(e-mail)"), "Naar" → `textarea#recipients`, "Datum" → `input#startDate[value]`
+("26/10/2026 13:23"), "Bijlage" → `input#attachmentMissing` "(Geen bijlage)" or link(s), then the body as **escaped HTML** in `textarea#message`
+(summernote source, inline font/colour styles). Without a valvas session it redirects to the KU Leuven IdP (SAML); a **top-level** visit lets
+SSO complete (when the IdP session exists), after which a credentialed fetch works.
+- **Relay rule** (`background.js`): origin `https://icts-p-toledo-valvas.cloud.icts.kuleuven.be`, `GET` only, path `^/student/messages/\d+/external$`,
+  query none or exactly `?continue`, no hash, `credentials:'include'`. A final URL off the allowed origins (IdP) **or** any other valvas path →
+  `error:'redirected'` (→ `TP.net.text` throws `.auth`). Host permission added (`manifest.json`, `tests/unit/manifest.test.js`).
+- `TP.data.advalvasMessage(idOrEvent, {force}) → Promise<{id, url, title, from, to, date (ms|0), dateText, attachments:[{name, url}], html}>`
+  — `TP.net.text` through the relay, parsed with `DOMParser` in the content script (the page is never injected or framed; its scripts never run).
+  Body: unescaped from `textarea#message` into its own inert document; `img/picture/video/audio/svg` dropped (no requests to other hosts, and
+  valvas images would need the valvas cookie), `<font>` unwrapped, presentational attributes (`style, class, id, color, face, size, bgcolor, …`)
+  removed, links absolutized **against the valvas page** (not Toledo/Ultra), then `TP.util.sanitize`. Attachments = every `a[href]` in the
+  "Bijlage" row (fallback: links with attachment/download in the href), absolute. Errors: `.needsLogin` (relay redirect, 401/403, or a login/SAML
+  page came back), `.noId` (no valvas id in the event), `.parse` (unexpected page). Ids: `TP.data.advalvasId(x)` / `advalvasUrl(x)` (url on the
+  valvas host, else `tol-valven~<n>`, or a number).
+- `TP.data.announcementBody(event) → Promise<{title, html (raw), created, cid, aid}>` — course announcement text for a portal event: course id
+  from the url (`/courses/<cid>` or `courseId=`), else `resolveCourseId(sourceId)`; announcement id from the url (`announcements/<aid>`,
+  `announcementId=`) or the event id `ultra~<aid>`, read via `ultraAnnouncement`; when unknown (or 404) the course's
+  `…/announcements?limit=50` is matched by normalized title (drafts never). `TP.data.annIds(event) → {cid, aid}`.
+- **Cache** (both): in memory per tab, 30 min, LRU 40, concurrent calls share one request, **failures are never cached**. Not persisted on purpose
+  (school notices stay off disk; `chrome.storage` holds no message text).
+- `TP.data.markUnread(events) → Promise<bool>` — events `read:false` (optimistic, rev bump), removed from `state.read` and `state.pendingRead`;
+  with *sync* on a best-effort `PATCH /portal/api/batch/events` `read:false` (not queued; if Toledo ignores it the next refresh shows the item read).
+
+**`TP.annSheet`** (`src/views/announcements.js`, styles in `announcements.css`) — every announcement row opens it: Mededelingen (filtered +
+searched list), Overzicht › Mededelingen (that section; announcement items in Nieuw open alone), the course page's Mededelingen (Ultra REST
+items via `fromUltra`, matched to their portal event for read state) and ⌘K (the palette's announcement results). No inline expansion any more.
+```
+TP.annSheet.open(eventOrItem, { list, opener, onRead(item), onUnread(item), rowFor(item) → element })
+TP.annSheet.fromEvent(event) / fromUltra(ultraAnnouncement, {cid, luId, name, color}) → Item ; TP.annSheet.isOpen()
+Item = { key, kind:'course'|'school', title, source, color, author, date, url (absolute), event|null, html|null, cid?, aid?, read }
+```
+- Built on **`TP.shell.detail`** (new option `onKey(ev)`: keydowns inside the sheet; preventDefault to claim them). The sheet sets
+  `data-sheet="announcement"` on `.tp-detail` (wider: 640 px; `grid-auto-rows: max-content` so long messages scroll instead of squeezing groups).
+  Motion: the shell's CSS (scale/fade, slide-up below 700 px); stepping animates the body with `TP.motion.enter`.
+- Content: prev/next bar ("2 van 16", ↑/↓ buttons with `aria-disabled` at the ends), meta group (course/source with colour dot, author or
+  Ad Valvas "Van"/"Aan", full date), body (skeleton → sanitized text | sign-in state | error with "Opnieuw" | "can't read" note), attachments
+  (new tab), actions: "Open in Ultra/Ad Valvas" (external, always when the event has a url) and "Markeer als (on)gelezen".
+- Keys: ↓/j next, ↑/k previous (Mail-like; the body scrolls with the wheel/PageUp/PageDown/Space); Esc closes and returns focus to the row of the
+  item shown last (`rowFor`, else the opener). Showing an item marks it read (`TP.data.markRead`, unchanged flow); views keep it listed under
+  "Ongelezen" via `onRead`.
+- Ad Valvas sign-in: the "Open en meld aan" link opens the message URL top-level in a new tab; on `visibilitychange` → visible the shown item is
+  retried automatically (also "Opnieuw").
+- Tests: `tests/unit/advalvas.test.js` (ids, cache, needs-login, announcementBody, markUnread), `tests/unit/background.test.js` (relay rule),
+  `tests/e2e/announcements.e2e.js` (parser on `tests/fixtures/advalvas-message.html` in Chromium + all flows); the mock serves the valvas host
+  (`rec.valvas.mode = 'ok'|'login'`; "login" returns an IdP-like SAML page with 200 because Playwright cannot route a mocked 3xx's follow-up).

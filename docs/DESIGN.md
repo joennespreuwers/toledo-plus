@@ -106,7 +106,7 @@ The UI must read as **Toledo+, not Toledo**: our own name, mark, type and colour
 - **Large title** at top of content (largeTitle), optional subtitle line (label-2), e.g. date + "Last updated 14:02".
 - **Inset grouped list** with optional section header (Title 2 + trailing plain action) and footer (footnote, label-2).
 - **Row**: leading 28px icon tile (radius 7, --fill) or color dot; title (body, 1 line ellipsis, full name in `title` attr); secondary (subhead, label-2); trailing value/badge/chevron (label-3). Hover = --fill. Whole row is the hit target.
-- **Disclosure** (content tree, feed groups, announcements): chevron trailing (rotates 90°, `--dur-2` `--ease-out`; none under reduced motion), `<details>/<summary>` acceptable (native disclosure semantics); opening animates per **Motion** below. Indent 20px per level, max ~3 levels visible.
+- **Disclosure** (content tree, feed groups): chevron trailing (rotates 90°, `--dur-2` `--ease-out`; none under reduced motion), `<details>/<summary>` acceptable (native disclosure semantics); opening animates per **Motion** below. Indent 20px per level, max ~3 levels visible. Announcements are not disclosures: a row opens the **announcement sheet** (detail sheet, 640px: full text, ↑/↓ / j/k through the list, "Open in Ultra/Ad Valvas", "Markeer als ongelezen"; see ARCHITECTURE › Addendum v1.6).
 - **Badge**: min 18px tall, padding 0 6, 12px 600, pill; tint for new, red for overdue, gray neutral; "99+"; `aria-label="3 nieuw"`.
 - **Page actions** ("Zet in agenda", "Bewerk", "Zet in zijbalk", "Klassieke Toledo", "Open KU Loket"): only via `ctx.setActions` — tinted buttons right of the large title, the same on every page. Views don't build their own header buttons. An action on one list ("Alles gelezen") sits in that list's section header instead, next to what it acts on (Overzicht › Nieuw, Mededelingen).
 - **"See all"** links to another page: a plain section-header action (`TP.ui.section({actions})`, e.g. "Alle deadlines", "Agenda", "Alle vakken"), never a row inside the card. (In-place expansion like "Toon alle (12)" / "Nog 5 in …" stays inside the list.)
@@ -160,10 +160,10 @@ where possible, interruptible, never blocks input, no layout shift; reduced moti
 - Lists (filter, search, sort, reorder, data refresh): FLIP — rows matched by key across re-renders glide to their new place,
   new rows fade up, removed rows fade out as inert ghosts while the rest closes the gap. Only rows near the viewport animate.
   After ↻, new rows get a brief tint.
-- Disclosures: Nieuw groups, documents, announcements, "Ouder dan een week", hidden courses animate their height; **content-tree
+- Disclosures: Nieuw groups, documents, "Ouder dan een week", hidden courses animate their height; **content-tree
   folders fade/rise their rows instead** (a height animation re-lays out the long course column every frame — measured
   +3 janky frames at 4× CPU throttling). Chevrons rotate.
-- Dialogs: ⌘K and the detail sheet scale+fade (phones: slide up), the More sheet slides up, backdrops fade — in and out.
+- Dialogs: ⌘K and the detail sheet (deadlines, announcements) scale+fade (phones: slide up), the More sheet slides up, backdrops fade — in and out.
   Account menu scales from its corner; agenda popovers scale in from their anchor; toasts slide up and stack (max 3).
 - Controls: segmented controls have one sliding pill; switches a spring thumb that stretches while pressed; the phone tab bar
   a sliding selection pill; buttons/tabs press to 0.97; hovers 120 ms. The sidebar column animates between rail and expanded,

@@ -427,20 +427,36 @@
 
   function announcementsHtml() {
     const items = ((st.data && st.data.announcements) || []).filter((a) => !a.draft).slice().sort((a, b) => ms(b.created) - ms(a.created)).slice(0, 8);
-    const rows = items.map((a, i) => {
+    const rows = items.map((a) => {
       const when = ms(a.created);
       const fresh = !!st.prevVisit && when > st.prevVisit;
+      // The row opens the announcement sheet (TP.annSheet: full text, up/down through this list).
       return `
-        <details class="cv-ann" data-keep="an:${esc(a.id)}" data-lq="${esc((String(a.title || '') + ' ' + TP.util.plain(a.body || '')).toLowerCase())}" ${i === 0 && fresh ? 'open' : ''}>
-          <summary class="cv-row cv-row-main" data-fk="an:${esc(a.id)}">
+        <button type="button" class="cv-row cv-row-main cv-ann" data-action="ann" data-id="${esc(a.id)}" data-fk="an:${esc(a.id)}" aria-haspopup="dialog" data-lq="${esc((String(a.title || '') + ' ' + TP.util.plain(a.body || '')).toLowerCase())}">
             <span class="cv-new">${fresh ? `<span class="cv-new-dot" role="img" aria-label="${esc(t('course.new'))}"></span>` : ''}</span>
             <span class="cv-main"><span class="cv-name${fresh ? ' cv-strong' : ''}" title="${esc(a.title)}">${esc(a.title)}</span><span class="cv-meta">${esc(when ? TP.fmt.ago(when) : '')}</span></span>
             <span class="cv-chev">${TP.ui.icon('chevronRight', { size: 14 })}</span>
-          </summary>
-          <div class="cv-doc-body"><div class="cv-prose">${TP.util.sanitize(a.body || '')}</div></div>
-        </details>`;
+        </button>`;
     }).join('');
     return sec('announcements', t('course.announcements'), TP.ui.group(rows || TP.ui.empty(t('course.noAnnouncements')), { cls: 'cv-group' }));
+  }
+
+  /** Announcement sheet for a row of the course's announcements section (prev/next through the visible rows). */
+  function openAnnouncement(el) {
+    if (!TP.annSheet || !st.data) return;
+    const all = ((st.data && st.data.announcements) || []).filter((x) => !x.draft);
+    const c = st.luId ? TP.data.course(st.luId) : null;
+    const meta = { cid: st.cid, luId: st.luId || (st.data.course && st.data.course.courseId) || null, name: (c && c.name) || TP.util.courseName((st.data.course && st.data.course.name) || ''), color: c ? c.color : null };
+    const sec = el.closest('section') || el.parentElement;
+    const ids = [...sec.querySelectorAll('[data-action="ann"][data-id]')].filter((r) => !r.hidden && !r.closest('[hidden]')).map((r) => r.dataset.id);
+    const items = ids.map((id) => all.find((x) => x.id === id)).filter(Boolean).map((x) => TP.annSheet.fromUltra(x, meta));
+    const target = items.find((x) => x.aid === el.dataset.id);
+    if (!target) return;
+    TP.annSheet.open(target, {
+      list: items,
+      opener: el,
+      rowFor: (it) => { try { return cur && cur.root.querySelector(`[data-action="ann"][data-id="${cssEsc(it.aid)}"]`); } catch { return null; } },
+    });
   }
 
   function teachersHtml() {
@@ -716,6 +732,7 @@
           return;
         }
         if (act === 'focus-item') { ev.preventDefault(); focusOn(a.dataset.id); return; }
+        if (act === 'ann') { ev.preventDefault(); openAnnouncement(a); return; }
         if (act.startsWith('ft-') && TP.fulltext) { // full-text: run / confirm / stop (src/core/fulltext.js)
           ev.preventDefault();
           TP.fulltext.courseAction(act, { cid: st.cid, luId: st.luId, roots: st.partial || !st.data ? null : st.data.roots, root });
