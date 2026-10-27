@@ -33,37 +33,67 @@
 <script>/* theme before first paint: data-theme="light|dark" (system = no attribute); see assets/site.js */(function(){try{var t=localStorage.getItem('tp-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}})()</script>
 <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/inter-latin-wght-normal.woff2" crossorigin>
 <link rel="stylesheet" href="/assets/site.css">
+<script src="/assets/site.js" defer></script>
 </head>
 <body>
-<a class="skip-link" href="#main">Naar de inhoud</a>
+<a class="skip-link" href="#main" data-i="skip">Naar de inhoud</a>
 <header class="nav">
   <div class="wrap">
-    <a class="brand" href="/"><svg class="logo" width="28" height="28" viewBox="0 0 128 128" aria-hidden="true" focusable="false"><rect x="4" y="4" width="120" height="120" rx="28" fill="#1F2430"/><path d="M44 50H36A14 14 0 0 0 36 78H44Z" fill="#E3285A"/><path d="M84 50H92A14 14 0 0 1 92 78H84Z" fill="#E3285A"/><rect x="50" y="22" width="28" height="84" rx="14" fill="#EE8B35"/></svg><span class="wordmark">Toledo<span class="plus">+</span></span></a>
-    <nav aria-label="Hoofdnavigatie"><ul class="nav-links"><li><a href="/#features">Functies</a></li><li><a href="/#install">Installeren</a></li><li><a href="/#privacy">Privacy</a></li><li><a href="/#faq">Vragen</a></li></ul></nav>
+    <a class="brand" href="/" data-p="/"><svg class="logo" width="28" height="28" viewBox="0 0 128 128" aria-hidden="true" focusable="false"><rect x="4" y="4" width="120" height="120" rx="28" fill="#1F2430"/><path d="M44 50H36A14 14 0 0 0 36 78H44Z" fill="#E3285A"/><path d="M84 50H92A14 14 0 0 1 92 78H84Z" fill="#E3285A"/><rect x="50" y="22" width="28" height="84" rx="14" fill="#EE8B35"/></svg><span class="wordmark">Toledo<span class="plus">+</span></span></a>
+    <nav aria-label="Hoofdnavigatie" data-i-label="nav"><ul class="nav-links"><li><a href="/#features" data-p="/#features" data-i="features">Functies</a></li><li><a href="/#install" data-p="/#install" data-i="install">Installeren</a></li><li><a href="/#privacy" data-p="/#privacy" data-i="privacy">Privacy</a></li><li><a href="/#faq" data-p="/#faq" data-i="faq">Vragen</a></li></ul></nav>
     <div class="nav-end">
       <button type="button" class="theme-toggle" data-theme-toggle hidden aria-label="Thema"><svg class="ti ti-light" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></svg><svg class="ti ti-dark" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg></button>
-      <nav class="lang" aria-label="Taal"><a href="/" hreflang="nl" lang="nl" aria-current="true"><abbr title="Nederlands" style="text-decoration:none">NL</abbr><span class="visually-hidden"> – Nederlands</span></a><a href="/en/" hreflang="en" lang="en"><abbr title="English" style="text-decoration:none">EN</abbr><span class="visually-hidden"> – English</span></a><a href="/fr/" hreflang="fr" lang="fr"><abbr title="Français" style="text-decoration:none">FR</abbr><span class="visually-hidden"> – Français</span></a></nav>
-      <a class="btn btn-secondary btn-small nav-demo" href="/demo/">Demo</a>
-      <a class="btn btn-primary btn-small" href="/#install">Download</a>
+      <nav class="lang" aria-label="Taal" data-i-label="lang"><a href="/" hreflang="nl" lang="nl" aria-current="true"><abbr title="Nederlands">NL</abbr><span class="visually-hidden"> – Nederlands</span></a><a href="/en/" hreflang="en" lang="en"><abbr title="English">EN</abbr><span class="visually-hidden"> – English</span></a><a href="/fr/" hreflang="fr" lang="fr"><abbr title="Français">FR</abbr><span class="visually-hidden"> – Français</span></a></nav>
+      <a class="btn btn-secondary btn-small nav-demo" href="/demo/?lang=nl" data-demo data-i="demo">Demo</a>
+      <a class="btn btn-primary btn-small" href="/#install" data-p="/#install" data-i="install">Installeren</a>
+      <details class="nav-menu"><summary aria-label="Menu" title="Menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary><ul><li><a href="/#features" data-p="/#features" data-i="features">Functies</a></li><li><a href="/#install" data-p="/#install" data-i="install">Installeren</a></li><li><a href="/#privacy" data-p="/#privacy" data-i="privacy">Privacy</a></li><li><a href="/#faq" data-p="/#faq" data-i="faq">Vragen</a></li><li><a href="/demo/?lang=nl" data-demo data-i="demo">Demo</a></li></ul></details>
     </div>
   </div>
 </header>
 <main id="main" class="doc notfound">
   <div class="wrap">
     <p class="big" aria-hidden="true">404</p>
-    <h1>Deze pagina bestaat niet.</h1>
-    <p class="meta">Misschien is de link oud of zit er een typfout in.</p>
-    <p class="meta" lang="en">This page doesn’t exist. <a href="/en/">Back to Toledo+</a></p>
-    <p class="meta" lang="fr">Cette page n’existe pas. <a href="/fr/">Retour à Toledo+</a></p>
-    <p style="margin-top:32px"><a class="btn btn-primary" href="/">Terug naar Toledo+</a></p>
+    <h1 data-i="h1">Deze pagina bestaat niet.</h1>
+    <p class="meta" data-i="desc">Misschien is de link oud of zit er een typfout in.</p>
+    <p class="meta" lang="en" data-nojs>This page doesn’t exist. <a href="/en/">Back to Toledo+</a></p>
+    <p class="meta" lang="fr" data-nojs>Cette page n’existe pas. <a href="/fr/">Retour à Toledo+</a></p>
+    <p style="margin-top:32px"><a class="btn btn-primary" href="/" data-p="/" data-i="back">Terug naar Toledo+</a></p>
   </div>
 </main>
 <footer class="footer">
   <div class="wrap">
-    <ul class="footer-links"><li><a href="https://github.com/joennespreuwers/toledo-plus">GitHub</a></li><li><a href="/privacy.html">Privacy</a></li><li><a href="/terms.html">Voorwaarden</a></li><li><a href="/demo/">Demo</a></li><li><a href="https://github.com/joennespreuwers/toledo-plus/blob/main/CHANGELOG.md">Wat is nieuw</a></li><li><a href="https://github.com/joennespreuwers/toledo-plus/issues/new/choose">Probleem melden</a></li></ul>
-    <p>Alle beelden en de demo tonen fictieve gegevens.</p>
-    <div class="rule"><p>Toledo is een product van de KU Leuven. Toledo+ is een onafhankelijk studentenproject en is niet verbonden aan de KU Leuven, de instellingen van de associatie of Blackboard/Anthology.</p><p>© 2026 Joenne Spreuwers · MIT-licentie</p></div>
+    <ul class="footer-links"><li><a href="https://github.com/joennespreuwers/toledo-plus">GitHub</a></li><li><a href="/privacy.html" data-p="/privacy.html" data-i="privacy">Privacy</a></li><li><a href="/terms.html" data-p="/terms.html" data-i="terms">Voorwaarden</a></li><li><a href="/demo/?lang=nl" data-demo data-i="demo">Demo</a></li><li><a href="https://github.com/joennespreuwers/toledo-plus/blob/main/CHANGELOG.md" data-i="news">Wat is nieuw</a></li><li><a href="https://github.com/joennespreuwers/toledo-plus/issues/new/choose" data-i="report">Probleem melden</a></li></ul>
+    <p data-i="fict">Alle beelden en de demo tonen fictieve gegevens.</p>
+    <div class="rule"><p data-i="rule">Toledo is een product van de KU Leuven. Toledo+ is een onafhankelijk studentenproject en is niet verbonden aan de KU Leuven, de instellingen van de associatie of Blackboard/Anthology.</p><p data-i="licence">© 2026 Joenne Spreuwers · MIT-licentie</p></div>
   </div>
 </footer>
+<script>/* One language: Dutch without JS (with the EN/FR lines above), otherwise the visitor's browser language. */
+(function () {
+  var T = {
+    en: { title: 'Page not found — Toledo+', skip: 'Skip to content', nav: 'Main navigation', lang: 'Language', features: 'Features', install: 'Install', privacy: 'Privacy', faq: 'FAQ', demo: 'Demo',
+      h1: 'This page doesn’t exist.', desc: 'Maybe the link is old or has a typo.', back: 'Back to Toledo+', terms: 'Terms', news: 'What’s new', report: 'Report a problem',
+      fict: 'All images and the demo show fictitious data.', rule: 'Toledo is a KU Leuven product. Toledo+ is an independent student project, not affiliated with KU Leuven, the institutions of its association or Blackboard/Anthology.', licence: '© 2026 Joenne Spreuwers · MIT licence' },
+    fr: { title: 'Page introuvable — Toledo+', skip: 'Aller au contenu', nav: 'Navigation principale', lang: 'Langue', features: 'Fonctions', install: 'Installer', privacy: 'Vie privée', faq: 'Questions', demo: 'Démo',
+      h1: 'Cette page n’existe pas.', desc: 'Le lien est peut-être ancien ou contient une faute de frappe.', back: 'Retour à Toledo+', terms: 'Conditions', news: 'Nouveautés', report: 'Signaler un problème',
+      fict: 'Toutes les images et la démo montrent des données fictives.', rule: 'Toledo est un produit de la KU Leuven. Toledo+ est un projet étudiant indépendant, sans lien avec la KU Leuven, les établissements de son association ou Blackboard/Anthology.', licence: '© 2026 Joenne Spreuwers · Licence MIT' },
+  };
+  var list = [].concat(navigator.languages || [], navigator.language || []);
+  var l = 'nl';
+  for (var i = 0; i < list.length; i++) { var c = String(list[i]).slice(0, 2).toLowerCase(); if (c === 'nl' || c === 'en' || c === 'fr') { l = c; break; } }
+  document.querySelectorAll('[data-nojs]').forEach(function (el) { el.remove(); });
+  document.querySelectorAll('.lang a').forEach(function (a) { if (a.getAttribute('lang') === l) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current'); });
+  document.querySelectorAll('[data-demo]').forEach(function (a) { a.setAttribute('href', '/demo/?lang=' + l); });
+  if (l === 'nl') return;
+  var t = T[l], pre = '/' + l;
+  document.documentElement.lang = l;
+  document.title = t.title;
+  document.querySelectorAll('[data-i]').forEach(function (el) { var k = el.getAttribute('data-i'); if (t[k]) el.textContent = t[k]; });
+  document.querySelectorAll('[data-i-label]').forEach(function (el) { el.setAttribute('aria-label', t[el.getAttribute('data-i-label')]); });
+  document.querySelectorAll('[data-p]').forEach(function (a) {
+    // the brand link keeps its logo: only its href changes
+    a.setAttribute('href', pre + a.getAttribute('data-p'));
+  });
+})();
+</script>
 </body>
 </html>

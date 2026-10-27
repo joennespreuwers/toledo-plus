@@ -2,6 +2,8 @@
    1. theme toggle (Licht ⇄ Donker, follows the system until the first click): <html data-theme>, remembered in
       localStorage 'tp-theme' (also read by /demo/)
    2. copy buttons for chrome://extensions etc. (browsers don't allow linking to those pages), with a "Gekopieerd" pop
+      (also announced in a live region); Edge-specific install copy (data-b), the narrow-screen header menu, and the
+      language switch keeping the current #section
    3. scroll reveal of sections below the fold (IntersectionObserver; nothing is hidden unless this script ran)
    4. smooth wheel scrolling with Lenis (assets/vendor/lenis, MIT), loaded on demand — never under reduced motion,
       touch stays native; anchor links glide with the sticky-nav offset and move focus to their target.
@@ -42,7 +44,8 @@
     });
     document.querySelectorAll('[data-theme-toggle]').forEach(function (b) {
       b.setAttribute('data-mode', eff); // icon = the theme you see now
-      if (T) { b.setAttribute('aria-label', T[eff]); b.title = eff === 'dark' ? T.toLight : T.toDark; }
+      // The name says what a click does (one name for screen readers and the tooltip); the icon shows the current theme.
+      if (T) { var act = eff === 'dark' ? T.toLight : T.toDark; b.setAttribute('aria-label', act); b.title = act; }
     });
   }
   document.querySelectorAll('[data-theme-toggle]').forEach(function (b) {
@@ -60,6 +63,18 @@
   window.addEventListener('storage', function (e) { if (e.key === 'tp-theme') { mode = stored(); paint(true); } });
 
   // ---------------------------------------------------------------- 2. copy buttons
+  // "Gekopieerd" is also announced: a polite live region (the button keeps its own name).
+  var live = null;
+  function announce(msg) {
+    if (!live) {
+      live = document.createElement('p');
+      live.className = 'visually-hidden';
+      live.setAttribute('aria-live', 'polite');
+      document.body.appendChild(live);
+    }
+    live.textContent = '';
+    setTimeout(function () { live.textContent = msg; }, 60);
+  }
   if (navigator.clipboard && window.isSecureContext) {
     document.querySelectorAll('[data-copy]').forEach(function (b) {
       b.hidden = false;
@@ -70,12 +85,38 @@
           void b.offsetWidth; // restart the pop when clicked twice
           b.classList.add('copied');
           b.textContent = b.getAttribute('data-copied') || '✓';
+          announce((b.getAttribute('data-copied') || '✓') + ': ' + b.getAttribute('data-copy'));
           clearTimeout(b.__t);
           b.__t = setTimeout(function () { b.classList.remove('copied'); b.textContent = label; }, 1600);
         }, function () {});
       });
     });
   }
+
+  // ---------------------------------------------------------------- 2b. install guide for Edge, header menu, language switch
+  // Edge visitors see edge://extensions and Edge's wording (elements marked data-b="edge"); everyone else, and every
+  // visitor without JS, sees the Chrome-first copy that also names Edge (data-b="chrome").
+  if (/\bEdg\//.test(navigator.userAgent || '')) {
+    root.setAttribute('data-browser', 'edge');
+    document.querySelectorAll('[data-b]').forEach(function (el) { el.hidden = el.getAttribute('data-b') !== 'edge'; });
+  }
+  // Header menu (<details>, narrow screens): close it after a choice, on Escape and on a click elsewhere.
+  document.querySelectorAll('.nav-menu').forEach(function (m) {
+    m.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('a')) m.open = false; });
+    m.addEventListener('keydown', function (e) { if (e.key === 'Escape' && m.open) { m.open = false; var s = m.querySelector('summary'); if (s) s.focus(); } });
+    document.addEventListener('click', function (e) { if (m.open && !m.contains(e.target)) m.open = false; });
+  });
+  // Home pages: switching language keeps the section you are reading (#install, #faq …).
+  function langHash() {
+    if (!/\/$/.test(location.pathname)) return;
+    var h = /^#[\w-]+$/.test(location.hash) ? location.hash : '';
+    document.querySelectorAll('.lang a[href]').forEach(function (a) {
+      var base = a.getAttribute('href').replace(/#.*$/, '');
+      if (/\/$/.test(base)) a.setAttribute('href', base + h);
+    });
+  }
+  langHash();
+  window.addEventListener('hashchange', langHash);
 
   // ---------------------------------------------------------------- 3. scroll reveal
   if (!reduced && 'IntersectionObserver' in window) {
@@ -119,7 +160,7 @@
     var t = u.hash === '#top' ? document.body : document.getElementById(decodeURIComponent(u.hash.slice(1)));
     if (!t || !lenis) return; // native smooth scroll + scroll-padding handle it
     e.preventDefault();
-    if (location.hash !== u.hash) history.pushState(null, '', u.hash);
+    if (location.hash !== u.hash) { history.pushState(null, '', u.hash); langHash(); }
     document.querySelectorAll('.reveal').forEach(function (el) { el.classList.add('in'); });
     // a number (not the element): Lenis would subtract html's scroll-padding-top on top of the offset
     var y = u.hash === '#top' ? 0 : Math.max(0, window.scrollY + t.getBoundingClientRect().top - navH());

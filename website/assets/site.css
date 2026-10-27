@@ -167,13 +167,29 @@ html { scrollbar-color: color-mix(in srgb, var(--label) 26%, transparent) transp
 .wordmark { font-weight: 800; font-size: 1.1875rem; letter-spacing: -.03em; }
 .wordmark .plus { color: var(--tint-text); margin-left: .02em; }
 .nav-links { display: none; gap: 24px; margin: 0 0 0 auto; padding: 0; list-style: none; font-size: .875rem; }
-.nav-links a { color: var(--label); }
+.nav-links a { color: var(--label); display: inline-flex; align-items: center; min-height: 44px; } /* target ≥ 24 px (WCAG 2.5.8), 44 px for touch */
 .nav-links a:hover { text-decoration: none; color: var(--tint-text); }
 .nav-end { display: flex; align-items: center; gap: 12px; margin-left: auto; }
 .nav-links + .nav-end { margin-left: 0; }
-.nav-end .nav-demo { white-space: nowrap; }
-@media (max-width: 559px) { .nav-end .nav-demo { display: none; } } /* phones: the hero already links to the demo */
-@media (min-width: 834px) { .nav-links { display: flex; } }
+.nav-end .btn-small { white-space: nowrap; }
+@media (max-width: 559px) { .nav-end .nav-demo { display: none; } } /* phones: the menu and the hero link to the demo */
+@media (min-width: 834px) { .nav-links { display: flex; } .nav-menu { display: none; } }
+/* below 834 px the section links (and Demo/Install when they no longer fit) live in a small menu: <details>, works without JS */
+.nav-menu { position: relative; }
+.nav-menu > summary {
+  list-style: none; display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 999px;
+  background: var(--fill); color: var(--label); cursor: pointer; transition: background-color var(--dur-1) var(--ease);
+}
+.nav-menu > summary::-webkit-details-marker { display: none; }
+.nav-menu > summary:hover, .nav-menu[open] > summary { background: var(--tint-soft); color: var(--tint-text); }
+.nav-menu > summary svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; }
+.nav-menu ul {
+  position: absolute; right: 0; top: calc(100% + 10px); z-index: 60; min-width: 200px; margin: 0; padding: 6px; list-style: none;
+  background: var(--card); border-radius: 14px; box-shadow: var(--shadow-card), 0 18px 40px -16px rgba(31, 36, 48, .35);
+}
+.nav-menu li + li { border-top: .5px solid var(--separator); }
+.nav-menu a { display: flex; align-items: center; min-height: 44px; padding: 0 12px; color: var(--label); border-radius: 8px; }
+.nav-menu a:hover { text-decoration: none; background: var(--fill); }
 .lang { display: flex; gap: 2px; font-size: .8125rem; font-weight: 600; background: var(--fill); padding: 2px; border-radius: 999px; }
 .lang a { color: var(--label-2); padding: 4px 9px; border-radius: 999px; min-width: 24px; min-height: 24px; text-align: center; }
 .lang a:hover { text-decoration: none; color: var(--label); }
@@ -186,6 +202,7 @@ html { scrollbar-color: color-mix(in srgb, var(--label) 26%, transparent) transp
   background: var(--fill); color: var(--label); cursor: pointer;
   transition: background-color var(--dur-1) var(--ease), scale var(--dur-1) var(--ease);
 }
+.theme-toggle[hidden] { display: none; } /* pages without assets/site.js (and no-JS): no dead button */
 .theme-toggle:hover { background: var(--tint-soft); color: var(--tint-text); }
 .theme-toggle:active { scale: .92; }
 .theme-toggle .ti { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; display: none; }
@@ -232,6 +249,9 @@ html { scrollbar-color: color-mix(in srgb, var(--label) 26%, transparent) transp
 .hero .cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 16px; margin-top: 30px; }
 .hero .demo-link { margin: 18px 0 0; }
 .hero .fine { margin: 10px 0 0; font-size: .875rem; color: var(--label-2); display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 18px; }
+/* phones: Toledo+ installs on a computer — say so next to the Download button */
+.hero .phone-note { display: none; max-width: 30em; margin: 14px auto 0; font-size: .9375rem; color: var(--label-2); }
+@media (max-width: 699px) { .hero .phone-note { display: block; } }
 
 .stage { margin: clamp(40px, 6vw, 72px) auto 0; width: min(1200px, calc(100% - 2 * var(--gutter))); padding-bottom: clamp(48px, 8vw, 96px); }
 /* browser-window frame */
@@ -316,6 +336,7 @@ html { scrollbar-color: color-mix(in srgb, var(--label) 26%, transparent) transp
 }
 .steps h3 { font-size: 1.0625rem; margin: 4px 0 4px; }
 .steps p { margin: 0; }
+.steps p + p { margin-top: 8px; }
 .info { display: grid; gap: 16px; grid-template-columns: 1fr; }
 @media (min-width: 734px) { .info { grid-template-columns: 1fr 1fr; } }
 .info .card p + p { margin-top: 8px; }
@@ -407,7 +428,7 @@ html { scrollbar-color: color-mix(in srgb, var(--label) 26%, transparent) transp
 
 /* ------------------------------------------------------------ small phones */
 @media (max-width: 419px) {
-  .nav .btn-small { display: none; }
+  .nav .btn-small { display: none; } /* Demo and Install are in the menu */
   .nav .wrap { gap: 10px; }
   .nav-end { gap: 6px; }
   .lang a { padding: 4px 7px; }
@@ -454,6 +475,12 @@ html { scrollbar-color: color-mix(in srgb, var(--label) 26%, transparent) transp
   :root:not([data-theme="light"]) { --label-2: #D4D8E0; --separator: rgba(235, 237, 245, .4); }
 }
 @media (prefers-contrast: more) { :root[data-theme="dark"] { --label-2: #D4D8E0; --separator: rgba(235, 237, 245, .4); } }
+/* Windows high contrast: backgrounds are dropped, so buttons get a border and the current language an underline */
+@media (forced-colors: active) {
+  .btn, .copy, .theme-toggle, .nav-menu > summary, .lang a { border: 1px solid ButtonText; }
+  .lang a[aria-current="true"] { text-decoration: underline; text-underline-offset: .2em; border-width: 2px; }
+  .steps li::before { border: 1px solid CanvasText; }
+}
 @media print {
   .nav, .skip-link, .stage { display: none !important; }
 }
