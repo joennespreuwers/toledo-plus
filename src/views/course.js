@@ -116,21 +116,9 @@
   }
 
   // ---------- focus / open state ----------
-  function snapFocus(root) {
-    const a = root.getRootNode().activeElement;
-    if (!a || !root.contains(a)) return null;
-    if (a.dataset && a.dataset.fk) return { fk: a.dataset.fk };
-    const d = a.tagName === 'SUMMARY' && a.parentElement && a.parentElement.matches('details.cv-folder') ? a.parentElement : null;
-    if (d) return { folder: d.dataset.id };
-    return null;
-  }
-  function restoreFocus(root, f) {
-    if (!f) return;
-    const el = f.folder
-      ? root.querySelector(`details.cv-folder[data-id="${cssEsc(f.folder)}"] > summary`)
-      : root.querySelector(`[data-fk="${cssEsc(f.fk)}"]`);
-    if (el) el.focus({ preventScroll: true });
-  }
+  // TP.shell.focus: the same control by its data-fk / folder id; when it is gone the next row or the section heading.
+  const snapFocus = (root) => TP.shell.focus.snap(root);
+  const restoreFocus = (root, f) => TP.shell.focus.restore(f, { scope: root });
   function storedOpen(cid) {
     const all = (TP.state.get() || {}).openFolders || {};
     return Array.isArray(all[cid]) ? new Set(all[cid]) : null;
@@ -506,6 +494,10 @@
       if (hadView) root.querySelectorAll('.cv-view details[data-keep]').forEach((d) => { d.open = keep.has(d.dataset.keep); });
     };
     if (TP.motion && hadView) TP.motion.flip(root, swap); else swap();
+    if (st.hl && st.hl.fk && Date.now() < st.hl.until) {
+      const f = root.querySelector(`[data-tree] [data-fk="${cssEsc(st.hl.fk)}"]`);
+      (f && (f.closest('.cv-leaf, details.cv-doc, details.cv-folder > summary') || f))?.classList.add('cv-focus');
+    }
     root.dataset.busyOwn = '1';
     if (!st.error && (!st.data || st.partial)) root.setAttribute('aria-busy', 'true'); else root.removeAttribute('aria-busy');
     syncTitle();
@@ -588,7 +580,9 @@
     el.focus({ preventScroll: true });
     const row = el.closest('.cv-leaf, details.cv-doc, details.cv-folder > summary') || el;
     row.classList.add('cv-focus');
-    setTimeout(() => row.classList.remove('cv-focus'), 2400);
+    // a re-render right after (data arriving) rebuilds the row: paint() puts the highlight back until it ends
+    st.hl = { fk: el.dataset.fk || null, until: Date.now() + 2400 };
+    setTimeout(() => { row.classList.remove('cv-focus'); cur?.root.querySelector('.cv-focus')?.classList.remove('cv-focus'); }, 2400);
   }
 
   // ---------- search ----------

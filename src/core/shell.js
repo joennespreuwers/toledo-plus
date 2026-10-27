@@ -379,6 +379,7 @@
     const collapsed = !!TP.state?.get?.()?.ui?.sidebarCollapsed;
     app.classList.toggle('sb-collapsed', collapsed);
     app.classList.toggle('sb-rail', isRail());
+    const focus = safe(() => snapFocus(app), null); // e.g. the language radio: the rebuild must not drop focus to <body>
     app.innerHTML = `
 <a class="tp-skip" href="#tp-main" data-shell="skip">${esc(t('shell.skip'))}</a>
 <div class="tp-scrim" data-shell="scrim" hidden></div>
@@ -453,6 +454,7 @@
     renderMenu();
     renderBanners();
     updateSearchUi();
+    if (focus) safe(() => restoreFocus(focus));
   }
   const $ = (sel) => app?.querySelector(sel);
 
@@ -542,7 +544,7 @@
     const next = on == null ? !inSidebar(luId) : !!on;
     safe(() => Promise.resolve(TP.settings.setCourse(luId, { inSidebar: next })).catch(() => {}));
     const name = safe(() => TP.data.course(luId)?.name, '') || '';
-    announce(t(next ? 'shell.sbAdded' : 'shell.sbRemoved', { name }));
+    toast(t(next ? 'shell.sbAdded' : 'shell.sbRemoved', { name })); // visible too: on a narrow screen the sidebar isn't in view
     return next;
   }
 
@@ -772,11 +774,11 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     }
     if (banners.ultra && !banners.auth) {
       const ultra = safe(() => TP.data?.ultraLoginUrl?.(), null) || 'https://ultra.edu.kuleuven.cloud/ultra/course';
-      html += `<div class="tp-banner" data-banner="ultra">${icon('warning', { size: 17 })}<span class="tp-banner-text"><strong>${esc(t('shell.ultraTitle'))}</strong> · ${esc(t('shell.ultraText'))}</span>${TP.ui.button(t('shell.ultraOpen'), { kind: 'tinted', attrs: { href: ultra, target: '_blank', rel: 'noopener' } })}</div>`;
+      html += `<div class="tp-banner" data-banner="ultra">${icon('warning', { size: 17 })}<span class="tp-banner-text"><strong>${esc(t('shell.ultraTitle'))}</strong> · ${esc(t('shell.ultraText'))}</span>${TP.ui.button(t('shell.ultraOpen'), { kind: 'tinted', attrs: { href: ultra, target: '_blank', rel: 'noopener', 'aria-description': t('common.newTab') } })}</div>`;
     }
     if (banners.update) {
       const u = banners.update;
-      html += `<div class="tp-banner" data-banner="update">${icon('download', { size: 17 })}<span class="tp-banner-text"><strong>${esc(t('update.banner', { version: u.version }))}</strong> · ${esc(t('update.how'))}</span>${TP.ui.button(t('update.get'), { kind: 'tinted', attrs: { href: u.url, target: '_blank', rel: 'noopener' } })}${TP.ui.button(t('update.dismiss'), { kind: 'plain', attrs: { 'data-shell': 'update-dismiss' } })}</div>`;
+      html += `<div class="tp-banner" data-banner="update">${icon('download', { size: 17 })}<span class="tp-banner-text"><strong>${esc(t('update.banner', { version: u.version }))}</strong> · ${esc(t('update.how'))}</span>${TP.ui.button(t('update.get'), { kind: 'tinted', attrs: { href: u.url, target: '_blank', rel: 'noopener', 'aria-description': t('common.newTab') } })}${TP.ui.button(t('update.dismiss'), { kind: 'plain', attrs: { 'data-shell': 'update-dismiss' } })}</div>`;
     }
     if (el.innerHTML === html) return;
     const kinds = (root) => new Set([...root.querySelectorAll('.tp-banner')].map((b) => b.dataset.banner));
@@ -812,10 +814,11 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     const d = $('.tp-detail');
     if (!d) return null;
     const opener = o.opener || safe(() => shadow.activeElement, null);
-    // The view may re-render while the sheet is open (e.g. "klaar"): remember how to find the opener again.
-    const sel = safe(() => ['data-action', 'data-key', 'data-id', 'data-eid'].map((k) => (opener.getAttribute(k) != null ? `[${k}="${CSS.escape(opener.getAttribute(k))}"]` : '')).join(''), '');
+    // The view may re-render while the sheet is open (e.g. "klaar"): remember how to find the opener again,
+    // or the row after it when the opener's row is gone (TP.shell focus helper).
+    const snap = safe(() => (opener && app.contains(opener) ? snapFocus(current?.root?.contains(opener) ? current.root : app, opener) : null), null);
     const was = d.open ? detail : null;
-    detail = { onAction: o.onAction || null, onKey: o.onKey || null, opener, sel, pushed: !!was?.pushed };
+    detail = { onAction: o.onAction || null, onKey: o.onKey || null, opener, snap, pushed: !!was?.pushed };
     d.querySelector('#tp-detail-title').textContent = o.title || '';
     d.querySelector('.tp-detail-body').innerHTML = o.html || '';
     const copy = d.querySelector('[data-shell="detail-copy"]');
@@ -841,19 +844,22 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     return true;
   }
   function onDetailClosed() {
-    let op = detail?.opener;
-    const sel = detail?.sel;
+    const op = detail?.opener;
+    const snap = detail?.snap;
     // Closed with Esc / ✕ / an action: leave the sheet's history entry too (not when Back closed it, or a navigation
     // already moved on to another URL).
     if (detail?.pushed && !detail.popped && origin === 'portal' && sheetOf(location.hash) != null && !$('.tp-detail')?.open) history.back();
     detail = null;
     const restore = () => {
-      if ((!op || !op.isConnected) && sel) op = safe(() => app.querySelector(sel), null);
+      if (snap) { if (snap.scope && !snap.scope.isConnected && current?.root) snap.scope = current.root; restoreFocus(snap); return; }
       if (op && op.isConnected && shadow.activeElement !== op) safe(() => op.focus({ preventScroll: true }));
     };
     restore();
-    // a pending re-render (e.g. after "klaar") may replace the opener right after: once more when it settled
-    setTimeout(() => { if (!shadow.activeElement || shadow.activeElement === app) { op = null; restore(); } }, 200);
+    // a pending re-render (e.g. after "klaar") may replace or bring back the opener right after: again when it settled
+    // (only while focus is lost or still on the stand-in we picked)
+    const again = () => { const a = shadow.activeElement; if (!a || a === app || a === fellBack) restore(); };
+    setTimeout(again, 200);
+    setTimeout(again, 700);
   }
 
   // ---------------- toast + live region ----------------
@@ -1003,6 +1009,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
       const run = () => safe(() => current.view.onSearch(current.ctx, q));
       if (M()) TP.motion.flip(current.root, run); else run();
       if (nores) nores.hidden = true;
+      if (q) announceVisible(); // views with their own filter: say how many rows are left (none: TP.ui.noResults says it)
       return;
     }
     let n = 0;
@@ -1014,7 +1021,13 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     }
     if (q) announceResults(n);
   }
-  const announceResults = TP.util.debounce((n) => announce(n ? t('shell.results', { n }) : t('common.noResults', { q: searchQ })), 700);
+  const announceResults = TP.util.debounce((n) => { if (n) announce(t('shell.results', { n })); }, 700); // none: TP.ui.noResults says it
+  const announceVisible = TP.util.debounce(() => {
+    const root = current?.root;
+    if (!root || !searchQ) return;
+    const n = safe(() => [...root.querySelectorAll('[data-q], [data-lq]')].filter((el) => !el.closest('[hidden]') && (el.checkVisibility ? el.checkVisibility() : true)).length, 0);
+    if (n) announce(t('shell.results', { n }));
+  }, 700);
 
   // Default filter: hide [data-q] that don't match (a matching ancestor or descendant keeps it),
   // open disclosures that contain matches, hide sections/groups left empty. Returns visible match count.
@@ -1077,23 +1090,86 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     return ctx;
   }
 
-  function captureFocus() {
-    const a = shadow?.activeElement;
-    if (!a || !current?.root?.contains(a)) return null;
-    let sel = null;
-    if (a.id) sel = '#' + CSS.escape(a.id);
-    else if (a.name) sel = `[name="${CSS.escape(a.name)}"]` + (a.type === 'radio' ? `[value="${CSS.escape(a.value)}"]` : '');
-    else if (a.dataset.action) sel = `[data-action="${CSS.escape(a.dataset.action)}"]` + (a.dataset.id ? `[data-id="${CSS.escape(a.dataset.id)}"]` : '') + (a.dataset.key ? `[data-key="${CSS.escape(a.dataset.key)}"]` : '');
-    if (!sel) return null;
-    return { sel, start: safe(() => a.selectionStart, null), end: safe(() => a.selectionEnd, null) };
+  // ---------------- focus that survives a re-render (one helper for every view) ----------------
+  // snapFocus(scope) remembers the focused control by its data keys (data-fk, data-action + data-key/id/lu/day,
+  // name + value …: what identifies "the same control" in the next render, never its position or a per-render id),
+  // plus fallbacks: the next/previous item in the same list and the heading of its section. restoreFocus(snap)
+  // focuses the same control again; when it is gone (a row marked done, "Mark all read" removed its own button,
+  // a banner closed) the first fallback that still exists, else the page's large title — never <body>.
+  // Fallbacks only apply when focus was actually lost, so they never steal focus the student moved elsewhere.
+  const KEY_ATTRS = ['data-action', 'data-shell', 'data-detail-action', 'data-key', 'data-id', 'data-eid', 'data-lu', 'data-day', 'data-route', 'data-sec', 'name'];
+  const cssq = (v) => CSS.escape(String(v));
+  function focusKeyOf(el) {
+    if (!el || el.nodeType !== 1) return null;
+    if (el.dataset?.fk) return `[data-fk="${cssq(el.dataset.fk)}"]`;
+    const parts = KEY_ATTRS.filter((a) => el.getAttribute(a) != null).map((a) => `[${a}="${cssq(el.getAttribute(a))}"]`);
+    if (parts.length && el.name && (el.type === 'radio' || el.type === 'checkbox') && el.value != null) parts.push(`[value="${cssq(el.value)}"]`);
+    if (parts.length) return el.tagName.toLowerCase() + parts.join('');
+    if (el.tagName === 'SUMMARY') { const k = focusKeyOf(el.parentElement); if (k) return `${k} > summary`; }
+    if (el.id && !/^(tp-h|tp-d|st)-/.test(el.id)) return '#' + cssq(el.id); // generated ids (uid/nid) change per render
+    return null;
   }
-  function restoreFocus(f) {
-    if (!f || !current?.root) return;
-    const el = safe(() => current.root.querySelector(f.sel), null);
-    if (!el || el === shadow.activeElement) return;
-    el.focus({ preventScroll: true });
-    if (f.start != null) safe(() => el.setSelectionRange(f.start, f.end));
+  const ITEM = 'li, .tp-row, [role="listitem"], [data-eid], [data-sec]'; // one entry of a list
+  const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), summary, [tabindex]:not([tabindex="-1"])';
+  function itemKey(item, like) {
+    if (!item || item.hidden) return null;
+    // the same kind of control in the neighbouring row (e.g. its "open" button, not its checkbox), else its first one
+    const same = like?.classList?.[0] ? item.querySelector(`${like.tagName.toLowerCase()}.${cssq(like.classList[0])}`) : null;
+    const f = same || (item.matches(FOCUSABLE) ? item : item.querySelector(FOCUSABLE));
+    return focusKeyOf(f);
   }
+  function snapFocus(scope, el) {
+    const rootNode = scope?.getRootNode?.() || shadow;
+    const a = el || rootNode?.activeElement;
+    if (!a || !scope?.contains(a)) return null;
+    const near = [];
+    // the next items in the same list first (where a reader goes on), then the one before
+    const item = a.closest(ITEM);
+    if (item && scope.contains(item) && item !== scope) {
+      for (let s = item.nextElementSibling, n = 0; s && n < 3; s = s.nextElementSibling, n++) { const k = itemKey(s, a); if (k) near.push(k); }
+      const p = item.previousElementSibling; const k = itemKey(p, a); if (k) near.push(k);
+    }
+    const sec = a.closest('section[data-section], [data-section]');
+    if (sec && scope.contains(sec)) near.push(`[data-section="${cssq(sec.dataset.section)}"] :is(h2, h3)`);
+    return { el: a, sel: focusKeyOf(a), near, scope, rootNode, start: safe(() => a.selectionStart, null), end: safe(() => a.selectionEnd, null) };
+  }
+  /** Focus `el` (a heading gets tabindex=-1 first). → true when it took focus. */
+  function focusEl(el, scroll) {
+    if (!el || !el.isConnected || el.hidden || el.closest('[hidden], [inert]')) return false;
+    if (!el.matches(FOCUSABLE) && !el.hasAttribute('tabindex')) el.setAttribute('tabindex', '-1');
+    safe(() => el.focus({ preventScroll: !(scroll && isOffscreen(el)) }));
+    return (el.getRootNode()?.activeElement || null) === el;
+  }
+  const isOffscreen = (el) => safe(() => { const r = el.getBoundingClientRect(); return r.bottom < 0 || r.top > innerHeight; }, false);
+  /** Restore a snapFocus() result. opts.fallback: selector / element to use when the control is gone (before the
+   *  snapped neighbours and the large title); opts.scope: where to look (default: the snapped scope). */
+  function restoreFocus(f, opts = {}) {
+    if (!f) return false;
+    const scope = opts.scope || f.scope;
+    const rootNode = f.rootNode || shadow;
+    const q = (sel) => (sel ? safe(() => (scope?.isConnected ? scope : rootNode).querySelector(sel), null) : null);
+    const active = rootNode?.activeElement;
+    let el = f.el?.isConnected && scope?.contains(f.el) ? f.el : q(f.sel);
+    if (el && el.disabled && f.sel && /^\[data-fk="(up|down):/.test(f.sel)) el = q(f.sel.replace(/(up|down)(?=:)/, (m) => (m === 'up' ? 'down' : 'up'))); // a moved row hit the top/bottom
+    if (el && !el.disabled) {
+      if (el === active) return true;
+      if (focusEl(el)) { if (f.start != null) safe(() => el.setSelectionRange(f.start, f.end)); return true; }
+    }
+    // focus went somewhere on purpose (not lost, and not a fallback an inner re-render picked a moment ago)
+    if (active && active.isConnected && active !== app && active !== fellBack) return false;
+    const fb = typeof opts.fallback === 'string' ? q(opts.fallback) : opts.fallback;
+    const title = $('.tp-large-title');
+    const to = [fb, ...(f.near || []).map(q)].find((x) => x && focusEl(x, true)) || (focusEl(title) ? title : null);
+    fellBack = to || null;
+    return !!to;
+  }
+  let fellBack = null;
+  /** Run fn (sync or async) and keep focus on the same control (or its fallback) across the re-render it causes. */
+  async function keepFocus(scope, fn, opts) {
+    const f = snapFocus(scope);
+    try { await fn(); } finally { restoreFocus(f, opts); }
+  }
+  const captureFocus = () => (current?.root ? snapFocus(current.root) : null);
 
   async function renderView() {
     const cur = current;
@@ -1437,7 +1513,13 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
         case 'sb-courses': toggleCoursesGroup(el); return;
         case 'reload': location.reload(); return;
         case 'feedback': closeMenu(false); closeSheet(); safe(() => TP.feedback?.open({ page: current?.route, opener: $('.tp-avatar') })); return;
-        case 'update-dismiss': safe(() => TP.telemetry?.dismissUpdate?.(banners.update?.version)); setUpdate(null); return;
+        case 'update-dismiss': {
+          safe(() => TP.telemetry?.dismissUpdate?.(banners.update?.version));
+          setUpdate(null);
+          // the banner (and this button) go away: focus the next banner's action, else the page title — never <body>
+          if (!focusEl(app.querySelector('.tp-banner:not([data-banner="update"]) .tp-btn'))) focusEl($('.tp-large-title'));
+          return;
+        }
         case 'view-action': {
           const a = current?.actions?.[Number(el.dataset.index)];
           if (a?.onClick) Promise.resolve().then(() => a.onClick(ev, current.ctx)).catch((e) => console.warn('[Toledo+] action', e));
@@ -1479,6 +1561,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
 
   function onShellKeydown(ev) {
     if (detail?.onKey && ev.target?.closest?.('.tp-detail') && !ev.defaultPrevented) safe(() => detail.onKey(ev));
+    if (!ev.defaultPrevented && safe(() => TP.ui.rovingKey(ev), false)) return; // [data-roving] grids (mini calendar)
     // Roving focus inside the account menu.
     const menu = $('.tp-menu');
     if (menu && !menu.hidden && menu.contains(ev.target)) {
@@ -1673,6 +1756,9 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     CSS: CSS_FILES, ROUTES,
     register, navigate, href, setParams, toast, announce, sortCourses, inSidebar, setInSidebar, sidebarCourses,
     detail: { open: openDetail, update: updateDetail, close: closeDetail, isOpen: () => !!$('.tp-detail')?.open },
+    /** Focus across re-renders: snap(scope) → restore(snap, {fallback}); keep(scope, fn, {fallback}); to(el) focuses
+     *  anything (a heading gets tabindex=-1); key(el) → the selector that finds "the same control" next render. */
+    focus: { snap: snapFocus, restore: restoreFocus, keep: keepFocus, to: (el) => focusEl(el, true), key: focusKeyOf },
     rerender: () => rerender(),
     start, preflight,
     get route() { return current ? { route: current.route, params: current.params } : null; },
