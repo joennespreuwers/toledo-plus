@@ -278,6 +278,17 @@
       root.innerHTML = `<div class="st-view tp-narrow">${language(s)}${look(s)}${overview(s)}${deadlines(s)}${coursesBlock()}${agenda()}${search(s)}${sync(s)}${advanced(s)}${about(s)}</div>`;
     }
     restoreFocus(root, focus);
+    // ⌘K › Instellingen › <section> (TP-173): open at that section once, its heading focused for screen readers.
+    const sec = ((ctx && ctx.params) || {}).id;
+    if (sec && !isSub(ctx) && root.dataset.stJumped !== sec) {
+      const head = root.querySelector(`[data-section="st-${cssEsc(sec)}"] .tp-sec-title`);
+      if (head) {
+        root.dataset.stJumped = sec;
+        head.setAttribute('tabindex', '-1');
+        head.style.scrollMarginTop = 'calc(var(--toolbar-h, 52px) + 16px)'; // clear of the sticky toolbar
+        requestAnimationFrame(() => { head.scrollIntoView({ block: 'start' }); head.focus({ preventScroll: true }); });
+      }
+    }
   }
   // Async callers only repaint while the settings view is still what the container shows.
   const rerender = () => { if (cur && cur.root.querySelector(':scope > .st-view')) (TP.motion ? TP.motion.flip(cur.root, () => render(cur)) : render(cur)); };

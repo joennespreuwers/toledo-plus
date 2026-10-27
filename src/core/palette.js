@@ -11,6 +11,7 @@
   const icon = (n, o) => TP.ui.icon(n, o);
 
   const PER_GROUP = 8;
+  const MAX_GROUP = 50;   // a group opened with "+N more"
   const NAV = ['overview', 'courses', 'deadlines', 'agenda', 'announcements', 'kuloket', 'settings'];
   const KIND_ICON = { file: 'doc', video: 'film', image: 'image', page: 'page', assignment: 'task', link: 'link', tool: 'tool', folder: 'folder', announcement: 'megaphone', notice: 'bell' };
   const FILE_KINDS = new Set(['file', 'video', 'image']);
@@ -44,7 +45,7 @@
 <div class="tp-pal-field">
   ${icon('search', { size: 18, strokeWidth: 2.1 })}
   <input type="text" class="tp-pal-input" role="combobox" aria-expanded="true" aria-controls="tp-pal-list" aria-autocomplete="list"
-    aria-labelledby="tp-pal-title" aria-describedby="tp-pal-status" placeholder="${esc(t('palette.placeholder'))}" autocomplete="off" spellcheck="false" enterkeyhint="go">
+    aria-labelledby="tp-pal-title" aria-describedby="tp-pal-status" maxlength="200" placeholder="${esc(t('palette.placeholder'))}" autocomplete="off" spellcheck="false" enterkeyhint="go">
   <button type="button" class="tp-pal-close" data-pal="close" aria-label="${esc(t('shell.close'))}"><span class="tp-pal-esc" aria-hidden="true">esc</span>${icon('xmark', { size: 18, cls: 'tp-pal-x' })}</button>
 </div>
 <div class="tp-pal-list" id="tp-pal-list" role="listbox" aria-label="${esc(t('palette.results'))}"></div>
@@ -54,7 +55,7 @@
 </div>`;
     app.appendChild(dlg);
     const input = dlg.querySelector('.tp-pal-input');
-    input.addEventListener('input', () => { q = input.value; update(); });
+    input.addEventListener('input', () => { q = input.value; expanded = new Set(); update(); });
     dlg.addEventListener('keydown', onKey);
     dlg.addEventListener('click', onClick);
     dlg.addEventListener('pointermove', onPointer);
@@ -63,24 +64,66 @@
   }
 
   // ---------------------------------------------------------------- data
-  function scored(list, q, fn, cap = PER_GROUP) {
+  // Matching is TP.index's (one matcher for every search surface): accents, word order, course codes with or
+  // without a space, dates ("morgen", "28 okt"), and one typo per long word when nothing matches exactly.
+  const allLangs = (key) => safe(() => TP.i18n.LANGS.map((l) => TP.i18n._table[l][key]).filter(Boolean), []);
+  // Settings sections the palette can jump to (TP-173): section id in src/views/settings.js → the labels inside it.
+  const SETTINGS = {
+    lang: ['settings.lang', 'settings.lang.label'],
+    look: ['settings.look', 'settings.appearance', 'settings.accent', 'settings.density'],
+    overview: ['settings.overview', 'settings.start.label', 'settings.feed.ann', 'settings.feed.max', 'settings.sections.title'],
+    dl: ['settings.dl', 'settings.dl.horizon', 'settings.dl.urgent', 'settings.dl.reminder'],
+    courses: ['settings.courses', 'settings.courses.edit'],
+    agenda: ['settings.agenda', 'settings.agenda.ics'],
+    search: ['settings.search', 'settings.search.index', 'settings.search.rebuild', 'fulltext.setting'],
+    sync: ['settings.sync', 'settings.sync.read'],
+    advanced: ['settings.advanced', 'settings.wrap.portal', 'settings.wrap.courses', 'settings.wrap.deepBar', 'settings.data.export', 'settings.data.import', 'settings.data.reset'],
+    about: ['settings.about', 'settings.about.version', 'telemetry.setting.label', 'telemetry.update.label', 'feedback.menu'],
+  };
+  let expanded = new Set();   // groups opened with "+N more" for the current query
+  let teachersBy = null;      // luId → teacher names (KU Loket lessons around today), once per palette session
+
+  /** Every hit of `list` for query Q, best first: [{x, s, title}]. fn(x) → [title, extra strings]. */
+  function scored(list, Q, fn, fuzzy) {
     const out = [];
     for (const x of list) {
       const [title, extra] = fn(x);
-      const s = TP.index.score(q, title, extra);
+      const s = TP.index.score(Q, title, extra, { fuzzy });
       if (s >= 0) out.push({ x, s, title });
     }
-    return out.sort((a, b) => b.s - a.s || a.title.length - b.title.length).slice(0, cap);
+    return out.sort((a, b) => b.s - a.s || a.title.length - b.title.length);
+  }
+  /** A result group capped at PER_GROUP rows, plus a "+N more" row that shows the rest (TP-112). */
+  function capped(id, title, hits, map, total = hits.length) {
+    const cap = expanded.has(id) ? MAX_GROUP : PER_GROUP;
+    const items = hits.slice(0, cap).map(map);
+    if (total > items.length && items.length < MAX_GROUP) items.push({ type: 'more', group: id, title: t('palette.more', { n: total - items.length }), sub: '', icon: 'chevronDown' });
+    return { id, title, items };
   }
 
   function navItem(route) {
     return { type: 'nav', route, title: t('nav.' + route), sub: '', icon: route };
   }
 
+  /** Teachers per course from the KU Loket lessons around today (already cached by Overzicht/Agenda). */
+  function teachers() {
+    if (teachersBy) return teachersBy;
+    teachersBy = {};
+    const from = new Date(); from.setHours(0, 0, 0, 0);
+    const list = safe(() => TP.kuloket.peekLessons({ from: from.getTime() - 7 * 864e5, to: from.getTime() + 14 * 864e5 }), null) || [];
+    for (const l of list) {
+      if (!l || !l.courseLuId || !Array.isArray(l.teachers)) continue;
+      const set = (teachersBy[l.courseLuId] ||= new Set());
+      l.teachers.forEach((x) => x && set.add(x));
+    }
+    return teachersBy;
+  }
+
   function collect(query) {
     const groups = [];
     const words = String(query || '').trim();
-    if (!words) {
+    const Q = TP.index.query(words);
+    if (!Q.words.length) {
       const recent = safe(() => (TP.state.get().recent || []).slice(0, 6), []);
       if (recent.length) {
         groups.push({ id: 'recent', title: t('palette.group.recent'), items: recent.map((r) => ({
@@ -90,36 +133,55 @@
       groups.push({ id: 'nav', title: t('palette.group.nav'), items: NAV.map(navItem) });
       return groups;
     }
-    const nav = scored(NAV, words, (r) => [t('nav.' + r), [r === 'settings' ? t('palette.settingsWords') : '']]).map((h) => navItem(h.x));
-    if (nav.length) groups.push({ id: 'nav', title: t('palette.group.nav'), items: nav });
+    const exact = groupsFor(Q, words, false);
+    if (exact.length || !Q.words.some((w) => w.length >= 5)) return exact;
+    const near = groupsFor(Q, words, true); // nothing at all: allow one typo per word of 5+ letters (TP-175)
+    near.approx = near.length > 0;
+    return near;
+  }
 
-    const courses = scored(safe(() => TP.data.courses({}), []), words, (c) => [c.name, [c.code, c.title]]).map(({ x: c }) => ({
+  function groupsFor(Q, words, fuzzy) {
+    const groups = [];
+    const add = (g) => { if (g.items.length) groups.push(g); };
+    // Navigation: the view names in every language (TP-032); Settings also by its keywords.
+    add(capped('nav', t('palette.group.nav'), scored(NAV, Q, (r) => [t('nav.' + r), [...allLangs('nav.' + r), ...(r === 'settings' ? allLangs('palette.settingsWords') : [])]], fuzzy), (h) => navItem(h.x)));
+
+    const tb = teachers();
+    add(capped('courses', t('palette.group.courses'), scored(safe(() => TP.data.courses({}), []), Q, (c) => [c.name, [TP.index.hayOf.course({ ...c, teachers: [...(tb[c.luId] || [])] })]], fuzzy), ({ x: c }) => ({
       type: 'course', luId: c.luId, title: c.name, sub: c.code || '', color: c.color,
-    }));
-    if (courses.length) groups.push({ id: 'courses', title: t('palette.group.courses'), items: courses });
+    })));
 
-    const docs = safe(() => TP.index.search(words, { limit: PER_GROUP }), []).map((d) => ({
+    const total = {};
+    const docs = safe(() => TP.index.search(Q, { limit: expanded.has('docs') ? MAX_GROUP : PER_GROUP, fuzzy, total }), []);
+    add(capped('docs', t('palette.group.docs'), docs, (d) => ({
       type: 'doc', cid: d.cid, luId: d.luId, id: d.id, kind: d.kind, title: d.title, course: d.course,
       sub: [kindLabel(d), d.course, d.path].filter(Boolean).join(' · '), icon: KIND_ICON[d.kind] || 'doc',
-    }));
-    if (docs.length) groups.push({ id: 'docs', title: t('palette.group.docs'), items: docs });
+    }), total.n || docs.length));
 
-    const files = ftItems(words);
-    if (files.length) groups.push({ id: 'files', title: t('palette.group.files'), items: files });
+    if (!fuzzy) add({ id: 'files', title: t('palette.group.files'), items: ftItems(words) });
 
-    const dls = scored(safe(() => TP.data.deadlines({}), []), words, (d) => [d.title, [d.courseName]]).map(({ x: d }) => ({
+    add(capped('deadlines', t('palette.group.deadlines'), scored(safe(() => TP.data.deadlines({}), []), Q, (d) => [d.title, [TP.index.hayOf.deadline(d)]], fuzzy), ({ x: d }) => ({
       type: 'deadline', url: d.url, title: d.title,
       sub: [d.courseName, `${TP.fmt.date(d.due, { weekday: 'short', day: 'numeric', month: 'short' })} ${TP.fmt.time(d.due)}`, d.due < Date.now() && !d.done ? t('palette.overdue') : ''].filter(Boolean).join(' · '),
       icon: 'deadlines',
-    }));
-    if (dls.length) groups.push({ id: 'deadlines', title: t('palette.group.deadlines'), items: dls });
+    })));
 
-    const anns = scored(safe(() => TP.data.announcements({ filter: 'all' }), []), words, (e) => [e.title || '', [TP.util.courseName(e.source || '')]]).map(({ x: e }) => ({
+    add(capped('announcements', t('palette.group.announcements'), scored(safe(() => TP.data.announcements({ filter: 'all' }), []), Q, (e) => [e.title || '', [TP.index.hayOf.announcement(e)]], fuzzy), ({ x: e }) => ({
       type: 'announcement', ev: e, url: e.url, title: e.title || '',
-      sub: [e.subType === 'advalvas' || e.type === 'advalvas' ? t('palette.school') : TP.util.courseName(e.source || ''), e.date ? TP.fmt.ago(e.date) : ''].filter(Boolean).join(' · '),
+      sub: [e.subType === 'advalvas' || e.type === 'advalvas' ? t('palette.school') : TP.util.courseName(e.source || ''), e.author || '', e.date ? TP.fmt.ago(e.date) : ''].filter(Boolean).join(' · '),
       icon: e.subType === 'advalvas' || e.type === 'advalvas' ? 'bell' : 'megaphone',
+    })));
+
+    // KU Loket apps (TP-031): the hub's entries, by name and description in every language.
+    add(capped('kuloket', t('nav.kuloket'), scored(safe(() => TP.kuloket.links(), []), Q, (l) => [l.title, [l.desc, ...allLangs('kuloket.app.' + l.id), ...allLangs('kuloket.app.' + l.id + '.desc')]], fuzzy), ({ x: l }) => ({
+      type: 'kuloket', url: l.url, title: l.title, sub: l.desc, icon: 'kuloket',
+    })));
+
+    // Settings, per section (TP-173): "iCal" → Agenda, "reset" → Geavanceerd, "full text" → Zoeken.
+    add(capped('settings', t('palette.group.settings'), scored(Object.keys(SETTINGS), Q, (id) => [t('settings.' + id), [...SETTINGS[id].flatMap(allLangs), ...allLangs('palette.set.' + id)]], fuzzy), ({ x: id }) => {
+      const hit = SETTINGS[id].slice(1).map((k) => t(k)).find((l) => TP.index.score(Q, l, [], { fuzzy }) >= 0);
+      return { type: 'setting', sec: id, title: t('settings.' + id), sub: [t('nav.settings'), hit].filter(Boolean).join(' · '), icon: 'settings' };
     }));
-    if (anns.length) groups.push({ id: 'announcements', title: t('palette.group.announcements'), items: anns });
     return groups;
   }
 
@@ -177,15 +239,24 @@
       items.push(...g.items);
       html += `<div class="tp-pal-group" role="group" aria-labelledby="tp-pal-g-${g.id}"><div class="tp-pal-head" id="tp-pal-g-${g.id}" role="presentation">${esc(g.title)}</div>${g.items.map((it, k) => optionHtml(it, start + k)).join('')}</div>`;
     }
+    if (items.length && groups.approx) {
+      // only near matches (one typo): say so, the student may have meant something else
+      html = `<p class="tp-pal-note" role="presentation">${esc(t('palette.approx'))}</p>${html}`;
+    }
     if (!items.length) {
-      html = `<div class="tp-pal-empty" role="presentation">${TP.ui.noResults(q.trim())}</div>`;
+      // "still indexing" instead of a bare "No results" while the index fills (TP-030), and a next step (TP-032)
+      const st = safe(() => TP.index.status(), {}) || {};
+      const hints = [st.crawling ? t('palette.empty.indexing') : '', t('palette.empty.hint')].filter(Boolean);
+      html = `<div class="tp-pal-empty" role="presentation">${TP.ui.noResults(q.trim())}${hints.map((h) => `<p class="tp-pal-hint">${esc(h)}</p>`).join('')}</div>`;
     }
     list.innerHTML = html;
+    // the words that matched, marked in each title (TP-088); nothing for near matches
+    safe(() => TP.index.highlight(list, groups.approx ? '' : q, '.tp-pal-name'));
     const keep = prevKey ? items.findIndex((it) => keyOf(it) === prevKey) : -1;
     setActive(keep >= 0 ? keep : (items.length ? 0 : -1), false);
     status();
   }
-  const keyOf = (it) => [it.type, it.route, it.luId, it.cid, it.id, it.url, it.title, it.page].join('|');
+  const keyOf = (it) => [it.type, it.route, it.luId, it.cid, it.id, it.url, it.title, it.page, it.group, it.sec].join('|');
 
   function setActive(i, scroll = true) {
     active = i;
@@ -224,7 +295,23 @@
     if (!it) return;
     const mod = !!opts.download;
     const S = TP.shell;
+    if (it.type === 'more') {
+      // show the rest of that group; the first newly shown row becomes active
+      const at = items.indexOf(it);
+      expanded.add(it.group);
+      render(collect(q));
+      if (at >= 0 && at < items.length) setActive(at);
+      dlg.querySelector('.tp-pal-input').focus();
+      return;
+    }
     if (it.type === 'nav') { close(false); S.navigate(it.route); return; }
+    if (it.type === 'setting') { close(false); S.navigate('settings', { id: it.sec }); return; }
+    if (it.type === 'kuloket') {
+      close(false);
+      safe(() => TP.kuloket.openedKuloket && TP.kuloket.openedKuloket());
+      window.open(it.url, '_blank', 'noopener');
+      return;
+    }
     if (it.type === 'course') {
       close(false);
       const cid = safe(() => (TP.state.get().cidMap || {})[it.luId], null);
@@ -328,10 +415,14 @@
     opener = opts.opener || root.activeElement || null;
     const input = dlg.querySelector('.tp-pal-input');
     if (!dlg.open) {
-      q = opts.q || '';
+      q = String(opts.q || '').slice(0, 200);
       input.value = q;
       items = []; active = -1;
+      expanded = new Set(); teachersBy = null;
       try { dlg.showModal(); } catch (_) { dlg.setAttribute('open', ''); }
+      // Back/Forward (or any route change) closes the palette instead of leaving it over another page (TP-033)
+      window.addEventListener('hashchange', onRoute);
+      window.addEventListener('popstate', onRoute);
       render(collect(q));
       unsubIndex = safe(() => TP.index.on('change', () => { if (isOpen()) { status(); if (q.trim()) update(); } }), null);
       safe(() => TP.index.crawlIfStale().catch(() => {}));
@@ -347,11 +438,15 @@
     return true;
   }
 
+  function onRoute() { close(false); }
+
   function close(returnFocus = true) {
     if (!dlg || !dlg.open) return false;
     try { dlg.close(); } catch (_) { dlg.removeAttribute('open'); }
     if (unsubIndex) { unsubIndex(); unsubIndex = null; }
     if (unsubFt) { unsubFt(); unsubFt = null; }
+    window.removeEventListener('hashchange', onRoute);
+    window.removeEventListener('popstate', onRoute);
     clearTimeout(announceTimer);
     if (returnFocus && opener && opener.isConnected && typeof opener.focus === 'function') opener.focus();
     opener = null;
