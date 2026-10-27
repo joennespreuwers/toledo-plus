@@ -8,9 +8,15 @@
  *   GET  /v1/stats      → JSON dashboard data    (Authorization: Bearer STATS_TOKEN)
  *   GET  /v1/stats.html → dashboard page that asks for the token (kept in sessionStorage) and fetches /v1/stats
  *
- * Privacy: no raw IPs are stored or logged. Rate limits key on SHA-256(SALT | UTC day | IP), truncated; the salt
+ * Privacy: no raw IPs are stored or logged. Rate limits key on SHA-256(SALT | UTC day | IP), truncated — for IPv6 the
+ * /64 prefix (one household/device), so rotating addresses inside one prefix does not multiply the budget. The salt
  * rotates daily by construction (the day is part of the hash input), and counter rows are deleted after 2 days.
  * Feedback `contact` stays in D1 and is never copied into the public GitHub issue.
+ *
+ * Abuse model (TP-180): `Origin: chrome-extension://…` is a CORS gate only — any script can send it, and an unpacked
+ * extension has no fixed id — so no limit trusts it, and the client-chosen install id is not a limit key either.
+ * Limits are per IP (/64), plus global caps. Public GitHub issues have their own, lower caps (per IP and per day):
+ * feedback over the cap is still stored (status 'new') for the maintainer, it just does not become a public issue.
  *
  * Bindings: DB (D1, required), RL (Workers Rate Limiting, optional burst limiter).
  * Secrets:  SALT (required for POST routes), STATS_TOKEN (enables /v1/stats), GITHUB_TOKEN (optional, creates issues).
@@ -38,8 +44,12 @@ export const LIMITS = {
     { scope: 'ip', window: HOUR, limit: 5 },
     { scope: 'ip', window: DAY_S, limit: 20 },
     // checked after validation:
-    { scope: 'install', window: DAY_S, limit: 10 },
     { scope: 'global', window: DAY_S, limit: 500 },
+  ],
+  // Public GitHub issues created from feedback (checked only when GITHUB_TOKEN is set; over the cap → stored, no issue).
+  issue: [
+    { scope: 'ip', window: DAY_S, limit: 3 },
+    { scope: 'global', window: DAY_S, limit: 25 },
   ],
 };
 
@@ -86,9 +96,24 @@ async function sha256Hex(s) {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+/** The part of an address that identifies one client: IPv4 as is, IPv6 its /64 prefix (an end site gets a whole /64,
+ *  so per-address keys would let one household rotate through millions of keys). */
+export function ipPrefix(ip) {
+  const s = String(ip || '').trim().toLowerCase();
+  if (!s.includes(':')) return s || 'unknown';
+  const v4 = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/.exec(s);
+  if (v4) return v4[1];
+  const [head, tail = ''] = s.split('::');
+  const h = head ? head.split(':') : [];
+  const t = tail ? tail.split(':') : [];
+  if (s.includes('::')) while (h.length + t.length < 8) h.push('0');
+  const groups = h.concat(t).slice(0, 4).map((g) => (parseInt(g, 16) || 0).toString(16));
+  return groups.join(':') + '::/64';
+}
+
 /** Pseudonymous per-day IP key: never reversible without the secret salt, unlinkable across days. */
 export async function ipKey(env, ip, ms) {
-  return (await sha256Hex(`${env.SALT}|${dayStr(ms)}|${ip || 'unknown'}`)).slice(0, 32);
+  return (await sha256Hex(`${env.SALT}|${dayStr(ms)}|${ipPrefix(ip)}`)).slice(0, 32);
 }
 
 /** Constant-time string comparison (compares SHA-256 digests). */
@@ -116,6 +141,13 @@ async function enforce(env, route, scopes, ids, ms) {
     if (!who) continue;
     const r = await hit(env, `${route}:${l.scope}:${l.window}:${who}`, l.window, l.limit, ms);
     if (!r.ok) throw new HttpError(429, 'rate_limited', { retryAfter: r.retryAfter });
+  }
+}
+/** Same counters, but → bool instead of a 429 (used for the issue caps). */
+async function within(env, route, ids, ms) {
+  try { await enforce(env, route, LIMITS[route].map((l) => l.scope), ids, ms); return true; } catch (e) {
+    if (e instanceof HttpError && e.status === 429) return false;
+    throw e;
   }
 }
 
@@ -192,7 +224,8 @@ export function validateFeedback(b) {
   if (b.page != null) { if (typeof b.page !== 'string' || !PAGE.test(b.page)) throw bad('page'); out.page = b.page; }
   if (b.website != null && typeof b.website !== 'string') throw bad('website');
   out.honeypot = typeof b.website === 'string' && b.website.trim() !== '';
-  out.links = (out.text.match(/https?:\/\/|www\./gi) || []).length;
+  // Links of any spelling count (TP-184): scheme or protocol-relative "//host", "www.", markdown "](" and "<a"/"<img".
+  out.links = (out.text.match(/(?:https?:)?\/\/[^\s/]|www\.|\]\(|<\s*(?:a|img)\b/gi) || []).length;
   return out;
 }
 
@@ -200,16 +233,25 @@ export function validateFeedback(b) {
 
 /** Neutralise @mentions so public issues never ping people. */
 const noMentions = (s) => String(s).replace(/@(?=[A-Za-z0-9_-])/g, '@​');
+/** For the issue title (rendered as markdown-ish text): also break #123 / owner/repo#3 references and commit SHAs. */
+const noRefs = (s) => noMentions(s).replace(/#(?=\d)/g, '#​').replace(/\b([0-9a-f]{7})(?=[0-9a-f]{0,33}\b)/gi, '$1​');
+/** User text as a fenced code block: GitHub renders it verbatim — no links, images, #refs, SHAs or HTML (TP-184). */
+function fenced(s) {
+  const runs = String(s).match(/`+|~+/g) || [];
+  const n = Math.max(3, ...runs.map((r) => r.length + 1));
+  const fence = '`'.repeat(n);
+  return `${fence}text\n${String(s).replace(/\r/g, '')}\n${fence}`;
+}
 
 export function issueFor(fb, rowId) {
   const first = fb.text.split('\n').map((l) => l.trim()).find(Boolean) || fb.kind;
   const short = cpLen(first) > 72 ? [...first].slice(0, 71).join('') + '…' : first;
   const label = { idea: 'Idea', bug: 'Bug', other: 'Feedback' }[fb.kind];
-  const quoted = noMentions(fb.text).split('\n').map((l) => `> ${l}`).join('\n');
+  const quoted = fenced(noMentions(fb.text));
   const rows = [['Kind', fb.kind], ['Version', fb.v], ['Browser', fb.browser], ['Language', fb.lang], ['Page', fb.page], ['Feedback id', rowId]]
     .map(([k, v]) => `| ${k} | ${v == null || v === '' ? '—' : String(v).replace(/\|/g, '\\|')} |`).join('\n');
   return {
-    title: `[${label}] ${noMentions(short)}`,
+    title: `[${label}] ${noRefs(short)}`,
     body: `${quoted}\n\n| Field | Value |\n|---|---|\n${rows}\n\n` +
       '_Sent from the in-extension feedback form. Contact details, if any, are stored privately and are not shown here._',
     labels: ['feedback', 'needs-triage', fb.kind === 'bug' ? 'bug' : 'enhancement'],
@@ -263,16 +305,17 @@ async function forget(request, env) {
   return respond(204, null);
 }
 
-async function feedback(request, env, ctx, ms) {
+async function feedback(request, env, ctx, ms, ipHash) {
   const fb = validateFeedback(await readJson(request));
   if (fb.honeypot) return respond(201, { ok: true }); // pretend success, store nothing
   if (fb.links > 3) throw new HttpError(422, 'spam');
-  await enforce(env, 'feedback', ['install', 'global'], { install: fb.id }, ms);
+  // The install id is chosen by the client: it is stored (older extensions send it) but is no limit key (TP-180).
+  await enforce(env, 'feedback', ['global'], {}, ms);
   const row = await env.DB.prepare(
     'INSERT INTO feedback (created, install_id, kind, text, contact, version, browser, lang, page, status) ' +
     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'new') RETURNING id",
   ).bind(ms, fb.id || null, fb.kind, fb.text, fb.contact || null, fb.v || null, fb.browser || null, fb.lang || null, fb.page || null).first();
-  if (env.GITHUB_TOKEN && row && row.id != null) {
+  if (env.GITHUB_TOKEN && row && row.id != null && await within(env, 'issue', { ip: ipHash }, ms)) {
     const job = createIssue(env, fb, row.id).catch((e) => console.log('github issue failed:', String(e && e.message || e)));
     if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(job); else await job;
   }
@@ -288,12 +331,23 @@ async function configValues(env) {
   return cfg;
 }
 
+/** The update banner may only point at this project's GitHub pages or toledoplus.be (TP-178; the extension checks too). */
+export function safeLatestUrl(u, env) {
+  if (typeof u !== 'string' || !/^https:\/\//i.test(u)) return null;
+  let x;
+  try { x = new URL(u); } catch (_) { return null; }
+  if (x.protocol !== 'https:' || x.username || x.password || x.port) return null;
+  const repo = String((env && env.GITHUB_REPO) || DEFAULT_REPO);
+  if (x.hostname === 'github.com' && x.pathname.startsWith(`/${repo}/`)) return x.href;
+  if (x.hostname === 'toledoplus.be' || x.hostname === 'www.toledoplus.be') return x.href;
+  return null;
+}
+
 async function latest(env) {
   const cfg = await configValues(env);
   let version = cfg.latest_version || env.LATEST_VERSION || null;
   if (version && !SEMVER.test(version)) version = null;
-  let url = cfg.latest_url || env.LATEST_URL || null;
-  if (url && !/^https:\/\/[^\s]+$/.test(url)) url = null;
+  const url = safeLatestUrl(cfg.latest_url || env.LATEST_URL || null, env);
   const notes = String(cfg.latest_notes || env.LATEST_NOTES || '').slice(0, 500);
   return respond(200, { version, url, notes }, { 'Cache-Control': 'public, max-age=600' });
 }
@@ -415,7 +469,7 @@ export async function handle(request, env, ctx) {
       await enforce(env, route, ['ip'], { ip: ipHash }, ms);
       if (route === 'ping') return withCors(await ping(request, env, ms));
       if (route === 'forget') return withCors(await forget(request, env));
-      return withCors(await feedback(request, env, ctx, ms));
+      return withCors(await feedback(request, env, ctx, ms, ipHash));
     }
 
     if (GET_ROUTES.includes(path)) {

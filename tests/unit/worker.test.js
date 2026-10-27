@@ -168,7 +168,7 @@ test('rate limit: the Workers Rate Limiting binding is used as a burst guard whe
   assert.equal((await call(W, broken, 'POST', '/v1/ping', { body: ping() })).status, 204, 'binding failure falls back to D1');
 });
 
-test('rate limit: feedback 5/hour and 20/day per IP, 10/day per install, 500/day global', { skip: SKIP }, async () => {
+test('rate limit: feedback 5/hour and 20/day per IP, 500/day global; the client-chosen install id is no limit key', { skip: SKIP }, async () => {
   const W = await loadWorker(); const s = setup();
   // 5/hour per IP
   for (let i = 0; i < 5; i++) assert.equal((await call(W, s, 'POST', '/v1/feedback', { body: fb({ id: undefined }) })).status, 201);
@@ -181,11 +181,11 @@ test('rate limit: feedback 5/hour and 20/day per IP, 10/day per install, 500/day
   }
   assert.equal(ok, 20, 'only 20 per IP per day');
 
-  // 10/day per install id, across IPs
+  // The install id is attacker-chosen (TP-180): it neither protects nor blocks anyone.
   const s2 = setup();
   let okId = 0;
   for (let i = 0; i < 12; i++) if ((await call(W, s2, 'POST', '/v1/feedback', { body: fb(), ip: `198.51.100.${i}` })).status === 201) okId++;
-  assert.equal(okId, 10);
+  assert.equal(okId, 12);
 
   // 500/day global
   const s3 = setup();
@@ -195,6 +195,74 @@ test('rate limit: feedback 5/hour and 20/day per IP, 10/day per install, 500/day
   assert.equal(g.status, 429);
   assert.ok(Number(g.headers.get('retry-after')) > 0);
   assert.equal(s3.env.DB.rows('SELECT * FROM feedback').length, 0);
+});
+
+test('rate limit: IPv6 is keyed on the /64 (rotating addresses in one prefix share one budget); IPv4-mapped = IPv4', { skip: SKIP }, async () => {
+  const W = await loadWorker(); const s = setup();
+  assert.equal(W.ipPrefix('2001:db8:abcd:12:1::5'), '2001:db8:abcd:12::/64');
+  assert.equal(W.ipPrefix('2001:DB8:ABCD:0012:ffff:ffff:ffff:ffff'), '2001:db8:abcd:12::/64');
+  assert.equal(W.ipPrefix('2001:db8::1'), '2001:db8:0:0::/64');
+  assert.equal(W.ipPrefix('::ffff:203.0.113.7'), '203.0.113.7');
+  assert.equal(W.ipPrefix('203.0.113.7'), '203.0.113.7');
+  assert.equal(await W.ipKey(s.env, '2001:db8:abcd:12::1', T0), await W.ipKey(s.env, '2001:db8:abcd:12:dead:beef:0:1', T0));
+  assert.notEqual(await W.ipKey(s.env, '2001:db8:abcd:12::1', T0), await W.ipKey(s.env, '2001:db8:abcd:13::1', T0));
+  // 110 addresses in one /64 × 5 requests (the bug-bash attack): 5 accepted, not 348.
+  const codes = {};
+  for (let i = 0; i < 110; i++) {
+    for (let j = 0; j < 5; j++) {
+      const st = (await call(W, s, 'POST', '/v1/feedback', { body: fb({ id: undefined }), ip: `2001:db8:abcd:12::${(i * 5 + j).toString(16)}` })).status;
+      codes[st] = (codes[st] || 0) + 1;
+    }
+  }
+  assert.equal(codes[201], 5);
+  // …and a student elsewhere is not locked out.
+  assert.equal((await call(W, s, 'POST', '/v1/feedback', { body: fb({ id: undefined }), ip: '2001:db8:ffff:1::1' })).status, 201);
+});
+
+test('feedback → public issues are capped (per IP and per day); over the cap the feedback is stored without an issue', { skip: SKIP }, async () => {
+  const W = await loadWorker(); const s = setup({ GITHUB_TOKEN: 'ghp_test' });
+  let n = 0;
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async () => { n++; return new Response(JSON.stringify({ number: n }), { status: 201 }); };
+  try {
+    for (let i = 0; i < 5; i++) assert.equal((await call(W, s, 'POST', '/v1/feedback', { body: fb() })).status, 201);
+    assert.equal(n, 3, '3 issues per IP per day');
+    assert.equal(s.env.DB.rows('SELECT * FROM feedback').length, 5, 'all feedback stored');
+    assert.equal(s.env.DB.rows("SELECT * FROM feedback WHERE status = 'new'").length, 2);
+    const win = Math.floor(T0 / 1000 / 86400) * 86400;
+    s.env.DB._db.prepare('INSERT OR REPLACE INTO ratelimit (key, window, count) VALUES (?, ?, ?)').run('issue:global:86400:all', win, 25);
+    assert.equal((await call(W, s, 'POST', '/v1/feedback', { body: fb(), ip: '198.51.100.9' })).status, 201);
+    assert.equal(n, 3, 'global issue cap');
+  } finally { globalThis.fetch = realFetch; }
+});
+
+test('issue body: user text is a fenced block (no #refs, SHAs, links or images); title refs broken; any link spelling counts as spam', { skip: SKIP }, async () => {
+  const W = await loadWorker();
+  const text = 'see #1 and owner/repo#3 and deadbeefdeadbeefdeadbeefdeadbeefdeadbeef ```x``` ![x](//tracker.example/p.png) [login](//phish.example)';
+  const issue = W.issueFor({ kind: 'bug', text: '#12 deadbeef1 fails\n' + text }, 7);
+  assert.match(issue.body, /^````text\n/, 'fence longer than any run of backticks inside');
+  assert.ok(issue.body.includes('\n````\n'), 'closing fence');
+  assert.ok(!/^> /m.test(issue.body), 'no blockquote rendering');
+  assert.ok(!/#1\d/.test(issue.title) && !/#12/.test(issue.title), 'title #ref broken');
+  assert.ok(!/deadbeef1/.test(issue.title), 'title SHA broken');
+  const s = setup();
+  const st = async (t) => (await call(W, s, 'POST', '/v1/feedback', { body: fb({ text: t, id: undefined }), ip: String(Math.random()) })).status;
+  assert.equal(await st('kijk ![a](//t.example/a.png) [b](//p.example) <img src=x> en //c.example/x hier'), 422);
+  assert.equal(await st('Een pad als a/b//c is geen link, en 2 // 3 ook niet'), 201);
+});
+
+test('latest: the update URL must be this project on GitHub or toledoplus.be (no ../ escapes)', { skip: SKIP }, async () => {
+  const W = await loadWorker();
+  assert.equal(W.safeLatestUrl('https://github.com/joennespreuwers/toledo-plus/releases/latest', {}), 'https://github.com/joennespreuwers/toledo-plus/releases/latest');
+  assert.equal(W.safeLatestUrl('https://toledoplus.be/#update', {}), 'https://toledoplus.be/#update');
+  assert.equal(W.safeLatestUrl('https://github.com/joennespreuwers/toledo-plus/../../evil-org/evil-repo/releases/latest', {}), null);
+  assert.equal(W.safeLatestUrl('https://github.com/joennespreuwers/toledo-plus/%2e%2e/%2e%2e/evil/x', {}), null);
+  assert.equal(W.safeLatestUrl('https://toledoplus.be.evil.example/x', {}), null);
+  assert.equal(W.safeLatestUrl('https://u:p' + '@' + 'toledoplus.be/x', {}), null);
+  assert.equal(W.safeLatestUrl('http://toledoplus.be/x', {}), null);
+  const s = setup({ LATEST_URL: 'https://github.com/joennespreuwers/toledo-plus/../../evil-org/x' });
+  const r = await call(W, s, 'GET', '/v1/latest');
+  assert.equal(r.json.url, null);
 });
 
 test('feedback: validation, spam heuristics and honeypot', { skip: SKIP }, async () => {
