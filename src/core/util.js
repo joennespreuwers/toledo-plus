@@ -247,13 +247,14 @@
     return n > 0 ? t('fmt.inDays', { n }) : t('fmt.daysAgo', { n: -n });
   }
 
-  // Past timestamps: time today, "gisteren", weekday within a week, else short date.
+  // Past timestamps: time today, "gisteren", "N dagen geleden" within a week, else short date.
+  // One rule for every list (no weekday names next to "gisteren": a "zondag" two days back read as a date).
   function ago(ms) {
     if (!valid(ms)) return '';
     const n = -daysUntil(ms);
     if (n <= 0) return time(ms);
     if (n === 1) return t('fmt.yesterday');
-    if (n < 7) return date(ms, { weekday: 'long' });
+    if (n < 7) return t('fmt.daysAgo', { n });
     return date(ms);
   }
 

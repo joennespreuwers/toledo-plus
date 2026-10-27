@@ -645,14 +645,14 @@ describe('greeting with first name + mail button (v1.5)', () => {
   let h; let page;
   before(async () => { h = await launch(); page = h.page; });
   after(async () => { await h?.close(); });
-  const GREET = /^(Goedemorgen|Goedemiddag|Goedenavond|Goedenacht)/;
+  const GREET = /^(Goedemorgen|Goedemiddag|Goedenavond|Hallo)/;
 
   it('"Goedenavond, Alex": first name from Ultra users/me (via the relay), cached locally, never sent anywhere', async () => {
     await openPortal(h, 'overview');
     await page.waitForFunction(() => /, Alex$/.test(document.querySelector('#tplus-root').shadowRoot.querySelector('.tp-large-title')?.textContent || ''), null, { timeout: 8000 });
     const title = await page.locator(S.title).innerText();
     assert.match(title, GREET, `Dutch greeting spelling: ${title}`);
-    assert.match(title, /^Goede(morgen|middag|navond|nacht), Alex$/, 'only the first given name');
+    assert.match(title, /^(Goede(morgen|middag|navond)|Hallo), Alex$/, 'only the first given name');
     assert.ok(h.rec.find((r) => /\/learn\/api\/public\/v1\/users\/me$/.test(r.url)).length >= 1, 'users/me asked');
     const st = await h.getState();
     assert.equal(st.me?.given, 'Alex', 'cached in state (chrome.storage.local)');

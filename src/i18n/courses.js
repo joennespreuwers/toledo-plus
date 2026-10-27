@@ -16,7 +16,7 @@
       'courses.sort.name': 'Naam',
       'courses.sort.manual': 'Eigen volgorde',
       'courses.edit': 'Bewerk',
-      'courses.done': 'Gereed',
+      'courses.done': 'Klaar',
       'courses.editHint': 'Pas per vak de bijnaam, kleur, zijbalk en zichtbaarheid aan. Sleep aan het handvat of gebruik ↑ en ↓ voor je eigen volgorde. Wijzigingen worden meteen bewaard.',
       'courses.unavailable': 'Nog niet beschikbaar',
       'courses.unread': '{n} nieuw',
