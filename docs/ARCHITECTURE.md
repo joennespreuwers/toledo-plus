@@ -732,3 +732,37 @@ error other than auth/ics), saved data with a "saved" note, and a skeleton while
 - **Unknown route** `#/home?tplus=<unknown>`: the start page shows and the hash is replaced with its route.
 - **Palette** closes when the route changes; its results are links (see TP.palette).
 - **Tab titles**: see the view contract (`docTitle`).
+
+## Addendum (unreleased) — Accessibility, design tokens, print (bug bash: patterns 1, 2, 14, 15, 16)
+- **Focus across re-renders — one helper, `TP.shell.focus`** (pattern 1). Every view used to carry its own snap/restore pair and a
+  render that removed the focused control (Mark all read, a row marked done, a closed banner, the language rebuild) dropped focus to `<body>`.
+  ```
+  TP.shell.focus.snap(scope[, el]) → snapshot of the focused control (default: scope's active element) or null
+  TP.shell.focus.restore(snap, { fallback?, scope? }) → bool   // fallback: selector/element preferred when the control is gone
+  TP.shell.focus.keep(scope, fn, opts)                         // snap → await fn() → restore
+  TP.shell.focus.to(el) → bool                                 // focus anything (a heading gets tabindex=-1)
+  TP.shell.focus.key(el) → selector                            // "the same control" in the next render
+  ```
+  The key is the control's data attributes (`data-fk` first, then `data-action`/`data-shell`/`data-detail-action` + `data-key`/`data-id`/
+  `data-eid`/`data-lu`/`data-day`/`data-route`/`data-sec`/`name` (+ `value` for radios)), never a position or a per-render id
+  (`tp-h-*`, `tp-d-*`, settings `st-*`). When the control is gone: `fallback`, then the next items of its list (up to 3) and the one before,
+  then the heading of its `[data-section]`, then the page's large title — never `<body>`. Fallbacks only apply when focus was actually lost
+  (a later restore may override a fallback an inner re-render chose). Used by: the shell's `renderView` and chrome rebuild (language change),
+  `VA.paint` (Overzicht, Deadlines, Mededelingen), Instellingen, Vakken (focus follows a moved course), the course page, the detail sheet's
+  opener (row marked done → next row), "Later" on the update banner, "Klassiek" (focus → the Toledo+ pill, now `aria-label` "Terug naar Toledo+").
+- **`TP.ui.rovingKey(ev)`** — roving focus in a grid of buttons (APG date picker): container `[data-roving="<columns>"]`, items
+  `[data-roving-item]` (one `tabindex=0`, the rest `-1`), optional `[data-roving-prev]`/`[data-roving-next]` for PageUp/PageDown. ←/→ ±1,
+  ↑/↓ ±one row, Home/End. The shell calls it for the whole app; the Agenda calls it first in its own key handler (its arrows page the agenda).
+  Used by the Agenda mini calendar (tab stop: selected day, else today, else the 1st).
+- **`TP.ui.toggle`**: the switch is named by its title only (`aria-labelledby`), the help text is `aria-describedby`.
+  **`TP.ui.section`**: the count is `aria-hidden` and announced as ", 3 items" (`common.items`), so headings read "Week van 16 nov, 1 item".
+  **`TP.ui.noResults(q)`** also announces "Geen resultaten voor “q”" (debounced) through the shell's live region; the shell's own announcement
+  only says the result count.
+- **CSS** (`ui.css`): `@media (forced-colors: active)` block (switch, segmented, swatches/dots keep their colour with a frame, buttons/badges/
+  fields/cards get system-colour borders, selection = Highlight); one `@media print` block (light tokens whatever the appearance, chrome +
+  row controls hidden, rows/headings don't split; views add their own: `agenda.css` whole day + no side column, `deadlines.css` filters/add row);
+  `(pointer: coarse)` 44 px hit areas via `::after`; `(hover: none)` rail labels + rail counts as numbers, card captions from `title`.
+  `:where(.tp-theme) :where(button, input, select, textarea) { font: inherit }` (zero specificity) so `.tp-btn*` keep their weights.
+- **Course colours** (`TP.util`): `COURSE_COLORS` = `COLOR_ORDER` = blue, green, indigo, teal, purple, brown, navy, forest, plum, olive, slate, lavender (+ graphite
+  for "no course"). Red/pink/orange/yellow are status-like and no longer handed out (a colour chosen before still renders); mint/cyan were
+  near-duplicates of teal/blue. New keys are not accents.
