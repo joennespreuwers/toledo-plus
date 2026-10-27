@@ -45,12 +45,12 @@ async function until(page, pred, what, timeout = 8000) {
   while (Date.now() - t0 < timeout) { st = await palState(page); if (pred(st)) return st; await page.waitForTimeout(100); }
   assert.fail(`${what}: ${JSON.stringify(st)}`);
 }
-async function waitIndexed(page, min = 10) {
-  await page.waitForFunction((min) => {
+async function waitIndexed(page, min = 10, courses = 0) {
+  await page.waitForFunction(([min, courses]) => {
     const sr = document.querySelector('#tplus-root').shadowRoot;
     const m = /(\d+) bestanden/.exec(sr.querySelector('dialog.tp-palette .tp-pal-status')?.textContent || '');
-    return m && Number(m[1]) >= min && !/wordt bijgewerkt/.test(sr.querySelector('dialog.tp-palette .tp-pal-status').textContent);
-  }, min, { timeout: 20000, polling: 200 });
+    return m && Number(m[1]) >= min && (!courses || new RegExp(`in ${courses} vakken`).test(m.input)) && !/wordt bijgewerkt/.test(sr.querySelector('dialog.tp-palette .tp-pal-status').textContent);
+  }, [min, courses], { timeout: 20000, polling: 200 });
 }
 
 describe('⌘K palette on the portal', () => {
@@ -98,7 +98,7 @@ describe('⌘K palette on the portal', () => {
 
   it('indexes documents of all current courses in the background (relay) and finds them', async () => {
     await openPalette(page);
-    await waitIndexed(page);
+    await waitIndexed(page, 10, 12); // all 12 courses (the crawl is slower under a full-suite load)
     const st = await palState(page);
     assert.match(st.status, /^Doorzoekt \d+ bestanden in 12 vakken · bijgewerkt \d\d:\d\d$/);
     await type(page, 'ooievaar');
