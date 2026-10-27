@@ -17,38 +17,56 @@
 
   // Remote HTML → safe HTML string. DOMParser documents never run scripts; we still strip
   // everything active or layout-breaking before the result is inserted anywhere.
-  const DROP = 'script,style,iframe,frame,frameset,object,embed,applet,form,input,button,textarea,select,option,link,meta,base,svg,math,template,noscript,portal';
+  // Elements: a denylist of active/embedding elements is removed with their content. Attributes: an ALLOWLIST
+  // (pattern 8 / TP-177): anything not listed — handlers, style/class/id, ping, referrerpolicy, srcset/sizes, autoplay,
+  // poster, background, loading, crossorigin, usemap, data-*/aria-* … — is dropped. Remote images stay (teachers embed
+  // them) but load lazily with referrerpolicy="no-referrer"; audio/video never autoplay and fetch nothing until played.
+  const DROP = 'script,style,iframe,frame,frameset,object,embed,applet,form,input,button,textarea,select,option,link,meta,base,svg,math,template,noscript,portal,track';
+  const KEEP_ATTR = new Set(['href', 'src', 'alt', 'title', 'width', 'height', 'colspan', 'rowspan', 'headers', 'scope', 'abbr', 'span',
+    'start', 'reversed', 'type', 'value', 'lang', 'dir', 'datetime', 'cite', 'open', 'controls', 'muted', 'loop', 'align', 'valign',
+    'border', 'cellpadding', 'cellspacing', 'summary', 'color', 'name']);
   const BAD_URL = /^\s*(javascript|vbscript|data):/i;
   // The URL parser drops ASCII tab/newline anywhere and leading C0 controls/space, so
   // "java\tscript:" or "\x01javascript:" still run: test the value the browser will actually see.
   const urlView = (v) => String(v).replace(/[\t\n\r]/g, '').replace(/^[\u0000-\u0020]+/, '');
   const REL_OK = /^\s*([a-z][a-z0-9+.-]*:|#)/i; // already absolute (any scheme) or in-page anchor
   const IMG_DATA = /^\s*data:image\/(png|jpe?g|gif|webp);/i;
-  function sanitize(html) {
+  // Remote bodies come from Ultra (course documents, announcements): a relative link means Ultra, also when it is
+  // shown on the portal (TP-093). Ad Valvas bodies are absolutized against their own page before they get here.
+  const ULTRA_BASE = 'https://ultra.edu.kuleuven.cloud/';
+  /** sanitize(html, {base}) — base: what relative URLs resolve against (default: the Ultra origin). */
+  function sanitize(html, opts = {}) {
     if (!html) return '';
+    const base = (opts && opts.base) || ULTRA_BASE;
     const doc = new DOMParser().parseFromString(String(html), 'text/html');
     doc.querySelectorAll(DROP).forEach((n) => n.remove());
     doc.querySelectorAll('*').forEach((el) => {
       for (const a of [...el.attributes]) {
         const n = a.name.toLowerCase();
         const v = a.value;
-        if (n.startsWith('on') || n === 'style' || n === 'class' || n === 'id' || n === 'formaction' || n === 'srcdoc') {
-          el.removeAttribute(a.name);
-        } else if (n === 'href' || n === 'src' || n === 'xlink:href' || n === 'action' || n === 'poster' || n === 'background') {
+        if (!KEEP_ATTR.has(n)) { el.removeAttribute(a.name); continue; }
+        if (n === 'href' || n === 'src') {
           const pv = urlView(v);
           if (BAD_URL.test(pv) && !(n === 'src' && el.tagName === 'IMG' && IMG_DATA.test(pv))) el.removeAttribute(a.name);
-          else if ((n === 'href' || n === 'src') && v && !REL_OK.test(pv)) {
+          else if (v && !REL_OK.test(pv)) {
             // Absolutize relative URLs: on Ultra a relative src would resolve against the CDN <base href>.
             try {
-              const abs = new URL(v, location.href).href;
+              const abs = new URL(v, base).href;
               if (BAD_URL.test(abs)) el.removeAttribute(a.name); else el.setAttribute(a.name, abs);
             } catch (_) { el.removeAttribute(a.name); }
           }
-        } else if (n === 'srcset' && /(^|,)\s*(javascript|vbscript|data):/i.test(urlView(v).replace(/\s+/g, ' '))) {
-          el.removeAttribute(a.name);
         }
       }
-      if (el.tagName === 'A') { el.setAttribute('target', '_blank'); el.setAttribute('rel', 'noopener noreferrer'); }
+      const tag = el.tagName;
+      if (tag === 'A') {
+        // In-page anchors stay in the page (TP-092); every other link opens in a new tab without a referrer.
+        if (/^\s*#/.test(el.getAttribute('href') || '')) return;
+        el.setAttribute('target', '_blank'); el.setAttribute('rel', 'noopener noreferrer');
+      } else if (tag === 'IMG') {
+        el.setAttribute('referrerpolicy', 'no-referrer'); el.setAttribute('loading', 'lazy'); el.setAttribute('decoding', 'async');
+      } else if (tag === 'VIDEO' || tag === 'AUDIO') {
+        el.setAttribute('preload', 'none'); el.setAttribute('controls', '');
+      }
     });
     return doc.body.innerHTML;
   }

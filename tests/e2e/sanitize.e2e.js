@@ -60,6 +60,40 @@ describe('TP.util.sanitize', () => {
     assert.equal(await page.evaluate(() => window.__x), undefined);
   });
 
+  it('tracking attributes are stripped, images kept with no-referrer, media never autoplay (TP-177)', async () => {
+    const html = '<img src="https://evil.test/pixel.gif?u=student1" referrerpolicy="unsafe-url" srcset="https://evil.test/a.png 2x" sizes="10px" loading="eager" crossorigin="use-credentials">'
+      + '<audio src="https://evil.test/a.mp3" autoplay></audio><video src="https://evil.test/v.mp4" poster="https://evil.test/p.png" autoplay preload="auto"><source src="https://evil.test/v.webm"><track src="https://evil.test/t.vtt" default></video>'
+      + '<a href="https://evil.test/dest" ping="https://evil.test/ping" referrerpolicy="unsafe-url" data-x="1" aria-hidden="true">link</a>'
+      + '<table background="https://evil.test/bg.png"><tr><td background="https://evil.test/td.png">x</td></tr></table><picture><source srcset="https://evil.test/s.webp"><img src="/bbcswebdav/pid-1/img.png" alt="diagram"></picture>';
+    const out = await page.evaluate((h) => window.TP.util.sanitize(h), html);
+    for (const bad of ['referrerpolicy="unsafe-url"', 'srcset', 'sizes=', 'autoplay', 'poster', 'ping=', 'background', 'crossorigin', '<track', 'data-x', 'aria-hidden', 'preload="auto"', 'loading="eager"']) {
+      assert.ok(!out.includes(bad), `${bad} survived: ${out}`);
+    }
+    assert.match(out, /<img src="https:\/\/evil\.test\/pixel\.gif\?u=student1" referrerpolicy="no-referrer" loading="lazy"/, 'remote image kept, no referrer, lazy');
+    assert.match(out, /<audio src="https:\/\/evil\.test\/a\.mp3" preload="none" controls="">/);
+    assert.match(out, /<video src="https:\/\/evil\.test\/v\.mp4" preload="none" controls="">/);
+    assert.match(out, /<a href="https:\/\/evil\.test\/dest" target="_blank" rel="noopener noreferrer">/);
+    assert.match(out, /src="https:\/\/ultra\.edu\.kuleuven\.cloud\/bbcswebdav\/pid-1\/img\.png"/, 'relative src resolves against Ultra');
+    // Inserting it loads nothing but the (lazy, referrer-less) image — no audio/video/poster/ping requests.
+    const reqs = [];
+    const onReq = (r) => { if (/evil\.test/.test(r.url())) reqs.push(r.url()); };
+    page.on('request', onReq);
+    await page.route('https://evil.test/**', (r) => r.fulfill({ status: 204, body: '' }));
+    await page.evaluate((h) => { const d = document.createElement('div'); d.innerHTML = window.TP.util.sanitize(h); document.body.prepend(d); }, html);
+    await page.waitForTimeout(400);
+    page.off('request', onReq);
+    assert.ok(!reqs.some((u) => /\.(mp3|mp4|webm|vtt)$|p\.png|bg\.png|td\.png|\/ping|s\.webp|a\.png/.test(u)), 'unexpected requests: ' + reqs.join(', '));
+  });
+
+  it('in-page anchors stay in the page; relative links go to Ultra, also from the portal (TP-092, TP-093)', async () => {
+    const out = await page.evaluate(() => window.TP.util.sanitize('<a href="#frag">a</a><a href="/ultra/courses/_900661_1/outline">b</a><a href="x.pdf">c</a>'));
+    assert.match(out, /<a href="#frag">a<\/a>/);
+    assert.match(out, /<a href="https:\/\/ultra\.edu\.kuleuven\.cloud\/ultra\/courses\/_900661_1\/outline" target="_blank"/);
+    assert.match(out, /href="https:\/\/ultra\.edu\.kuleuven\.cloud\/x\.pdf"/);
+    const own = await page.evaluate(() => window.TP.util.sanitize('<a href="/a">a</a>', { base: 'https://icts-p-toledo-valvas.cloud.icts.kuleuven.be/student/' }));
+    assert.match(own, /href="https:\/\/icts-p-toledo-valvas\.cloud\.icts\.kuleuven\.be\/a"/);
+  });
+
   it('plain() returns text only', async () => {
     const t = await page.evaluate(() => window.TP.util.plain('<p>Hallo <b>wereld</b></p><script>x</script>'));
     assert.match(t, /Hallo wereld/);
