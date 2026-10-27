@@ -243,9 +243,7 @@
       VA.dls.set(String(d.key), d);
 
       const check = `<button type="button" class="va-check${d.done ? ' is-done' : ''}" data-action="${p}-done" data-key="${esc(d.key)}" aria-pressed="${d.done ? 'true' : 'false'}" aria-label="${esc(t(d.done ? 'va.undone' : 'va.done', { title: d.title }))}">${icon(d.done ? 'checkCircle' : 'circle', { size: 22 })}</button>`;
-      const when = opts.showDay === false
-        ? TP.fmt.time(d.due)
-        : `${TP.fmt.date(d.due, { weekday: 'short', day: 'numeric', month: 'short' })} ${TP.fmt.time(d.due)}`;
+      const when = opts.showDay === false ? TP.fmt.time(d.due) : TP.fmt.when(d.due);
       const sub = `${TP.ui.dot(d.color || 'var(--label-3)')}<span>${esc(course)}</span><span aria-hidden="true"> · </span><span>${esc(when)}</span>`
         + (d.source === 'custom' ? ` <span class="va-tag">${esc(t('va.own'))}</span>` : '');
 
@@ -256,7 +254,7 @@
       else urg = `<span class="va-urg">${esc(TP.fmt.rel(d.due))}</span>`;
 
       let trailing = `<span class="va-urg-wrap">${urg}</span>`;
-      if (opts.removable && d.source === 'custom' && d.customId != null) {
+      if (opts.removable && d.source === 'custom' && d.customId != null) { // deleting offers Undo (VA.removeCustom)
         trailing += `<button type="button" class="va-iconbtn" data-action="${p}-remove" data-id="${esc(d.customId)}" aria-label="${esc(t('deadlines.removeLabel', { title: d.title }))}" title="${esc(t('deadlines.remove'))}">${icon('xmark', { size: 15 })}</button>`;
       }
       if (d.url) {
@@ -339,22 +337,141 @@
     icsOne(d, root) {
       let ics = '';
       try { ics = TP.data.ics([d]); } catch (err) { console.warn('[Toledo+] ics', err); return; }
-      const slug = String(d.title || 'deadline').toLowerCase().normalize('NFKD').replace(/[^\w]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'deadline';
-      VA.downloadText(root, ics, `${slug}.ics`, 'text/calendar;charset=utf-8');
+      VA.downloadText(root, ics, `${TP.data.icsName(d.title, 'deadline')}.ics`, 'text/calendar;charset=utf-8');
       VA.toast(t('va.icsDone'));
     },
 
-    /** F6: deadline detail sheet (title, course, due + relative, source, description when available, actions). */
+    /** Delete an own deadline; the toast offers Undo (same id → same key, so a "klaar" mark comes back too). */
+    async removeCustom(id) {
+      const item = await TP.data.removeCustomDeadline(id);
+      if (item && TP.ui.undoToast) {
+        TP.ui.undoToast(t('deadlines.removed'), async () => {
+          await TP.data.addCustomDeadline(item);
+          VA.announce(t('deadlines.restored'));
+        });
+      } else VA.toast(t('deadlines.removed'));
+    },
+
+    /** "2026-03-28" + "02:30" → { due, shifted } in local time. shifted: that wall-clock time does not exist on that
+     *  day (the clocks go forward), so the date moved it (TP-220); the caller says so. */
+    parseDue(date, time) {
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(date || ''));
+      const tm = /^(\d{1,2}):(\d{2})$/.exec(String(time || '23:59'));
+      if (!m || !tm) return null;
+      const due = new Date(+m[1], +m[2] - 1, +m[3], +tm[1], +tm[2]).getTime();
+      const back = new Date(due);
+      if (!Number.isFinite(due) || back.getMonth() !== +m[2] - 1 || back.getDate() !== +m[3] || +tm[1] > 23 || +tm[2] > 59) return null; // 2026-02-30
+      const shifted = TP.fmt.time(due) !== `${String(+tm[1]).padStart(2, '0')}:${tm[2]}`;
+      return { due, shifted };
+    },
+
+    /** Form fields shared by "Eigen deadline toevoegen" and the sheet's edit form. v: {title, courseLuId, date, time} */
+    deadlineFields(v, courseOpts) {
+      const today = TP.fmt.dayKey(Date.now());
+      const z = TP.fmt.zone();
+      return `<label class="va-field"><span>${esc(t('deadlines.add.name'))}</span>
+        <input name="title" type="text" required maxlength="200" autocomplete="off" placeholder="${esc(t('deadlines.add.placeholder'))}" value="${esc(v.title || '')}"></label>
+      <label class="va-field"><span>${esc(t('deadlines.add.course'))}</span>
+        <select name="courseLuId">${courseOpts.map((o) => `<option value="${esc(o.value)}"${String(v.courseLuId || '') === o.value ? ' selected' : ''}>${esc(o.label)}</option>`).join('')}</select></label>
+      <div class="va-field-row">
+        <label class="va-field"><span>${esc(t('deadlines.add.date'))}</span>
+          <input name="date" type="date" required${v.min === false ? '' : ` min="${esc(today)}"`} value="${esc(v.date || '')}"></label>
+        <label class="va-field"><span>${esc(t('deadlines.add.time'))}</span>
+          <input name="time" type="time" value="${esc(v.time || '23:59')}"${z ? ` aria-describedby="va-zone-note"` : ''}></label>
+      </div>
+      ${z ? `<p class="va-foot" id="va-zone-note">${esc(t('time.zoneForm', { zone: z }))}</p>` : ''}`;
+    },
+
+    courseOptions() {
+      let courses = [];
+      try { courses = TP.data.courses({ currentOnly: true }) || []; } catch { courses = []; }
+      return [{ value: '', label: t('va.noCourse') }, ...courses.filter((c) => !c.hidden).map((c) => ({ value: String(c.luId), label: c.name }))];
+    },
+
+    /** TP-217: one line on time-based pages when this device is not on Belgian time ("Tijden in je eigen tijdzone (GMT+9)"). */
+    zoneNote() {
+      const z = TP.fmt.zone();
+      return z ? `<p class="va-zone-note" role="note">${icon('clock', { size: 14 })}<span>${esc(t('time.zoneNote', { zone: z }))}</span></p>` : '';
+    },
+
+    /** Exams by id (for the exam sheet; rows carry data-xid). */
+    exams: new Map(),
+
+    /** TP-018: an exam opens the same kind of sheet as a deadline: when (and how long), where, who, Add to calendar. */
+    openExam(e, opener, root) {
+      if (!e || !TP.shell.detail) return;
+      let c = null;
+      try { c = e.courseLuId && TP.data.course ? TP.data.course(e.courseLuId) : null; } catch { c = null; }
+      const name = (c && c.name) || e.title || '';
+      const L = e.location || {};
+      const metaRow = (ic, label, value) => (value ? TP.ui.row({ leading: `<span class="tp-tile">${icon(ic, { size: 16 })}</span>`, title: value, subtitle: esc(label) }) : '');
+      const nt = `<span class="va-sr">${esc(t('va.newTab'))}</span>`;
+      const where = [L.room || L.mnemonic, L.building && L.building !== L.room ? L.building : '', L.street, L.city].filter(Boolean).map(esc).join('<br>');
+      const when = `${esc(VA.capitalize(TP.fmt.date(e.start, { weekday: 'long', day: 'numeric', month: 'long', ...(new Date(e.start).getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {}) })))}<br>${esc(TP.fmt.timeRange(e.start, e.end))}`
+        + `${TP.fmt.zone(e.start) ? ` <span class="va-zone">${esc(t('time.zoneShort', { zone: TP.fmt.zone(e.start) }))}</span>` : ''} <span class="va-urg">· ${esc(VA.capitalize(TP.fmt.rel(e.start)))}</span>`;
+      const meta = [
+        metaRow('courses', t('va.sheet.course'), `${TP.ui.dot((c && c.color) || 'var(--label-3)')} ${esc(name)}${e.courseCode ? ` <span class="va-muted">${esc(e.courseCode)}</span>` : ''}`),
+        metaRow('clock', t('va.sheet.when'), when),
+        metaRow('location', t('va.sheet.room'), where + (L.url ? `${where ? '<br>' : ''}<a href="${esc(L.url)}" target="_blank" rel="noopener">${esc(t('agenda.pop.map'))} ›${nt}</a>` : '')),
+        metaRow('person', t('agenda.pop.teachers'), (e.teachers || []).map(esc).join('<br>')),
+        metaRow('info', t('agenda.pop.info'), esc([e.text, e.group].filter(Boolean).join(' · '))),
+      ].join('');
+      const btn = (action, ic, label) => `<button type="button" class="tp-row has-lead" data-detail-action="${esc(action)}"><span class="tp-row-lead"><span class="tp-tile">${icon(ic, { size: 16 })}</span></span><span class="tp-row-main"><span class="tp-row-title">${esc(label)}</span></span></button>`;
+      const actions = [
+        e.courseLuId ? btn('course', 'courses', t('va.sheet.openCourse')) : '',
+        btn('ics', 'calendar', t('va.addToCalendar')),
+        btn('agenda', 'planning', t('va.sheet.inAgenda')),
+      ].filter(Boolean).join('');
+      TP.shell.detail.open({
+        title: `${t('agenda.exam')}: ${name}`,
+        html: `${TP.ui.group(meta, { cls: 'tp-detail-meta' })}${TP.ui.group(actions, { cls: 'tp-detail-actions' })}<p class="va-foot">${esc(t('agenda.pop.source.kuloket'))}</p>`,
+        opener,
+        onAction(action) {
+          if (action === 'course') { TP.shell.detail.close(); location.assign(TP.shell.href('course', { luId: e.courseLuId })); return; }
+          if (action === 'agenda') { TP.shell.detail.close(); TP.shell.navigate('agenda', { id: TP.fmt.dayKey(e.start) }); return; }
+          if (action === 'ics') {
+            let ics = '';
+            try { ics = TP.data.ics([], { exams: [e], name: 'Toledo+' }); } catch (err) { console.warn('[Toledo+] ics', err); return; }
+            VA.downloadText(root, ics, `${TP.data.icsName(`${t('agenda.exam')} ${name}`, 'examen')}-${TP.fmt.dayKey(e.start)}.ics`, 'text/calendar;charset=utf-8');
+            VA.toast(t('va.icsDone'));
+          }
+        },
+      });
+    },
+
+    /** Upcoming KU Loket exams (TP.kuloket, optional), soonest first. opts.course: 'all' | 'none' | luId. */
+    upcomingExams(opts = {}) {
+      let list = null;
+      try { list = TP.kuloket && typeof TP.kuloket.peekExams === 'function' ? TP.kuloket.peekExams() : null; } catch { list = null; }
+      const now = Date.now();
+      const course = opts.course || 'all';
+      return (Array.isArray(list) ? list : []).filter((e) => e && e.start && (e.end || e.start) >= now)
+        .filter((e) => course === 'all' || (course === 'none' ? !e.courseLuId : String(e.courseLuId || '') === course))
+        .filter((e) => !opts.within || e.start <= now + opts.within)
+        .sort((a, b) => a.start - b.start);
+    },
+
+    /** F6: deadline detail sheet (title, course, due + relative, source, description when available, actions).
+     *  Own deadlines can be edited in place (TP-207) and deleted with Undo (TP-208). */
     openDeadline(d, opener, root) {
       if (!d || !TP.shell.detail) return;
-      const now = Date.now();
-      const overdue = VA.isOverdue(d, now);
       const { cid, id } = VA.itemIds(d.url);
-      const st = { body: null, loading: false };
+      const st = { body: null, loading: false, edit: false, err: '' };
       const metaRow = (ic, label, value) => TP.ui.row({ leading: `<span class="tp-tile">${icon(ic, { size: 16 })}</span>`, title: value, subtitle: esc(label) });
+      const btn = (action, ic, label) => `<button type="button" class="tp-row has-lead" data-detail-action="${esc(action)}"><span class="tp-row-lead"><span class="tp-tile">${icon(ic, { size: 16 })}</span></span><span class="tp-row-main"><span class="tp-row-title">${esc(label)}</span></span></button>`;
+      const own = d.source === 'custom' && d.customId != null;
+      const editHtml = () => {
+        const v = { title: d.title, courseLuId: d.courseLuId || '', date: TP.fmt.dayKey(d.due), time: TP.fmt.time(d.due), min: false };
+        return TP.ui.group(`<div class="va-form va-edit" data-form="dl-edit">${VA.deadlineFields(v, VA.courseOptions())}
+          <p class="va-form-error" role="alert"${st.err ? '' : ' hidden'}>${esc(st.err)}</p>
+          <div class="va-form-actions"><button type="button" class="tp-btn tp-btn-gray" data-detail-action="edit-cancel"><span>${esc(t('common.cancel'))}</span></button>
+          <button type="button" class="tp-btn tp-btn-filled" data-detail-action="edit-save"><span>${esc(t('deadlines.edit.save'))}</span></button></div></div>`);
+      };
       const html = () => {
+        if (st.edit) return editHtml();
+        const overdue = VA.isOverdue(d, Date.now());
         const urg = d.done ? t('va.doneWord') : overdue ? overdueText(d.due) : VA.capitalize(TP.fmt.rel(d.due));
-        const due = `${VA.capitalize(TP.fmt.date(d.due, { weekday: 'long', day: 'numeric', month: 'long' }))} · ${TP.fmt.time(d.due)}`;
+        const due = TP.fmt.when(d.due, 'long', { zone: true });
         const meta = [
           metaRow('courses', t('va.sheet.course'), `${TP.ui.dot(d.color || 'var(--label-3)')} ${esc(d.courseName || t('va.noCourse'))}`),
           metaRow('clock', t('va.sheet.due'), `${esc(due)} <span class="va-urg ${d.done ? 'is-done' : overdue ? 'is-overdue' : ''}">· ${esc(urg)}</span>`),
@@ -363,21 +480,51 @@
         let desc = '';
         if (st.loading) desc = TP.ui.group(`<p class="tp-detail-desc va-muted">${esc(t('common.loading'))}</p>`);
         else if (st.body) desc = TP.ui.group(`<div class="tp-detail-desc tp-prose">${TP.util.sanitize(st.body)}</div>`);
-        const btn = (action, ic, label) => `<button type="button" class="tp-row has-lead" data-detail-action="${esc(action)}"><span class="tp-row-lead"><span class="tp-tile">${icon(ic, { size: 16 })}</span></span><span class="tp-row-main"><span class="tp-row-title">${esc(label)}</span></span></button>`;
         const actions = [
           d.courseLuId || cid ? btn('course', 'courses', t('va.sheet.openCourse')) : '',
           d.url ? `<a class="tp-row has-lead" href="${esc(TP.util.abs(d.url))}" target="_blank" rel="noopener"><span class="tp-row-lead"><span class="tp-tile">${icon('external', { size: 16 })}</span></span><span class="tp-row-main"><span class="tp-row-title">${esc(t('va.openToledo'))}</span></span><span class="va-sr">${esc(t('va.newTab'))}</span></a>` : '',
           btn('done', d.done ? 'circle' : 'checkCircle', t(d.done ? 'va.sheet.markOpen' : 'va.sheet.markDone')),
           btn('ics', 'calendar', t('va.addToCalendar')),
-          d.source === 'custom' && d.customId != null ? btn('remove', 'trash', t('deadlines.remove')) : '',
+          own ? btn('edit', 'page', t('deadlines.edit')) : '',
+          own ? btn('remove', 'trash', t('deadlines.remove')) : '',
         ].filter(Boolean).join('');
         return `${TP.ui.group(meta, { cls: 'tp-detail-meta' })}${desc}${TP.ui.group(actions, { cls: 'tp-detail-actions' })}`
           + `<p class="va-foot">${esc(t('deadlines.honest'))}</p>`;
       };
+      const sheet = () => (TP.shell.app && TP.shell.app.querySelector('.tp-detail')) || null;
+      const focusIn = (sel) => { const el = sheet() && sheet().querySelector(sel); if (el) el.focus(); };
+      async function save() {
+        const box = sheet() && sheet().querySelector('[data-form="dl-edit"]');
+        if (!box) return;
+        const val = (n) => String((box.querySelector(`[name="${n}"]`) || {}).value || '');
+        const title = val('title').trim();
+        const p = VA.parseDue(val('date'), val('time') || '23:59');
+        if (!title || !p) {
+          st.err = t('deadlines.add.invalid');
+          TP.shell.detail.update(html());
+          focusIn(!title ? 'input[name="title"]' : 'input[name="date"]');
+          return;
+        }
+        const item = await TP.data.updateCustomDeadline(d.customId, { title, courseLuId: val('courseLuId'), due: p.due });
+        if (!item) return;
+        let c = null;
+        try { c = item.courseLuId && TP.data.course ? TP.data.course(item.courseLuId) : null; } catch { c = null; }
+        Object.assign(d, { title: item.title, courseLuId: item.courseLuId, due: item.due, courseName: c ? c.name : '', color: c ? c.color : null });
+        st.edit = false; st.err = '';
+        const head = sheet() && sheet().querySelector('#tp-detail-title');
+        if (head) head.textContent = d.title;
+        TP.shell.detail.update(html());
+        focusIn('[data-detail-action="edit"]');
+        VA.toast(p.shifted ? t('deadlines.add.shifted', { time: TP.fmt.time(p.due) }) : t('deadlines.edit.saved'));
+      }
       TP.shell.detail.open({
         title: d.title,
         html: html(),
         opener,
+        onKey(ev) {
+          // Enter in a field of the edit form saves (no <form>: the sheet routes its own actions)
+          if (st.edit && ev.key === 'Enter' && ev.target && ev.target.tagName === 'INPUT') { ev.preventDefault(); save(); }
+        },
         async onAction(action) {
           if (action === 'course') { TP.shell.detail.close(); await VA.openInCourse(d); return; }
           if (action === 'ics') { VA.icsOne(d, root); return; }
@@ -388,7 +535,10 @@
             TP.shell.detail.update(html());
             return;
           }
-          if (action === 'remove') { TP.shell.detail.close(); await TP.data.removeCustomDeadline(d.customId); VA.toast(t('deadlines.removed')); }
+          if (action === 'edit') { st.edit = true; st.err = ''; TP.shell.detail.update(html()); focusIn('input[name="title"]'); return; }
+          if (action === 'edit-cancel') { st.edit = false; st.err = ''; TP.shell.detail.update(html()); focusIn('[data-detail-action="edit"]'); return; }
+          if (action === 'edit-save') { await save(); return; }
+          if (action === 'remove') { TP.shell.detail.close(); await VA.removeCustom(d.customId); }
         },
       });
       // Assignment text from Ultra when the data layer can give it (cache or TP.data.ultraItem).
@@ -400,7 +550,7 @@
           st.body = n && (n.body || n.description) ? String(n.body || n.description) : null;
         }).catch(() => { st.body = null; }).finally(() => {
           st.loading = false;
-          if (TP.shell.detail.isOpen()) TP.shell.detail.update(html());
+          if (TP.shell.detail.isOpen() && !st.edit) TP.shell.detail.update(html()); // never under a half-typed edit
         });
       }
     },
@@ -505,6 +655,9 @@
       body = (state !== 'ok' && state !== 'loading' ? VA.errorBlock(t('overview.deadlines.error'), 'events') : '')
         + TP.ui.group(rows, { cls: 'va-dl-group' });
     }
+    // TP-102: exams in the next 14 days sit on top of the card (the same row as Deadlines › Examens; it opens the exam sheet)
+    const exams = VA.examRow ? VA.upcomingExams({ within: 14 * DAY }).slice(0, 2) : [];
+    if (exams.length) body = TP.ui.group(exams.map((e) => VA.examRow(e)).join(''), { cls: 'va-exam-group' }) + body;
     const more = overdue.length > 3 ? t('overview.deadlines.allOverdue', { n: overdue.length }) : t('overview.deadlines.all');
     const actions = [{ action: 'ov-nav', label: more, attrs: { 'data-route': 'deadlines', href: TP.shell.href('deadlines') } }];
     return section('deadlines', { title: esc(t('overview.deadlines.title')), actions, body });
@@ -664,9 +817,10 @@
     return section('courses', { title: esc(t('overview.courses.title')), actions, body });
   }
 
-  /** "3 d te laat" (whole days past due), or "Te laat" on the day itself. Same wording everywhere. */
+  /** "3 d te laat" (calendar days past due, like "gisteren"/"over 3 d"; flips at midnight, TP-219), or "Te laat" on
+   *  the day itself. Same wording everywhere. */
   function overdueText(due) {
-    const n = Math.floor((Date.now() - due) / 864e5);
+    const n = -TP.fmt.daysUntil(due);
     return n >= 1 ? t('va.overdueBy', { n }) : t('va.overdue');
   }
 
@@ -686,9 +840,11 @@
     const name = kul ? ((course && course.name) || s.title || '') : s.name;
     const link = kul ? (s.courseLuId ? TP.shell.href('course', { luId: s.courseLuId }) : null) : (s.source && s.source.link);
     const sub = [loc || t('overview.schedule.noLocation'), teachers].filter(Boolean).join(' · ');
+    // ends on a later calendar day (e.g. a Leuven evening lesson seen from Tokyo): "+1" after the end time (TP-222)
+    const nextDay = s.end > s.start ? Math.round((TP.fmt.sod(s.end - 1) - TP.fmt.sod(s.start)) / DAY) : 0;
     return TP.ui.row({
       href: link || undefined,
-      leading: `<span class="va-time"><span>${esc(TP.fmt.time(s.start))}</span><span>${esc(TP.fmt.time(s.end))}</span></span><span class="va-bar" style="--c:${esc(color)}" aria-hidden="true"></span>`,
+      leading: `<span class="va-time"><span>${esc(TP.fmt.time(s.start))}</span><span>${esc(TP.fmt.time(s.end))}${nextDay > 0 ? `<small class="va-plus">+${nextDay}</small>` : ''}</span></span><span class="va-bar" style="--c:${esc(color)}" aria-hidden="true"></span>`,
       title: esc(name) + (kul && s.kind === 'examen' ? ` <span class="va-tag">${esc(t('overview.schedule.exam'))}</span>` : ''),
       subtitle: esc(sub),
       q: TP.index.hayOf.lesson({ ...s, title: name, teachers: kul ? s.teachers : [] }, [prefixQ, loc]),
@@ -702,7 +858,7 @@
   /** Lessons for today + tomorrow: KU Loket when it has them, else Toledo's own "upcoming". */
   function lessonsByDay() {
     const sod = VA.startOfToday();
-    const range = { from: sod, to: sod + 2 * DAY };
+    const range = { from: sod, to: TP.fmt.addDays(sod, 2) }; // calendar days: 23 h / 25 h on the DST days (TP-218)
     const K = TP.kuloket;
     let kul = null;
     let status = null;
@@ -725,15 +881,22 @@
 
   function secSchedule() {
     const now = Date.now();
-    const days = [[now, 'overview.schedule.today'], [now + DAY, 'overview.schedule.tomorrow']];
+    const days = [[now, 'overview.schedule.today'], [TP.fmt.addDays(now, 1), 'overview.schedule.tomorrow']]; // not now + 24 h (TP-218)
     const { source, by, state } = lessonsByDay();
     let body;
     if (state === 'loading') body = VA.skeleton(2, { lead: 'none' });
     else if (state === 'error') body = VA.errorBlock(t('overview.schedule.error'), 'upcoming');
     else {
       // One card (its top lines up with the Deadlines card); "Vandaag" / "Morgen" are sub-headings inside it.
+      // TP-102: exams today/tomorrow are in the schedule too (unless KU Loket already lists them as a lesson)
+      const exams = VA.upcomingExams({ within: 2 * DAY });
       body = TP.ui.group(days.map(([ms, key]) => {
-        const list = (by[TP.fmt.dayKey(ms)] || []).slice().sort((a, b) => a.start - b.start);
+        const day = (by[TP.fmt.dayKey(ms)] || []).slice();
+        for (const e of exams) {
+          if (TP.fmt.dayKey(e.start) !== TP.fmt.dayKey(ms) || day.some((l) => l.start === e.start && (l.kind === 'examen' || l.courseCode === e.courseCode))) continue;
+          day.push({ ...e, source: 'kuloket', kind: 'examen' });
+        }
+        const list = day.sort((a, b) => a.start - b.start);
         const head = `<h3 class="va-dayhead">${esc(t(key))} <span>${esc(TP.fmt.date(ms, { weekday: 'short', day: 'numeric', month: 'short' }))}</span></h3>`;
         const rows = list.length ? list.map((s) => lessonRow(s)).join('') : `<p class="va-dayempty">${esc(t('overview.schedule.none'))}</p>`;
         return `<div class="va-day" data-va-day>${head}${rows}</div>`;
@@ -871,6 +1034,11 @@
       case 'va-dl-open': {
         ev.preventDefault();
         VA.openDeadline(VA.dls.get(el.getAttribute('data-key')), el, ctx.root);
+        break;
+      }
+      case 'va-exam-open': {
+        ev.preventDefault();
+        VA.openExam(VA.exams.get(el.getAttribute('data-xid')), el, ctx.root);
         break;
       }
       case 'ov-done': {

@@ -6,21 +6,32 @@
   const t = (k, v) => TP.t(k, v);
   const esc = (s) => TP.util.esc(s == null ? '' : String(s));
   const icon = (n, o) => TP.ui.icon(n, o);
-  const DAY = 864e5;
 
-  const S = { ctx: null, q: '', seq: 0 };
+  const S = { ctx: null, q: '', seq: 0, loading: false };
   const sod = (ms) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };
   const nt = () => `<span class="tp-sr"> ${esc(t('agenda.newTab'))}</span>`;
 
+  // B1 for KU Loket (TP-137): "no exams" / "no classes" only after KU Loket answered. Unreachable → an error with
+  // "Opnieuw" (and the saved data, if any, under a "saved" note); not loaded yet → a loading placeholder.
+  const failed = (s) => !!(s && s.ok === false && s.error !== 'auth' && s.error !== 'ics');
+  const retryNote = (text) => `<div class="kl-note kl-error" role="alert">${icon('warning', { size: 15 })}<p>${esc(text)} <button type="button" class="tp-link-btn" data-action="kl-retry">${esc(t('common.retry'))}</button></p></div>`;
+  const savedNote = (when) => `<p class="kl-saved">${icon('warning', { size: 13 })}<span>${esc(t('kuloket.saved', { time: when ? TP.fmt.ago(when) : '' }))}</span> <button type="button" class="tp-link-btn" data-action="kl-retry">${esc(t('common.retry'))}</button></p>`;
+
   function examsSection(st) {
     const now = Date.now();
-    const all = (TP.kuloket.peekExams() || []);
-    const next = all.filter((e) => e.end >= now).slice(0, 6);
+    const peek = TP.kuloket.peekExams();
+    const next = (peek || []).filter((e) => e.end >= now).slice(0, 6);
+    const E = st.exams || {};
     let body;
     if (next.length) {
-      body = TP.ui.group(next.map((e) => TP.viewsA.examRow(e)).join('')); // same row as Deadlines › Examens
-    } else if (st.exams && st.exams.ok === false && st.exams.error === 'auth') {
+      body = TP.ui.group(next.map((e) => TP.viewsA.examRow(e)).join('')) // same row as Deadlines › Examens
+        + (failed(E) ? savedNote(E.t) : '');
+    } else if (E.ok === false && E.error === 'auth') {
       body = TP.ui.group(`<div class="kl-note">${icon('info', { size: 15 })}<p>${esc(t('kuloket.exams.login'))} <a href="${esc(TP.kuloket.appUrl('zr_0363'))}" target="_blank" rel="noopener">${esc(t('agenda.status.loginLink'))} ›${nt()}</a></p></div>`);
+    } else if (failed(E)) {
+      body = TP.ui.group(retryNote(t('kuloket.exams.error')));
+    } else if (peek == null || (E.ok == null && !peek.length && S.loading)) {
+      body = TP.ui.skeleton(2, { lead: 'date' });
     } else {
       body = TP.ui.group(`<div class="kl-note">${icon('deadlines', { size: 15 })}<p>${esc(t('kuloket.exams.none'))}</p></div>`);
     }
@@ -29,12 +40,19 @@
 
   function todaySection(st) {
     const from = sod(Date.now());
-    const lessons = (TP.kuloket.peekLessons({ from, to: from + DAY }) || []).filter((l) => l.end > from);
+    const peek = TP.kuloket.peekLessons({ from, to: TP.fmt.addDays(from, 1) }); // calendar day (DST: 23/25 h)
+    const lessons = (peek || []).filter((l) => l.end > from);
+    const L = st.lessons || {};
     let body;
     if (lessons.length) {
-      body = TP.ui.group(lessons.map((l) => TP.viewsA.lessonRow(l)).join('')); // same row as Overzicht › Rooster
-    } else if (st.lessons && st.lessons.ok === false && (st.lessons.error === 'auth' || st.lessons.error === 'ics')) {
+      body = TP.ui.group(lessons.map((l) => TP.viewsA.lessonRow(l)).join('')) // same row as Overzicht › Rooster
+        + (failed(L) ? savedNote(L.t) : '');
+    } else if (L.ok === false && (L.error === 'auth' || L.error === 'ics')) {
       body = TP.ui.group(`<div class="kl-note">${icon('info', { size: 15 })}<p>${esc(t('agenda.status.login'))} <a href="${esc(TP.kuloket.loginUrl())}" target="_blank" rel="noopener">${esc(t('agenda.status.loginLink'))} ›${nt()}</a> <a href="${esc(TP.shell.href('settings'))}">${esc(t('agenda.status.orIcs'))}</a></p></div>`);
+    } else if (failed(L)) {
+      body = TP.ui.group(retryNote(t('kuloket.today.error')));
+    } else if (peek == null || (L.ok == null && S.loading)) {
+      body = TP.ui.skeleton(2, { lead: 'none' });
     } else {
       body = TP.ui.group(`<div class="kl-note">${icon('calendar', { size: 15 })}<p>${esc(t('kuloket.today.none'))}</p></div>`);
     }
@@ -64,9 +82,38 @@
     if (!ctx || !ctx.root.isConnected) return;
     const st = TP.kuloket.status();
     const main = examsSection(st) + todaySection(st);
-    ctx.root.innerHTML = `<div class="kl-view tp-narrow">${main}${appsSections()}<div class="kl-noresults" hidden></div></div>`;
+    ctx.root.innerHTML = `<div class="kl-view tp-narrow">${TP.viewsA.zoneNote ? TP.viewsA.zoneNote() : ''}${main}${appsSections()}<div class="kl-noresults" hidden></div></div>`;
     if (S.q) applySearch();
   }
+
+  function load(ctx, force) {
+    const seq = ++S.seq;
+    const from = sod(Date.now());
+    const r = { from, to: TP.fmt.addDays(from, 1) };
+    S.loading = true;
+    const job = force && TP.kuloket.refresh ? TP.kuloket.refresh(r) : Promise.all([TP.kuloket.exams(), TP.kuloket.lessons(r)]);
+    Promise.resolve(job).catch(() => {}).then(() => {
+      if (seq !== S.seq) return;
+      S.loading = false;
+      if (S.ctx === ctx) paint();
+    });
+  }
+
+  function onClick(ev) {
+    const ctx = S.ctx;
+    const el = ev.target.closest && ev.target.closest('[data-action]');
+    if (!ctx || !el || !ctx.root.contains(el)) return;
+    const a = el.getAttribute('data-action');
+    if (a === 'kl-retry') {
+      ev.preventDefault();
+      el.setAttribute('aria-busy', 'true');
+      load(ctx, true);
+    } else if (a === 'va-exam-open') {
+      ev.preventDefault();
+      TP.viewsA.openExam(TP.viewsA.exams.get(el.getAttribute('data-xid')), el, ctx.root);
+    }
+  }
+  const bound = new WeakSet();
 
   function applySearch() {
     const root = S.ctx && S.ctx.root;
@@ -92,11 +139,10 @@
       S.ctx = ctx;
       try { ctx.setSubtitle(esc(t('kuloket.subtitle'))); } catch (_) { /* ignore */ }
       try { ctx.setActions([{ id: 'kl-open', label: t('kuloket.open'), icon: 'external', onClick: () => window.open(TP.kuloket.appUrl('zr_1027'), '_blank', 'noopener') }]); } catch (_) { /* ignore */ }
+      if (!bound.has(ctx.root)) { bound.add(ctx.root); ctx.root.addEventListener('click', onClick); }
+      S.loading = true;
       paint();
-      const seq = ++S.seq;
-      const from = sod(Date.now());
-      Promise.all([TP.kuloket.exams(), TP.kuloket.lessons({ from, to: from + DAY })])
-        .then(() => { if (seq === S.seq && S.ctx === ctx) paint(); }).catch(() => {});
+      load(ctx, false);
     },
     onSearch(ctx, q) { S.q = (q || '').trim(); applySearch(); },
     destroy() { S.ctx = null; S.q = ''; S.seq++; },

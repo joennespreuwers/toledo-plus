@@ -106,23 +106,32 @@
     return Math.max(0, Math.min(target, 24 - visible));
   }
 
-  /** One VEVENT calendar file for a lesson/exam ("Zet in agenda"). Times as UTC. */
+  /** One VEVENT calendar file for a lesson/exam ("Zet in agenda"), written by the shared TP.data.icsEvents (RFC 5545
+   *  escaping incl. a bare CR, octet folding: TP-106, TP-176). Exams are titled "Examen: …" with the reminder (TP-105). */
   function icsFor(it, now = Date.now()) {
-    const z = (ms) => new Date(ms).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
-    const e = (s) => String(s || '').replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/([,;])/g, '\\$1');
-    const fold = (line) => { const out = []; let s = line; while (s.length > 74) { out.push(s.slice(0, 74)); s = ' ' + s.slice(74); } out.push(s); return out.join('\r\n'); };
     const d = it.data || {};
     const loc = d.location || {};
-    const where = [loc.room, loc.building && loc.building !== loc.room ? loc.building : '', loc.street, loc.city].filter(Boolean).join(', ');
-    const desc = [d.courseCode, d.form || d.text, d.group, (d.teachers || []).join(', ')].filter(Boolean).join('\n');
-    const uid = `${String(d.id || it.key).replace(/[^\w.-]/g, '')}@toledoplus`;
-    const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Toledo+//Agenda//NL', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'BEGIN:VEVENT',
-      `UID:${uid}`, `DTSTAMP:${z(now)}`, `DTSTART:${z(it.start)}`, `DTEND:${z(Math.max(it.end, it.start + MIN))}`, `SUMMARY:${e(it.title)}`];
-    if (where) lines.push(`LOCATION:${e(where)}`);
-    if (desc) lines.push(`DESCRIPTION:${e(desc)}`);
-    if (loc.url) lines.push(`URL:${loc.url}`);
-    lines.push('END:VEVENT', 'END:VCALENDAR');
-    return lines.map(fold).join('\r\n') + '\r\n';
+    const exam = it.type === 'exam';
+    return TP.data.icsEvents([{
+      uid: `${String(d.id || it.key).replace(/[^\w.-]/g, '')}@toledoplus`,
+      start: it.start, end: Math.max(it.end, it.start + MIN),
+      summary: exam ? `${t('agenda.exam')}: ${it.title}` : it.title,
+      location: [loc.room, loc.building && loc.building !== loc.room ? loc.building : '', loc.street, loc.city].filter(Boolean).join(', '),
+      description: [d.courseCode, d.form || d.text, d.group, (d.teachers || []).join(', ')].filter(Boolean).join('\n'),
+      url: loc.url,
+      alarm: exam && TP.data.icsReminder ? TP.data.icsReminder() : null,
+    }], { now });
+  }
+
+  // TP-080: ‹ › and j/k stop two years either side of today (one data load per step, so not unbounded).
+  const LIMIT_DAYS = 730;
+  const clampAnchor = (a) => Math.min(Math.max(a, addDays(sod(Date.now()), -LIMIT_DAYS)), addDays(sod(Date.now()), LIMIT_DAYS));
+  /** 'YYYY-MM-DD' (route id, Go to date) → local midnight, or null when it is not a real date (2026-02-30). */
+  function parseDay(v) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v || ''));
+    if (!m) return null;
+    const d = new Date(+m[1], +m[2] - 1, +m[3]);
+    return d.getMonth() === +m[2] - 1 && d.getDate() === +m[3] ? d.getTime() : null;
   }
 
   // ------------------------------------------------------------------ preferences (per device: TP.state.ui.agenda)
@@ -222,7 +231,7 @@
   const kindLine = (it) => (it.type === 'lesson' && it.data.form ? it.data.form : typeLabel(it));
   const qOf = (it) => TP.index.hay([it.title, it.room, it.data.courseName, it.data.courseCode, ...(it.data.teachers || []), it.data.group, it.data.form,
     typeLabel(it)], [it.start]);
-  const timeRange = (it) => `${ftime(it.start)} – ${ftime(it.end)}`;
+  const timeRange = (it) => TP.fmt.timeRange(it.start, it.end); // "22:00–00:00 (+1)" when it ends on a later day (TP-222)
   function ariaFor(it) {
     const when = it.type === 'deadline' ? `${longDay(it.start)} ${ftime(it.start)}` : `${longDay(it.start)}, ${ftime(it.start)} ${t('agenda.until')} ${ftime(it.end)}`;
     return [`${typeLabel(it)}: ${it.title}`, when, it.room, it.done ? t('agenda.done') : ''].filter(Boolean).join(', ');
@@ -232,23 +241,37 @@
   // ------------------------------------------------------------------ pieces
   function chip(it, withTime = true) {
     const ic = it.type === 'deadline' ? icon(it.done ? 'checkCircle' : 'deadlines', { size: 12 }) : '<span class="ag-chip-dot" aria-hidden="true"></span>';
-    return `<button type="button" class="ag-chip ag-chip-${it.type}${it.done ? ' is-done' : ''}" ${evAttrs(it)} style="--c:${esc(it.color)}">`
-      + `${ic}${withTime ? `<span class="ag-chip-t">${esc(ftime(it.start))}</span>` : ''}<span class="ag-chip-x">${esc(it.title)}</span></button>`;
+    // The full text on hover (chips are clipped to a few letters in narrow columns, TP-019); a deadline says it is one,
+    // with its due time, so it does not read like a lesson starting then (TP-022).
+    const tip = it.type === 'deadline'
+      ? `${t('agenda.deadline')} · ${t('agenda.dueAt', { time: ftime(it.start) })} · ${it.title}${it.data && it.data.courseName ? ` · ${it.data.courseName}` : ''}`
+      : `${withTime ? ftime(it.start) + ' ' : ''}${typeLabel(it)}: ${it.title}`;
+    const time = withTime ? (it.type === 'deadline' ? t('agenda.dueAt', { time: ftime(it.start) }) : ftime(it.start)) : '';
+    return `<button type="button" class="ag-chip ag-chip-${it.type}${it.done ? ' is-done' : ''}" ${evAttrs(it)} title="${esc(tip)}" style="--c:${esc(it.color)}">`
+      + `${ic}${time ? `<span class="ag-chip-t">${esc(time)}</span>` : ''}<span class="ag-chip-x">${esc(it.title)}</span></button>`;
+  }
+
+  /** Top and height (in hours) of a block in a day column, in wall-clock hours like the hour rows, the now-line and
+   *  the deadline marks: elapsed milliseconds put a 09:00 lesson on the 10:00 (or 08:00) line on the 25 h / 23 h DST
+   *  days (TP-215). start/end are already clipped to [day, next day]. */
+  function blockGeom(start, end, day) {
+    const wall = (ms) => (ms >= addDays(day, 1) ? 24 : hourOf(ms));
+    const top = wall(start);
+    return { top, hours: wall(end) - top };
   }
 
   /** it = the item (real times), g = its clipped piece for one day with col/span/n from layout(). */
   function evBlock(it, g, day, wide) {
     const durMin = (g.end - g.start) / MIN;
     const size = durMin < 40 ? ' is-tiny' : durMin < 70 ? ' is-short' : '';
-    const top = (g.start - day) / H;
-    const hours = (g.end - g.start) / H;
+    const { top, hours } = blockGeom(g.start, g.end, day);
     const style = `--c:${esc(it.color)};top:calc(var(--hh) * ${top.toFixed(4)});height:calc(var(--hh) * ${Math.max(hours, 0.34).toFixed(4)} - 2px);`
       + `left:calc(${((g.col / g.n) * 100).toFixed(3)}% + 1px);width:calc(${((g.span / g.n) * 100).toFixed(3)}% - 3px)`;
     const meta = [wide ? timeRange(it) : ftime(it.start), it.room, wide ? (it.data.teachers || []).join(', ') : ''].filter(Boolean);
     const tag = it.type === 'exam' ? `<span class="ag-ev-tag">${esc(t('agenda.exam'))}</span>` : '';
     return `<button type="button" class="ag-ev ag-ev-${it.type}${size}${g.col > 0 ? ' is-stacked' : ''}" ${evAttrs(it)} style="${style}">`
       + `${tag}<span class="ag-ev-title">${esc(it.title)}</span>`
-      + `<span class="ag-ev-time">${esc(wide ? timeRange(it) : `${ftime(it.start)} – ${ftime(it.end)}`)}</span>`
+      + `<span class="ag-ev-time">${esc(timeRange(it))}</span>`
       + (meta.length > 1 ? `<span class="ag-ev-meta">${esc(meta.slice(1).join(' · '))}</span>` : '') + '</button>';
   }
 
@@ -325,7 +348,7 @@
       const rel = d === today ? t('agenda.today') : d === addDays(today, 1) ? t('agenda.tomorrow') : '';
       const head = `${esc(cap(fdate(d, { weekday: 'long' })))} <span>${esc(fdate(d, { day: 'numeric', month: 'long' }))}${rel ? ' · ' + esc(rel) : ''}</span>`;
       const rows = list.map((it) => {
-        const lead = `<span class="ag-ltime" aria-hidden="true">${it.type === 'deadline' ? esc(ftime(it.start)) : `${esc(ftime(it.start))}<br><small>${esc(ftime(it.end))}</small>`}</span><span class="ag-lbar" style="--c:${esc(it.color)}" aria-hidden="true"></span>`;
+        const lead = `<span class="ag-ltime" aria-hidden="true">${it.type === 'deadline' ? esc(ftime(it.start)) : `${esc(ftime(it.start))}<br><small>${esc(ftime(it.end))}${sod(it.end - 1) > sod(it.start) ? ` +${Math.round((sod(it.end - 1) - sod(it.start)) / 864e5)}` : ''}</small>`}</span><span class="ag-lbar" style="--c:${esc(it.color)}" aria-hidden="true"></span>`;
         const sub = it.type === 'deadline' ? esc([t('agenda.deadline'), it.data.courseName].filter(Boolean).join(' · '))
           : esc([it.room || (it.data.source === 'toledo' ? '' : t('agenda.noRoom')), (it.data.teachers || []).join(', ')].filter(Boolean).join(' · '));
         const title = `${it.type === 'exam' ? `<span class="ag-tag">${esc(t('agenda.exam'))}</span> ` : ''}${esc(it.title)}`;
@@ -372,7 +395,8 @@
   }
 
   function rangeLabel(m, r) {
-    if (m === 'day') return cap(fdate(r.from, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }));
+    // phones: a short day label, so the toolbar does not grow a line on long dates (TP-024)
+    if (m === 'day') return cap(fdate(r.from, narrow() ? { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' } : { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }));
     if (m === 'month') return cap(fdate(r.month, { month: 'long', year: 'numeric' }));
     const last = addDays(r.to, -1);
     const a = new Date(r.from), b = new Date(last);
@@ -461,8 +485,11 @@
     if (!ctx || !ctx.root || !ctx.root.isConnected) return;
     const m = mode();
     const r = rangeFor(m, S.anchor, S.prefs);
-    const g = gather(r.from, r.to);
-    const { items } = g;
+    // Werkweek: still look at the whole week, so weekend exams/lessons are counted and offered (TP-103)
+    const ww = m === 'week' && S.prefs.workweek;
+    const g = gather(r.from, ww ? addDays(r.from, 7) : r.to);
+    const weekend = ww ? g.items.filter((i) => i.start >= r.to) : [];
+    const items = ww ? g.items.filter((i) => i.start < r.to) : g.items;
     const days = [];
     if (m === 'day' || m === 'week') for (let i = 0; i < r.days; i++) days.push(addDays(r.from, i));
     const cal = m === 'month' ? monthGrid(r, items) : m === 'list' ? listView(r, items, g.lessonsKnown) : timeGrid(r, days, items);
@@ -487,20 +514,33 @@
     const emptyKind = m === 'day' ? 'day' : m === 'month' ? 'month' : 'week';
     const L = (g.st && g.st.lessons) || {};
     const showEmpty = !items.length && g.lessonsKnown && L.ok !== false;
-    const empty = showEmpty ? `<div class="ag-empty" role="note">${icon('calendar', { size: 18 })}<span>${esc(t(g.all.length ? 'agenda.empty.filtered' : 'agenda.empty.' + emptyKind))}</span>${g.all.length ? ` <button type="button" class="tp-link-btn" data-action="ag-reset">${esc(t('agenda.filter.reset'))}</button>` : ''}</div>` : '';
-    const K = TP.kuloket;
+    const allShown = ww ? g.all.filter((i) => i.start < r.to) : g.all;
+    // a note above the calendar, never a pill floating over the grid or the month's day numbers (TP-024, TP-081)
+    const empty = showEmpty && !weekend.length ? `<div class="ag-empty" role="note">${icon('calendar', { size: 18 })}<span>${esc(t(allShown.length ? 'agenda.empty.filtered' : 'agenda.empty.' + emptyKind))}</span>${allShown.length ? ` <button type="button" class="tp-link-btn" data-action="ag-reset">${esc(t('agenda.filter.reset'))}</button>` : ''}</div>` : '';
+    const wkend = weekend.length ? `<p class="ag-status ag-weekend" role="note">${icon('info', { size: 14 })}<span>${esc(t(weekend.some((i) => i.type === 'exam') ? 'agenda.weekend.exam' : 'agenda.weekend', { n: weekend.length }))} <button type="button" class="tp-link-btn" data-action="ag-show-weekend">${esc(t('agenda.weekend.show'))}</button></span></p>` : '';
+    const zone = TP.viewsA && TP.viewsA.zoneNote ? TP.viewsA.zoneNote() : '';
     const side = `<aside class="ag-side" aria-label="${esc(t('agenda.side'))}">${miniMonth(r)}${panelHtml(g.all, 'ag-side')}</aside>`;
 
     const view = shell(ctx);
+    const cls = `ag-view ag-m-${m}${S.prefs.workweek ? ' is-workweek' : ''}`;
+    const html = `<div class="ag-main">${bar}${statusLine(g)}${zone}${wkend}${empty}<div class="ag-calwrap"${!g.lessonsKnown && L.ok !== false ? ' aria-busy="true"' : ''}>${cal}</div><div class="ag-noresults" hidden></div></div>${side}`;
+    // TP-187: a repaint with nothing new (the data load right after a step or swipe) leaves the DOM alone; replacing
+    // it under an in-flight touch sequence swallowed the next tap.
+    if (view.__tpHtml === html && view.className === cls && view.isConnected) {
+      updateNow();
+      if (S.pop && S.popKind === 'ag-pop-filter') refreshFilterPop(g.all);
+      return;
+    }
+    view.__tpHtml = html;
     const focus = captureFocus(ctx.root);
     const sc = view.querySelector('.ag-scroll');
     const prevKey = S.scroll.key;
     if (sc) S.scroll.top = sc.scrollTop;
     const lsc = view.querySelector('.ag-list');
     const pageY = typeof window !== 'undefined' ? window.scrollY : 0;
-    view.className = `ag-view ag-m-${m}${S.prefs.workweek ? ' is-workweek' : ''}`;
+    view.className = cls;
     view.dataset.mode = m;
-    view.innerHTML = `<div class="ag-main">${bar}${statusLine(g)}<div class="ag-calwrap"${!g.lessonsKnown && L.ok !== false ? ' aria-busy="true"' : ''}>${cal}${empty}</div><div class="ag-noresults" hidden></div></div>${side}`;
+    view.innerHTML = html;
     // keep the grid where the student scrolled it; jump to the first lesson only for a new range
     const key = `${m}|${r.from}|${r.days}`;
     const nsc = view.querySelector('.ag-scroll');
@@ -586,7 +626,17 @@
     S.mode = m; S.prefs.mode = m; savePrefs();
     go();
   }
-  function step(dir) { S.anchor = stepAnchor(mode(), S.anchor, dir); go(true, dir); }
+  /** TP-200: the shown date lives in the URL (`agenda&id=YYYY-MM-DD`, none for today), and a step is a history step. */
+  function syncUrl(replace = false) {
+    if (!S.ctx || !S.ctx.setParams) return;
+    try { S.ctx.setParams(sod(S.anchor) === sod(Date.now()) ? {} : { id: dayKey(S.anchor) }, { replace }); } catch (_) { /* ignore */ }
+  }
+  const inLimit = (a) => clampAnchor(a) === a;
+  function step(dir) {
+    const next = stepAnchor(mode(), S.anchor, dir);
+    if (!inLimit(sod(next))) { TP.shell.toast(t('agenda.limit')); return; }
+    S.anchor = next; syncUrl(); go(true, dir);
+  }
 
   // ------------------------------------------------------------------ dialogs (event detail, filters, go to date, shortcuts)
   function openDialog({ cls, html, label, labelledby, opener, place }) {
@@ -613,8 +663,18 @@
       setTimeout(refocus, 0); // the browser's own dialog focus fix-up may land on a node a repaint replaced
     });
     try { d.showModal(); } catch (_) { d.setAttribute('open', ''); }
+    S.popPlace = place; S.popOpenerEl = opener || null;
     position(d, opener, place);
     return d;
+  }
+  /** TP-020: an open popover follows a window resize (re-anchored, or a bottom sheet on phones and back). */
+  function reposition() {
+    const d = S.pop;
+    if (!d || !d.isConnected || S.popPlace === 'center') return;
+    const op = S.popOpenerEl && S.popOpenerEl.isConnected ? S.popOpenerEl : (S.popOpener && S.ctx && S.ctx.root.querySelector(S.popOpener));
+    d.classList.remove('is-sheet');
+    d.style.left = ''; d.style.top = '';
+    position(d, op, S.popPlace);
   }
   function openerSel(el) {
     if (el.dataset.key) return `[data-key="${CSS.escape(el.dataset.key)}"]:not(.ag-dlmark)`;
@@ -721,12 +781,14 @@ ${src ? `<p class="ag-pop-src">${esc(t('agenda.pop.source.' + src))}${l.source =
 
   function openGoto(opener) {
     const v = dayKey(S.anchor);
-    const html = `<form class="ag-goto" data-form="ag-goto">
+    const html = `<form class="ag-goto" data-form="ag-goto" novalidate>
   <div class="ag-pop-head"><div class="ag-pop-ht"><h2 id="ag-goto-title">${esc(t('agenda.goto'))}</h2></div>
   ${TP.ui.button('', { icon: 'xmark', kind: 'gray', action: 'ag-close', cls: 'ag-pop-x', attrs: { 'aria-label': t('agenda.pop.close') } })}</div>
   <label class="ag-goto-l" for="ag-goto-in">${esc(t('agenda.goto.date'))}</label>
-  <div class="ag-goto-row"><input id="ag-goto-in" class="ag-goto-in" type="date" name="ag-goto-date" value="${esc(v)}" required>
+  <div class="ag-goto-row"><input id="ag-goto-in" class="ag-goto-in" type="date" name="ag-goto-date" value="${esc(v)}" required aria-describedby="ag-goto-err"
+    min="${esc(dayKey(addDays(sod(Date.now()), -LIMIT_DAYS)))}" max="${esc(dayKey(addDays(sod(Date.now()), LIMIT_DAYS)))}">
   <button type="submit" class="tp-btn tp-btn-filled">${esc(t('agenda.goto.go'))}</button></div>
+  <p class="ag-goto-err" id="ag-goto-err" role="alert" hidden></p>
 </form>`;
     const d = openDialog({ cls: 'ag-pop-goto', html, labelledby: 'ag-goto-title', opener: opener || S.ctx.root.querySelector('[data-action="ag-goto"]'), place: 'below' });
     d && d.querySelector('input').focus();
@@ -761,15 +823,22 @@ ${src ? `<p class="ag-pop-src">${esc(t('agenda.pop.source.' + src))}${l.source =
   function exportOne(key) {
     const it = S.items.get(key);
     if (!it) return;
-    const slug = norm(it.title).replace(/ /g, '-').slice(0, 40) || 'les';
+    const slug = TP.data.icsName(it.type === 'exam' ? `${t('agenda.exam')} ${it.title}` : it.title, 'les');
     if (download(icsFor(it), `${slug}-${dayKey(it.start)}.ics`)) TP.shell.toast(t('agenda.pop.icsDone'));
   }
+  /** "Zet in agenda": the same set as on Deadlines (TP-104): open deadlines still to come + upcoming exams,
+   *  following this view's filters (kinds shown, hidden courses). Lessons come from the KU Loket iCal subscription. */
   function exportIcs() {
+    const now = Date.now();
+    const hidden = new Set(S.prefs.hidden);
     let list = [];
-    try { list = TP.data.deadlines({}) || []; } catch (_) { list = []; }
+    try { list = S.prefs.show.deadline === false ? [] : (TP.data.deadlines({ horizonDays: 366 }) || []).filter((d) => !d.done && d.due >= now && !hidden.has(courseKey(d.courseLuId, d.courseName))); } catch (_) { list = []; }
+    const exams = S.prefs.show.exam === false || !TP.viewsA ? [] : TP.viewsA.upcomingExams().filter((e) => !hidden.has(courseKey(e.courseLuId, courseNameFor(e.courseLuId, e.title))));
+    const n = list.length + exams.length;
+    if (!n) { TP.shell.toast(t('deadlines.export.none')); return; }
     let text;
-    try { text = TP.data.ics(list); } catch (e) { console.warn('[Toledo+] ics', e); return; }
-    if (download(text, 'toledo-deadlines.ics')) TP.shell.toast(t('agenda.exported'));
+    try { text = TP.data.ics(list, { exams, name: 'Toledo+' }); } catch (e) { console.warn('[Toledo+] ics', e); return; }
+    if (download(text, 'toledo-deadlines.ics')) TP.shell.toast(t('agenda.exported', { n }));
   }
 
   // ------------------------------------------------------------------ events
@@ -786,9 +855,10 @@ ${src ? `<p class="ag-pop-src">${esc(t('agenda.pop.source.' + src))}${l.source =
       case 'ag-close': ev.preventDefault(); closePop(); return;
       case 'ag-prev': step(-1); return;
       case 'ag-next': step(1); return;
-      case 'ag-today': { const was = S.anchor; S.anchor = sod(Date.now()); go(true, Math.sign(S.anchor - was)); return; }
-      case 'ag-day': if (day) { S.anchor = day; S.mode = 'day'; S.prefs.mode = 'day'; savePrefs(); go(); } return;
-      case 'ag-goto-day': if (day) { S.anchor = day; closePop(false); paint(); load(); TP.shell.announce(S.ctx.root.querySelector('.ag-range')?.textContent.trim() || ''); } return;
+      case 'ag-today': { const was = S.anchor; S.anchor = sod(Date.now()); syncUrl(); go(true, Math.sign(S.anchor - was)); return; }
+      case 'ag-day': if (day) { S.anchor = day; S.mode = 'day'; S.prefs.mode = 'day'; savePrefs(); syncUrl(); go(); } return;
+      case 'ag-goto-day': if (day) { S.anchor = day; syncUrl(); closePop(false); paint(); load(); TP.shell.announce(S.ctx.root.querySelector('.ag-range')?.textContent.trim() || ''); } return;
+      case 'ag-show-weekend': S.prefs.workweek = false; savePrefs(); paint(); load(); TP.shell.announce(t('agenda.weekend.shown')); return;
       case 'ag-jump': {
         if (!day) return;
         S.anchor = day;
@@ -836,11 +906,19 @@ ${src ? `<p class="ag-pop-src">${esc(t('agenda.pop.source.' + src))}${l.source =
     const f = ev.target;
     if (!f || f.getAttribute('data-form') !== 'ag-goto') return;
     ev.preventDefault();
-    const v = String((f.querySelector('input') || {}).value || '');
-    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
-    if (!m) return;
-    S.anchor = new Date(+m[1], +m[2] - 1, +m[3]).getTime();
+    const input = f.querySelector('input');
+    const a = parseDay(input && input.value);
+    // TP-026: an impossible date (the field empties itself on 2026-02-30) or one out of range says so, inline
+    const bad = a == null ? t('agenda.goto.invalid') : !inLimit(a) ? t('agenda.goto.range') : '';
+    const err = f.querySelector('.ag-goto-err');
+    if (bad) {
+      if (err) { err.hidden = false; err.textContent = bad; }
+      if (input) { input.setAttribute('aria-invalid', 'true'); input.focus(); }
+      return;
+    }
+    S.anchor = a;
     S.mini = null;
+    syncUrl();
     closePop(false);
     go();
     S.ctx.root.querySelector('.ag-range-btn')?.focus({ preventScroll: true });
@@ -904,7 +982,7 @@ ${src ? `<p class="ag-pop-src">${esc(t('agenda.pop.source.' + src))}${l.source =
     if (k === '?') { openKeys(); return done(); }
     if (ev.shiftKey || k.length !== 1) return false;
     switch (k.toLowerCase()) {
-      case 't': S.anchor = sod(Date.now()); go(); return done();
+      case 't': S.anchor = sod(Date.now()); syncUrl(); go(); return done();
       case 'd': setMode('day'); return done();
       case 'w': setMode('week'); return done();
       case 'm': setMode('month'); return done();
@@ -918,14 +996,17 @@ ${src ? `<p class="ag-pop-src">${esc(t('agenda.pop.source.' + src))}${l.source =
 
   // swipe left/right (touch / pen) on the calendar → next / previous period
   function onPointerDown(ev) {
-    if (ev.pointerType === 'mouse' || !ev.isPrimary || !ev.target.closest('.ag-cal')) { S.swipe = null; return; }
-    S.swipe = { x: ev.clientX, y: ev.clientY, t: Date.now() };
+    const cal = ev.target.closest && ev.target.closest('.ag-cal');
+    if (ev.pointerType === 'mouse' || !ev.isPrimary || !cal) { S.swipe = null; return; }
+    S.swipe = { x: ev.clientX, y: ev.clientY, t: Date.now(), w: cal.clientWidth || 0 };
   }
   function onPointerUp(ev) {
     const s = S.swipe; S.swipe = null;
     if (!s || ev.pointerType === 'mouse') return;
     const dx = ev.clientX - s.x, dy = ev.clientY - s.y;
-    if (Math.abs(dx) > 60 && Math.abs(dy) < Math.abs(dx) * 0.6 && Date.now() - s.t < 800) step(dx < 0 ? 1 : -1);
+    // TP-189: a deliberate swipe only — a quarter of the calendar's width (at least 60 px), not any 65 px flick
+    const min = Math.max(60, s.w * 0.25);
+    if (Math.abs(dx) > min && Math.abs(dy) < Math.abs(dx) * 0.6 && Date.now() - s.t < 800) step(dx < 0 ? 1 : -1);
   }
 
   // ------------------------------------------------------------------ search
@@ -948,7 +1029,7 @@ ${src ? `<p class="ag-pop-src">${esc(t('agenda.pop.source.' + src))}${l.source =
   }
 
   // ------------------------------------------------------------------ register
-  TP.agenda = { layout, rangeFor, stepAnchor, scrollHour, icsFor, courseKey, isoWeekNo, MODES, VISIBLE_HOURS };
+  TP.agenda = { layout, rangeFor, stepAnchor, scrollHour, icsFor, courseKey, isoWeekNo, blockGeom, parseDay, clampAnchor, MODES, VISIBLE_HOURS };
 
   if (TP.kuloket && TP.kuloket.on) TP.kuloket.on('change', () => { if (S.ctx && S.ctx.root.isConnected) schedulePaint(); });
 
@@ -962,6 +1043,12 @@ ${src ? `<p class="ag-pop-src">${esc(t('agenda.pop.source.' + src))}${l.source =
       S.ctx = ctx;
       if (!S.prefs || fresh) S.prefs = loadPrefs();
       if (fresh) S.mode = S.prefs.mode;
+      if (fresh) {
+        // TP-200: a link or reload with `id=YYYY-MM-DD` opens that date; otherwise the remembered date, put in the URL
+        const p = parseDay(ctx.params && ctx.params.id);
+        if (p != null) S.anchor = clampAnchor(p);
+        else if (S.anchor != null && sod(S.anchor) !== sod(Date.now())) syncUrl(true);
+      }
       if (S.anchor == null) S.anchor = sod(Date.now());
       if (!bound.has(ctx.root)) {
         bound.add(ctx.root);
@@ -973,7 +1060,11 @@ ${src ? `<p class="ag-pop-src">${esc(t('agenda.pop.source.' + src))}${l.source =
         ctx.root.addEventListener('pointerup', onPointerUp);
         if (typeof ResizeObserver !== 'undefined') {
           S.lastNarrow = narrow();
-          S.ro = new ResizeObserver(() => { const n = narrow(); if (n !== S.lastNarrow) { S.lastNarrow = n; if (!S.mode) paint(); } });
+          S.ro = new ResizeObserver(() => {
+            const n = narrow();
+            if (n !== S.lastNarrow) { S.lastNarrow = n; if (!S.mode) paint(); }
+            reposition();
+          });
           S.ro.observe(ctx.root);
         }
       }

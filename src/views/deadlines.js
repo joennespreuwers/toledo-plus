@@ -1,5 +1,5 @@
 /* Toledo+ — Deadlines view: exams (KU Loket) + overdue on top, then grouped by week; filters, own deadlines,
-   "Zet in agenda" (.ics); every row opens the detail sheet (F6). */
+   "Zet in agenda" (.ics with deadlines and exams); every row opens the detail sheet (F6), exams their exam sheet. */
 (() => {
   'use strict';
   const TP = (globalThis.TP ||= {});
@@ -18,6 +18,8 @@
     oldOpen: false,            // "Ouder dan een week (n)" disclosure
   };
   const DAY = 864e5;
+  // Done items stay reachable under "Klaar" for a term (TP-209: after 7 days they vanished from every view).
+  const KEEP_DONE_DAYS = 120;
 
   function startOfWeek(ms) {
     const d = new Date(ms);
@@ -26,16 +28,21 @@
     d.setDate(d.getDate() - dow);
     return d.getTime();
   }
-  function addDays(ms, n) { const d = new Date(ms); d.setDate(d.getDate() + n); return d.getTime(); }
 
   function allDeadlines() {
-    try { return TP.data.deadlines({ includeDone: true, horizonDays: 366 }) || []; } catch { return []; }
+    // allCustom: an own deadline years ahead is listed too, it just lands in its own "Week van …" group (TP-015)
+    try { return TP.data.deadlines({ includeDone: true, horizonDays: 366, pastDays: KEEP_DONE_DAYS, allCustom: true }) || []; } catch { return []; }
   }
+
+  const inCourse = (d) => {
+    if (S.course === 'none') return !d.courseLuId;
+    if (S.course !== 'all') return String(d.courseLuId) === S.course;
+    return true;
+  };
 
   function filtered() {
     return allDeadlines().filter((d) => {
-      if (S.course === 'none' && d.courseLuId) return false;
-      if (S.course !== 'all' && S.course !== 'none' && String(d.courseLuId) !== S.course) return false;
+      if (!inCourse(d)) return false;
       if (S.filter === 'open') return !d.done || S.doneKeep.has(d.key);
       if (S.filter === 'done') return d.done || S.doneKeep.has(d.key);
       return true;
@@ -45,7 +52,7 @@
   function groupsOf(list) {
     const now = Date.now();
     const w0 = startOfWeek(now);
-    const w1 = addDays(w0, 7);
+    const w1 = TP.fmt.addDays(w0, 7);
     const map = new Map();
     const push = (key, title, sort, d) => {
       if (!map.has(key)) map.set(key, { key, title, sort, items: [] });
@@ -58,7 +65,7 @@
         const ws = startOfWeek(d.due);
         if (ws === w0) push('w0', t('deadlines.group.thisWeek'), ws, d);
         else if (ws === w1) push('w1', t('deadlines.group.nextWeek'), ws, d);
-        else push('w' + ws, t('deadlines.group.weekOf', { date: TP.fmt.date(ws, { day: 'numeric', month: 'short' }) }), ws, d);
+        else push('w' + ws, t('deadlines.group.weekOf', { date: TP.fmt.date(ws) }), ws, d); // with the year when not this year
       }
     }
     const groups = [...map.values()].sort((a, b) => a.sort - b.sort);
@@ -66,33 +73,29 @@
     return groups;
   }
 
-  /** Upcoming exams from KU Loket (Agent B's TP.kuloket; optional). */
-  function exams() {
-    let list = null;
-    try { list = TP.kuloket && typeof TP.kuloket.peekExams === 'function' ? TP.kuloket.peekExams() : null; } catch { list = null; }
-    const now = Date.now();
-    return (Array.isArray(list) ? list : []).filter((e) => e && e.start && (e.end || e.start) >= now).sort((a, b) => a.start - b.start);
-  }
+  /** Upcoming exams from KU Loket that match the course filter (TP-101: a course filter no longer drops them). */
+  const exams = () => VA().upcomingExams({ course: S.course });
+
+  /** Exam row (Deadlines › Examens, Overzicht, KU Loket): opens the exam sheet (TP-018). */
   function examRow(e) {
     let c = null;
     try { c = e.courseLuId && TP.data.course ? TP.data.course(e.courseLuId) : null; } catch { c = null; }
     const name = (c && c.name) || e.title || '';
     const L = e.location || {};
     const loc = [L.room || L.mnemonic, L.building].filter(Boolean).join(' · ');
-    const when = `${TP.fmt.date(e.start, { weekday: 'short', day: 'numeric', month: 'short' })} ${TP.fmt.time(e.start)}${e.end ? '–' + TP.fmt.time(e.end) : ''}`;
+    const when = `${TP.fmt.when(e.start, 'day')} ${TP.fmt.timeRange(e.start, e.end)}`;
     const days = TP.fmt.daysUntil(e.start);
-    return TP.ui.row({
-      href: e.courseLuId ? TP.shell.href('course', { luId: e.courseLuId }) : undefined,
-      leading: TP.ui.dateTile(e.start, { tone: days <= 3 ? 'urgent' : 'normal' }),
-      title: esc(name),
-      subtitle: `${TP.ui.dot((c && c.color) || 'var(--label-3)')} <span>${esc([when, loc, e.text].filter(Boolean).join(' · '))}</span>`,
-      trailing: `<span class="va-urg${days <= 3 ? ' is-urgent' : ''}">${esc(TP.fmt.rel(e.start))}</span>`,
-      q: TP.index.hay([name, e.courseCode || (c && c.code), loc, e.text], [e.start]),
-      cls: 'va-exam has-lead' + (days <= 3 ? ' tone-urgent' : ''),
-    });
+    const id = String(e.id || `${e.courseCode || name}-${e.start}`);
+    VA().exams.set(id, e);
+    const tone = days <= 3 ? 'urgent' : 'normal';
+    const main = `<button type="button" class="va-dl-open" data-action="va-exam-open" data-xid="${esc(id)}" aria-haspopup="dialog">`
+      + `<span class="tp-row-title">${esc(name)}</span><span class="tp-row-sub">${TP.ui.dot((c && c.color) || 'var(--label-3)')} <span>${esc([when, loc, e.text].filter(Boolean).join(' · '))}</span></span></button>`;
+    return `<div class="tp-row has-lead va-exam${days <= 3 ? ' tone-urgent' : ''}" data-xid="${esc(id)}" data-q="${esc(TP.index.hay([name, e.courseCode || (c && c.code), loc, e.text, t('agenda.exam')], [e.start]))}">`
+      + `<span class="tp-row-lead">${TP.ui.dateTile(e.start, { tone })}</span><span class="tp-row-main">${main}</span>`
+      + `<span class="tp-row-trail"><span class="va-urg${days <= 3 ? ' is-urgent' : ''}">${esc(TP.fmt.rel(e.start))}</span></span></div>`;
   }
 
-  VA().examRow = examRow; // KU Loket's exam list uses the same row
+  VA().examRow = examRow; // KU Loket's exam list and the Overview card use the same row
 
   function courseOptions() {
     let courses = [];
@@ -113,21 +116,9 @@
   }
 
   function addFormHtml() {
-    const dr = S.draft;
-    const courseOpts = [{ value: '', label: t('va.noCourse') }, ...courseOptions()];
-    const today = TP.fmt.dayKey(Date.now());
     const form = `<form class="va-form" data-form="dl-add" novalidate>
       <p class="va-foot">${esc(t('deadlines.add.hint'))}</p>
-      <label class="va-field"><span>${esc(t('deadlines.add.name'))}</span>
-        <input name="title" type="text" required maxlength="200" autocomplete="off" placeholder="${esc(t('deadlines.add.placeholder'))}" value="${esc(dr.title || '')}"></label>
-      <label class="va-field"><span>${esc(t('deadlines.add.course'))}</span>
-        <select name="courseLuId">${courseOpts.map((o) => `<option value="${esc(o.value)}"${String(dr.courseLuId || '') === o.value ? ' selected' : ''}>${esc(o.label)}</option>`).join('')}</select></label>
-      <div class="va-field-row">
-        <label class="va-field"><span>${esc(t('deadlines.add.date'))}</span>
-          <input name="date" type="date" required min="${esc(today)}" value="${esc(dr.date || '')}"></label>
-        <label class="va-field"><span>${esc(t('deadlines.add.time'))}</span>
-          <input name="time" type="time" value="${esc(dr.time || '23:59')}"></label>
-      </div>
+      ${VA().deadlineFields(S.draft, VA().courseOptions())}
       <p class="va-form-error" role="alert" hidden></p>
       <div class="va-form-actions"><button type="submit" class="tp-btn tp-btn-filled">${TP.ui.icon('plus')}<span>${esc(t('deadlines.add.submit'))}</span></button></div>
     </form>`;
@@ -164,14 +155,15 @@
     const now = Date.now();
     const open = allDeadlines().filter((d) => !d.done);
     const late = open.filter((d) => V.isOverdue(d, now)).length;
-    // "7 open · 1 te laat"
+    const state = V.state('events');
+    // "7 open · 1 te laat" — no count while nothing could be loaded (TP-147: "0 open" above the error)
     try {
-      ctx.setSubtitle && ctx.setSubtitle(esc(t('deadlines.count', { n: open.length }))
+      ctx.setSubtitle && ctx.setSubtitle(state === 'error' && !open.length ? ''
+        : esc(t('deadlines.count', { n: open.length }))
         + (late ? `<span aria-hidden="true"> · </span><strong class="va-late">${esc(t('deadlines.lateCount', { n: late }))}</strong>` : ''));
     } catch { /* ignore */ }
 
-    const state = V.state('events');
-    const ex = S.course === 'all' && S.filter !== 'done' ? exams() : [];
+    const ex = S.filter !== 'done' ? exams() : [];
     let body = '';
     if (ex.length) {
       body += groupSection({ key: 'exams', title: t('deadlines.group.exams'), items: ex },
@@ -185,21 +177,25 @@
         const row = (d) => V.deadlineRow(d, { prefix: 'dl', urgentDays, now, removable: true });
         if (g.key !== 'overdue') return groupSection(g, TP.ui.group(g.items.map(row).join(''), { cls: 'va-dl-group' }));
         // B2: overdue stays, however old; older than a week sits in a collapsed disclosure.
-        const recent = g.items.filter((d) => d.due >= now - 7 * DAY);
-        const old = g.items.filter((d) => d.due < now - 7 * DAY);
+        const weekAgo = TP.fmt.addDays(now, -7);
+        const recent = g.items.filter((d) => d.due >= weekAgo);
+        const old = g.items.filter((d) => d.due < weekAgo);
+        const openOld = old.filter((d) => !d.done);
+        // TP-159: one action for the old pile, with Undo
+        const bulk = openOld.length > 1 ? `<button type="button" class="tp-row va-more va-bulk" data-action="dl-old-done" data-va-nofilter><span class="tp-row-main"><span class="tp-row-title">${esc(t('deadlines.oldDone', { n: openOld.length }))}</span></span></button>` : '';
         const oldHtml = old.length ? VA().addAttrs(TP.ui.disclosure({
           id: 'dl-old',
           open: S.oldOpen,
           cls: 'va-dl-old',
           summary: { title: esc(t('deadlines.group.older', { n: old.length })) },
-          body: old.map(row).join(''),
+          body: old.map(row).join('') + bulk,
         }), { 'data-va-collapse': '', 'data-dl-old': '' }) : '';
         return groupSection(g, TP.ui.group(recent.map(row).join('') + oldHtml, { cls: 'va-dl-group is-overdue' }), 'va-sec-overdue');
       }).join('');
     }
 
-
     V.paint(ctx.root, `<div class="va-view va-deadlines tp-narrow">
+      ${V.zoneNote()}
       ${filtersHtml()}
       ${addFormHtml()}
       <div class="va-dl-list">${body}</div>
@@ -208,16 +204,21 @@
     if (S.q) V.filter(ctx.root, S.q);
   }
 
+  /** One export set for "Zet in agenda" here and in the Agenda (TP-104): open deadlines that are still to come plus
+   *  upcoming exams, following the Vak filter here (the file is then named after the course). */
   function exportIcs() {
     const V = VA();
     const now = Date.now();
-    const list = filtered().filter((d) => !d.done && d.due >= now);
-    // one file with every open, upcoming deadline in this view (each one is also in its own detail sheet)
-    if (!list.length) { V.toast(t('deadlines.empty.open')); return; }
+    const list = allDeadlines().filter((d) => inCourse(d) && !d.done && d.due >= now);
+    const ex = exams();
+    const n = list.length + ex.length;
+    if (!n) { V.toast(t('deadlines.export.none')); return; }
+    const course = S.course !== 'all' && S.course !== 'none' ? (courseOptions().find((o) => o.value === S.course) || {}).label || '' : '';
     let ics;
-    try { ics = TP.data.ics(list); } catch (err) { console.warn('[Toledo+] ics', err); return; }
-    V.downloadText(S.ctx && S.ctx.root, ics, 'toledo-deadlines.ics', 'text/calendar;charset=utf-8');
-    V.toast(t('deadlines.exported'));
+    try { ics = TP.data.ics(list, { exams: ex, name: course ? `Toledo+ · ${course}` : 'Toledo+' }); } catch (err) { console.warn('[Toledo+] ics', err); return; }
+    const file = course ? `toledo-deadlines-${TP.data.icsName(course, 'vak')}.ics` : 'toledo-deadlines.ics';
+    V.downloadText(S.ctx && S.ctx.root, ics, file, 'text/calendar;charset=utf-8');
+    V.toast(t('deadlines.exported', { n }));
   }
 
   async function onClick(ev) {
@@ -228,6 +229,9 @@
     if (act === 'va-dl-open') {
       ev.preventDefault();
       VA().openDeadline(VA().dls.get(el.getAttribute('data-key')), el, ctx.root);
+    } else if (act === 'va-exam-open') {
+      ev.preventDefault();
+      VA().openExam(VA().exams.get(el.getAttribute('data-xid')), el, ctx.root);
     } else if (act === 'va-retry') {
       ev.preventDefault();
       await VA().retry(el);
@@ -238,10 +242,16 @@
       S.doneKeep.add(key);
       await TP.data.toggleDone(key);
       VA().announce(t(wasDone ? 'va.markedOpen' : 'va.markedDone'));
+    } else if (act === 'dl-old-done') {
+      ev.preventDefault();
+      const weekAgo = TP.fmt.addDays(Date.now(), -7);
+      const keys = filtered().filter((d) => !d.done && VA().isOverdue(d) && d.due < weekAgo).map((d) => d.key);
+      if (!keys.length) return;
+      await TP.data.setDone(keys, true);
+      TP.ui.undoToast(t('deadlines.oldDoneToast', { n: keys.length }), () => TP.data.setDone(keys, false));
     } else if (act === 'dl-remove') {
       ev.preventDefault();
-      await TP.data.removeCustomDeadline(el.getAttribute('data-id'));
-      VA().toast(t('deadlines.removed'));
+      await VA().removeCustom(el.getAttribute('data-id'));
     }
   }
 
@@ -280,11 +290,9 @@
     ev.preventDefault();
     const fd = new FormData(form);
     const title = String(fd.get('title') || '').trim();
-    const date = String(fd.get('date') || '');
-    const time = String(fd.get('time') || '') || '23:59';
-    const due = new Date(`${date}T${time}`).getTime();
+    const p = VA().parseDue(String(fd.get('date') || ''), String(fd.get('time') || '') || '23:59');
     const errEl = form.querySelector('.va-form-error');
-    if (!title || !date || !Number.isFinite(due)) {
+    if (!title || !p) {
       if (errEl) { errEl.hidden = false; errEl.textContent = t('deadlines.add.invalid'); }
       const bad = form.querySelector(!title ? 'input[name="title"]' : 'input[name="date"]');
       if (bad) { bad.setAttribute('aria-invalid', 'true'); bad.focus(); }
@@ -292,9 +300,15 @@
     }
     S.draft = {};
     S.addOpen = true;
-    await TP.data.addCustomDeadline({ title, courseLuId: String(fd.get('courseLuId') || ''), due });
-    VA().toast(t('deadlines.add.added'));
-    VA().announce(t('deadlines.add.added'));
+    const now = Date.now();
+    await TP.data.addCustomDeadline({ title, courseLuId: String(fd.get('courseLuId') || ''), due: p.due });
+    // Say where it went: in the past it is under "Te laat" (older than a week: in its disclosure, opened now) (TP-015);
+    // a time the clocks skip is saved an hour later (TP-220).
+    if (p.due < now && p.due < TP.fmt.addDays(now, -7)) S.oldOpen = true;
+    const msg = p.shifted ? t('deadlines.add.shifted', { time: TP.fmt.time(p.due) })
+      : p.due < now ? t('deadlines.add.addedLate')
+        : t('deadlines.add.addedWhen', { when: TP.fmt.when(p.due) });
+    VA().toast(msg);
     if (S.ctx) {
       render(S.ctx);
       const i = S.ctx.root.querySelector('[data-form="dl-add"] input[name="title"]');

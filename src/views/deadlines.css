@@ -24,3 +24,17 @@
 .va-exam .tp-row-sub { white-space: normal; }
 .va-sec-overdue .tp-sec-title { color: var(--red); }
 .va-exam .tp-row-title { white-space: normal; }
+
+/* 320 px: the "Vak" select shrinks and the filter row wraps instead of widening the page (TP-014) */
+.va-deadlines .va-filters .tp-field { min-width: 0; max-width: 100%; }
+.va-deadlines .va-filters .tp-select, .va-deadlines .va-filters .tp-select select { min-width: 0; max-width: 100%; }
+.va-deadlines .va-filters .tp-select select { text-overflow: ellipsis; }
+@media (max-width: 380px) {
+  .va-deadlines .va-filters { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .va-deadlines .va-filters .tp-field { display: flex; justify-content: space-between; }
+}
+/* the sheet's edit form (own deadlines, TP-207) */
+.tp-detail .va-edit { padding: 12px 16px 16px; }
+.va-edit .va-form-actions { gap: 8px; }
+/* "Markeer deze n als klaar" under the old overdue pile (TP-159) */
+.va-bulk .tp-row-title { color: var(--tint-text, var(--tint)); font-weight: 500; }

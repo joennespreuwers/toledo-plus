@@ -12,3 +12,7 @@
 .kl-g-support { --kl: #8E8E93; }
 .kl-g-survey, .kl-g-safety { color: #000; }
 .kl-app .tp-row-sub { white-space: normal; }
+/* KU Loket unreachable (TP-137): an error with "Opnieuw" instead of "no exams" / "no classes" */
+.kl-error > svg { color: var(--red); }
+.kl-saved { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; margin: 8px 4px 0; color: var(--label-2); font-size: var(--fs-footnote); line-height: var(--lh-footnote); }
+.kl-saved > svg { flex: none; color: var(--amber); }
