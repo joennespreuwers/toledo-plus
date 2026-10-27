@@ -163,4 +163,28 @@
       'annsheet.noid.course': 'Texte introuvable. Ouvre l’annonce dans Ultra.',
     },
   });
+  // bug bash 2026-10: mark-as-read scope + undo, failure states, course page, courses edit
+  if (TP.i18n && TP.i18n.add) TP.i18n.add({
+    nl: {
+      'announcements.readSome.one': "Markeer {n} als gelezen",
+      'announcements.readSome.other': "Markeer {n} als gelezen",
+      'announcements.markedN.one': "{n} mededeling gemarkeerd als gelezen",
+      'announcements.markedN.other': "{n} mededelingen gemarkeerd als gelezen",
+      'announcements.syncPending': "Gelezen in Toledo+. Toledo wordt bijgewerkt zodra de verbinding terug is.",
+    },
+    en: {
+      'announcements.readSome.one': "Mark {n} as read",
+      'announcements.readSome.other': "Mark {n} as read",
+      'announcements.markedN.one': "{n} announcement marked as read",
+      'announcements.markedN.other': "{n} announcements marked as read",
+      'announcements.syncPending': "Marked as read here. Toledo will be updated when the connection is back.",
+    },
+    fr: {
+      'announcements.readSome.one': "Marquer {n} comme lue",
+      'announcements.readSome.other': "Marquer {n} comme lues",
+      'announcements.markedN.one': "{n} annonce marquée comme lue",
+      'announcements.markedN.other': "{n} annonces marquées comme lues",
+      'announcements.syncPending': "Marqué comme lu ici. Toledo sera mis à jour dès que la connexion revient.",
+    },
+  });
 })();

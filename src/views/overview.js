@@ -49,11 +49,13 @@
       let color = 'var(--label-3)';
       if (!school) { try { const c = e.sourceId && TP.data.course ? TP.data.course(e.sourceId) : null; if (c && c.color) color = c.color; } catch { /* no course */ } }
       const src = school ? t('announcements.school') : TP.util.courseName(e.source || '');
+      // the sender ("Docent A", "Studentenadministratie"): how a student judges a notice, and what the search matches (TP-198)
+      const by = e.author && String(e.author).trim() !== src ? String(e.author).trim() : '';
       return {
         src,
-        subtitle: `${TP.ui.dot(color)}<span>${esc(src)}</span>`, // every row opens the announcement sheet (no new tab)
+        subtitle: `${TP.ui.dot(color)}<span>${esc(src)}</span>${by ? `<span aria-hidden="true"> · </span><span class="va-author">${esc(by)}</span>` : ''}`, // every row opens the announcement sheet (no new tab)
         // time first, "Nieuw" last (an invisible copy on read rows): pills and times line up whatever the time says
-        trailing: `${VA.daysAgo(e.date)}${unread ? TP.ui.badge(t('course.new'), { tone: 'tint', label: t('va.unread') })
+        trailing: `${VA.daysAgo(e.date)}${unread ? TP.ui.badge(t('course.new'), { tone: 'tint', label: t('course.new') })
           : `<span class="tp-badge tp-badge-tint va-new-slot" aria-hidden="true">${esc(t('course.new'))}</span>`}`,
       };
     },
@@ -589,7 +591,7 @@
     const date = VA.capitalize(TP.fmt.date(Date.now(), { weekday: 'long', day: 'numeric', month: 'long' }));
     const lu = TP.data.lastUpdated && TP.data.lastUpdated();
     // never "Gegevens laden…" forever: after a failed first load the shell's error line says it
-    const upd = lu ? t('overview.updated', { time: TP.fmt.time(lu) }) : VA.state(['events', 'enrollments']) === 'loading' ? t('overview.loading') : '';
+    const upd = lu ? TP.ui.updatedText(lu) : VA.state(['events', 'enrollments']) === 'loading' ? t('overview.loading') : '';
     return `<span>${esc(date)}</span>${upd ? `<span aria-hidden="true"> · </span><span>${esc(upd)}</span>` : ''}`;
   }
 
@@ -617,7 +619,7 @@
       <div class="va-onboard-head"><span class="va-onboard-glyph">${glyph}</span>
         <div class="va-onboard-titles"><h2 id="va-onboard-h">${esc(t('overview.onboard.title'))}</h2><p class="va-onboard-lead">${esc(t('overview.onboard.lead'))}</p></div></div>
       <ul>${li('overview.onboard.what')}${li('overview.onboard.classic')}${li('overview.onboard.read')}</ul>
-      <p class="va-onboard-privacy">${esc(t('telemetry.onboarding'))}</p>
+      <p class="va-onboard-privacy">${esc(t('telemetry.onboarding'))} <a class="va-onboard-link" href="${esc(TP.shell.href('settings', { id: 'about' }))}" data-action="ov-nav" data-route="settings" data-id="about">${esc(t('overview.onboard.privacyLink'))}</a></p>
       <div class="va-onboard-actions"><button type="button" class="tp-btn va-onboard-ok" data-action="ov-onboard-close"><span>${esc(t('overview.onboard.ok'))}</span></button></div>
     </section>`;
   }
@@ -635,13 +637,13 @@
     const coming = all.filter((d) => !d.done && !VA.isOverdue(d, now) && d.due <= now + horizon * DAY);
     const list = [...overdue.slice(0, 3), ...kept, ...coming].filter((d, i, a) => a.indexOf(d) === i).slice(0, 5);
     const state = VA.state('events');
-    if (!list.length && state === 'loading') body = VA.skeleton(3, { lead: 'date' });
+    if (!list.length && state === 'loading') body = VA.skeleton(5, { lead: 'date' });
     else if (!list.length && state === 'error') body = VA.errorBlock(t('overview.deadlines.error'), 'events');
     else if (!list.length) body = TP.ui.group(TP.ui.empty(t('overview.deadlines.empty', { n: horizon })));
     else {
+      // cached rows after a failed refresh: the shell's status line ("Kon Toledo niet laden · Opnieuw") is the one notice
       const rows = list.map((d) => VA.deadlineRow(d, { prefix: 'ov', urgentDays: cfg.urgentDays ?? 3, now })).join('');
-      body = (state !== 'ok' && state !== 'loading' ? VA.errorBlock(t('overview.deadlines.error'), 'events') : '')
-        + TP.ui.group(rows, { cls: 'va-dl-group' });
+      body = TP.ui.group(rows, { cls: 'va-dl-group' });
     }
     // TP-102: exams in the next 14 days sit on top of the card (the same row as Deadlines › Examens; it opens the exam sheet)
     const exams = VA.examRow ? VA.upcomingExams({ within: 14 * DAY }).slice(0, 2) : [];
@@ -716,6 +718,9 @@
     const more = rest > 0 && href
       ? linkRow(href, t('overview.new.more', { n: rest, course: g.name }), { cls: 'va-more va-feed-more' })
       : '';
+    const readGroup = unread.length
+      ? `<div class="va-group-read" data-va-nofilter>${TP.ui.button(t('overview.new.readCourse', { course: g.name }), { kind: 'plain', icon: 'check', action: 'ov-readgroup', attrs: { 'data-lu': String(g.luId) } })}</div>`
+      : '';
     const latest = VA.timeAgo(g.latest);
     const badge = unread.length ? TP.ui.badge(unread.length, { tone: 'tint', label: t('overview.new.badge', { n: unread.length }) }) : '';
     const html = TP.ui.disclosure({
@@ -729,10 +734,32 @@
         // time first, count last: counts line up at the right edge whatever the time says ("16:21", "gisteren", "donderdag")
         trailing: `<span class="va-feed-trail">${latest}${badge || '<span class="va-badge-slot" aria-hidden="true"></span>'}</span>`,
       },
-      body: `<div class="va-feed-body">${items}${more}</div>`,
+      body: `<div class="va-feed-body">${items}${more}${readGroup}</div>`,
       q: String(g.name || '').toLowerCase(),
     });
     return VA.addAttrs(html, { 'data-lu': String(g.luId), 'data-name': String(g.name || '').toLowerCase(), hidden: hidden || null });
+  }
+
+  /** The unread feed items the "mark as read" button covers: everything, or what the top-bar search shows (TP-153). */
+  function feedScope(groups, q) {
+    const out = [];
+    for (const g of groups) {
+      const groupHit = !!q && String(g.name || '').toLowerCase().includes(q);
+      for (const e of g.items) {
+        if (S.kept.has(String(e.id)) || e.read) continue;
+        if (!q || groupHit || `${e.title} ${g.name}`.toLowerCase().includes(q)) out.push(e);
+      }
+    }
+    return out;
+  }
+
+  /** Under an empty "Nieuw": announcements are not part of it by default — say where the unread ones are (TP-154). */
+  function annHint(st) {
+    if ((st.feed || {}).includeAnnouncements) return '';
+    let n = 0;
+    try { n = (TP.data.announcements({ filter: 'unread' }) || []).length; } catch { n = 0; }
+    if (!n) return '';
+    return `<p class="va-empty-more"><a href="${esc(TP.shell.href('announcements'))}" data-action="ov-nav" data-route="announcements">${esc(t('overview.new.annUnread', { n }))}</a></p>`;
   }
 
   function secNew(st) {
@@ -741,11 +768,13 @@
     const groups = feedWithKept();
     const total = groups.reduce((n, g) => n + g.items.filter((e) => !S.kept.has(String(e.id)) && !e.read).length, 0);
     let body = '';
-    if (state === 'error' || state === 'stale-error') body += VA.errorBlock(t('overview.new.error'), ['events', 'enrollments']);
+    // One line that says what "Nieuw" counts (TP-005): files, pages, assignments (+ announcements when switched on).
+    const note = `<p class="va-sec-note">${esc(t((st.feed || {}).includeAnnouncements ? 'overview.new.noteAnn' : 'overview.new.note'))}</p>`;
+    if (state === 'error') body += VA.errorBlock(t('overview.new.error'), ['events', 'enrollments']);
     if (state === 'loading' && !groups.length) {
-      body += VA.skeleton(3, { lead: 'dot' });
+      body += VA.skeleton(Math.min(5, max), { lead: 'dot' });
     } else if (!groups.length) {
-      if (state === 'ok') body += TP.ui.group(TP.ui.empty(t('overview.new.empty'), { timestamp: TP.data.lastUpdated && TP.data.lastUpdated() }));
+      if (state === 'ok' || state === 'stale-error') body += TP.ui.group(TP.ui.empty(t('overview.new.empty'), { timestamp: TP.data.lastUpdated && TP.data.lastUpdated() }) + annHint(st));
     } else {
       const rows = groups.map((g, i) => feedGroup(g, !S.showAll && i >= max)).join('');
       let toggle = '';
@@ -759,8 +788,10 @@
       }
       body += TP.ui.group(rows + toggle, { cls: 'va-feed' });
     }
-    const actions = total ? [{ action: 'ov-readall', label: t('overview.new.readAll'), icon: 'check' }] : [];
-    return section('new', { title: esc(t('overview.new.title')), count: total || undefined, actions, body });
+    // The button names its scope: everything in Nieuw, or (while searching) the n items found (TP-153).
+    const scopeN = S.q ? feedScope(groups, S.q).length : total;
+    const actions = scopeN ? [{ action: 'ov-readall', label: S.q ? t('overview.new.readSome', { n: scopeN }) : t('overview.new.readAll'), icon: 'check' }] : [];
+    return section('new', { title: esc(t('overview.new.title')), count: total || undefined, actions, body: (groups.length || state === 'ok' ? note : '') + body });
   }
 
   /* ---------- Recent ---------- */
@@ -871,6 +902,17 @@
     const now = Date.now();
     const days = [[now, 'overview.schedule.today'], [TP.fmt.addDays(now, 1), 'overview.schedule.tomorrow']]; // not now + 24 h (TP-218)
     const { source, by, state } = lessonsByDay();
+    // KU Loket exams today/tomorrow belong in the day list too (they never were, TP-102).
+    try {
+      const ex = (TP.kuloket && TP.kuloket.peekExams && TP.kuloket.peekExams()) || [];
+      for (const [ms] of days) {
+        const k = TP.fmt.dayKey(ms);
+        const have = by[k] || [];
+        const add = ex.filter((x) => x && x.start && TP.fmt.dayKey(x.start) === k
+          && !have.some((l) => l.start === x.start && (l.kind === 'examen' || l.title === x.title)));
+        if (add.length) by[k] = have.concat(add.map((x) => ({ ...x, kind: 'examen' })));
+      }
+    } catch { /* no KU Loket */ }
     let body;
     if (state === 'loading') body = VA.skeleton(2, { lead: 'none' });
     else if (state === 'error') body = VA.errorBlock(t('overview.schedule.error'), 'upcoming');
@@ -917,11 +959,13 @@
     try { list = (TP.data.announcements({ filter: 'all' }) || []).slice(0, 5); } catch { list = []; }
     const state = VA.state('events');
     let body;
-    if (!list.length && state === 'loading') body = VA.skeleton(3, { lead: 'dot' });
+    if (!list.length && state === 'loading') body = VA.skeleton(5, { lead: 'dot' });
     else if (!list.length && state === 'error') body = VA.errorBlock(t('overview.ann.error'), 'events');
     else if (!list.length) body = TP.ui.group(TP.ui.empty(t('overview.ann.empty')));
     else body = TP.ui.group(list.map(annRow).join(''));
-    const actions = [{ action: 'ov-nav', label: t('overview.ann.all'), attrs: { 'data-route': 'announcements', href: TP.shell.href('announcements') } }];
+    let unreadN = 0;
+    try { unreadN = (TP.data.announcements({ filter: 'unread' }) || []).length; } catch { unreadN = 0; }
+    const actions = [{ action: 'ov-nav', label: unreadN ? t('overview.ann.allUnread', { n: unreadN }) : t('overview.ann.all'), attrs: { 'data-route': 'announcements', href: TP.shell.href('announcements') } }];
     return section('announcements', { title: esc(t('overview.ann.title')), actions, body });
   }
 
@@ -1038,11 +1082,20 @@
         VA.announce(t(wasDone ? 'va.markedOpen' : 'va.markedDone'));
         break;
       }
-      case 'ov-readall': {
+      case 'ov-readall':
+      case 'ov-readgroup': {
+        // One markAllRead(scope) with Undo (shared pattern 5): the items in view (search applied), or one course.
         ev.preventDefault();
-        S.kept.clear();
-        await TP.data.markFeedSeen();
-        VA.announce(t('overview.new.allRead'));
+        const lu = act === 'ov-readgroup' ? el.getAttribute('data-lu') : null;
+        const scope = lu ? { luId: lu } : { events: feedScope(feedWithKept(), S.q) };
+        if (lu) for (const [id, k] of S.kept) if (String(k.luId) === lu) S.kept.delete(id);
+        if (!lu) S.kept.clear();
+        S.focusNew = true;
+        const r = await TP.data.markAllRead(scope);
+        render(ctx);
+        const label = lu ? t('overview.new.markedCourse', { n: r.unread, course: (S.groupsMeta.get(lu) || {}).name || '' }) : t('overview.new.markedN', { n: r.unread });
+        TP.ui.undoToast(label, () => r.undo());
+        r.synced.then((ok) => { if (!ok) VA.toast(t('announcements.syncPending')); });
         break;
       }
       case 'ov-showall': {
@@ -1052,8 +1105,10 @@
         break;
       }
       case 'ov-nav': {
+        if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.button > 0) return; // new tab: let the link do it
         ev.preventDefault();
-        TP.shell.navigate(el.getAttribute('data-route') || 'overview');
+        const id = el.getAttribute('data-id');
+        TP.shell.navigate(el.getAttribute('data-route') || 'overview', id ? { id } : {});
         break;
       }
       case 'ov-onboard-close': {
@@ -1106,10 +1161,18 @@
     const layout = side ? TP.ui.cols(main, side) : main;
     VA.paint(ctx.root, `<div class="va-view va-overview">${onboardingCard()}${layout}<div class="va-noresults" hidden></div></div>`);
     if (S.q) applySearch(ctx.root, S.q);
+    if (S.focusNew && !ctx.root.querySelector('[data-action="ov-readall"]:focus, [data-action="ov-readgroup"]:focus')) {
+      // The button is gone after "mark as read": focus its section heading instead of dropping to <body> (TP-044).
+      S.focusNew = false;
+      let h = ctx.root.querySelector('[data-va-sec="new"] .tp-sec-title');
+      if (h && !h.getClientRects().length) h = ctx.root.closest('main')?.querySelector('.tp-large-title'); // section hidden by the search
+      if (h) { if (!h.hasAttribute('tabindex')) h.setAttribute('tabindex', '-1'); try { h.focus({ preventScroll: true }); } catch { /* ignore */ } }
+    }
   }
 
   TP.shell.register('overview', {
     title: () => greeting(),
+    docTitle: () => t('nav.overview'), // the tab/bookmark says what the page is; the greeting stays the large title (TP-006)
     searchPlaceholder: () => t('overview.search'),
     render,
     onSearch(ctx, q) {

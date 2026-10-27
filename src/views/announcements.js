@@ -9,6 +9,8 @@
   const icon = (n, o) => TP.ui.icon(n, o);
   const VA = () => TP.viewsA;
   const safe = (fn, fb) => { try { return fn(); } catch { return fb; } };
+  // Course announcement bodies come from Ultra: their relative links point there, also when shown on the portal (TP-093).
+  const ULTRA_BASE = 'https://ultra.edu.kuleuven.cloud/';
 
   /* ------------------------------------------------------------------ */
   /* TP.annSheet                                                          */
@@ -103,7 +105,7 @@
     let body;
     if (b.state === 'ok') {
       body = d.html && TP.util.plain(d.html).trim()
-        ? TP.ui.group(`<div class="tp-detail-desc tp-prose an-body">${TP.util.sanitize(d.html)}</div>`)
+        ? TP.ui.group(`<div class="tp-detail-desc tp-prose an-body">${TP.util.sanitize(d.html, school ? undefined : { base: ULTRA_BASE })}</div>`)
         : TP.ui.group(`<p class="tp-detail-desc va-muted">${esc(t('annsheet.noText'))}</p>`);
     } else if (b.state === 'login') {
       body = TP.ui.group(`<div class="tp-detail-desc an-state" role="status">
@@ -320,7 +322,7 @@
   /** Wide screens: the filter list in the side column (like mail folders). */
   function sourcesHtml(c) {
     const row = (x, leading) => TP.ui.row({
-      action: 'an-source', attrs: { 'data-key': x.key, 'aria-current': x.on ? 'true' : null },
+      action: 'an-source', attrs: { 'data-key': x.key, 'aria-pressed': x.on ? 'true' : 'false' }, // a filter choice, not a page (TP-028)
       leading, title: esc(x.name),
       trailing: `<span class="tp-count">${x.n}</span>`, // the same plain number in every row (like the sidebar); unread = bold name
       strong: x.unread > 0,
@@ -343,6 +345,12 @@
 
   function allUnread() {
     try { return (TP.data.announcements({ filter: 'all' }) || []).filter((e) => !e.read); } catch { return []; }
+  }
+
+  /** The list in view (filter + course/source; not the search): what "Markeer als gelezen" covers (TP-152). */
+  function listed(all) {
+    return S.source ? all.filter((e) => sourceKey(e) === S.source)
+      : S.filter === 'unread' ? all.filter((e) => !e.read || S.keepRead.has(String(e.id))) : all;
   }
 
   function rowHtml(e) {
@@ -378,9 +386,11 @@
 
     S.events.clear();
     const all = everything();
+    // '#/home?tplus=announcements&id=<luId|advalvas>' (the course page's "Alle mededelingen van dit vak") opens on that source.
+    if (ctx !== S.ctxSeen) { S.ctxSeen = ctx; const id = (ctx.params || {}).id; if (id) pick(String(id)); }
     if (S.source && !all.some((e) => sourceKey(e) === S.source)) S.source = null;
-    const items = S.source ? all.filter((e) => sourceKey(e) === S.source)
-      : S.filter === 'unread' ? all.filter((e) => !e.read || S.keepRead.has(String(e.id))) : all;
+    const items = listed(all);
+    const listUnread = items.filter((e) => !e.read).length;
 
     const state = V.state('events');
     let body = state === 'error' || state === 'stale-error' ? V.errorBlock(t('announcements.error'), 'events') : '';
@@ -390,28 +400,63 @@
     else {
       // A section heading like "Per vak" next to it, so both columns' headings and cards start at the same height.
       const src = S.source && items[0] ? (items[0].subType === 'advalvas' ? t('announcements.school') : TP.util.courseName(items[0].source || '')) : '';
+      // Under "Ongelezen" the heading counts what is still unread (rows read this session stay listed, TP-027).
+      const count = !S.source && S.filter === 'unread' ? listUnread : items.length;
       body += V.addAttrs(TP.ui.section({
-        id: 'an-list', title: esc(src || t('announcements.filter.' + S.filter)), count: items.length,
-        actions: unreadN ? [{ action: 'an-readall', label: t('announcements.readAll'), icon: 'check' }] : [],
+        id: 'an-list', title: esc(src || t('announcements.filter.' + S.filter)), count: count || undefined,
+        actions: listUnread ? [{ action: 'an-readall', label: readAllLabel(listUnread), icon: 'check' }] : [],
         body: TP.ui.group(items.map(rowHtml).join(''), { cls: 'va-ann-list' }),
       }), { 'data-va-sec': 'list' });
     }
 
-    // Same two columns as Overzicht and the course page: the list, and "Per vak" on the side.
-    // The list and its filter list start level, like Overzicht; below 1100px the filters come first (CSS).
+    // Same two columns as Overzicht and the course page: the list, and "Per vak" on the side. The filter list comes first
+    // in the DOM (keyboard and screen readers meet the filters before the rows, TP-028); CSS puts it on the right ≥ 1100px.
     const c = all.length ? choices(all) : null;
     const main = `${c ? sourcesSeg(c) : ''}${body}<div class="va-noresults" hidden></div>`;
-    V.paint(ctx.root, `<div class="va-view va-announcements tp-narrow">${c ? TP.ui.cols(main, sourcesHtml(c)) : main}</div>`);
-    if (S.q) V.filter(ctx.root, S.q);
+    const cols = c ? `<div class="tp-cols va-an-cols"><div class="tp-col-side">${sourcesHtml(c)}</div><div class="tp-col-main">${main}</div></div>` : main;
+    V.paint(ctx.root, `<div class="va-view va-announcements tp-narrow">${cols}</div>`);
+    if (S.q) { V.filter(ctx.root, S.q); syncReadAll(ctx.root); }
+    if (S.focusList) { S.focusList = false; focusList(ctx.root); }
   }
 
+  /** "Alles als gelezen markeren" for the whole list; "Markeer 5 als gelezen" when a course or a search narrows it. */
+  function readAllLabel(n) {
+    return S.source || S.q ? t('announcements.readSome', { n }) : t('announcements.readAll');
+  }
+
+  /** While searching, the button covers (and names) only the rows that match. */
+  function syncReadAll(root) {
+    const btn = root.querySelector('[data-action="an-readall"]');
+    if (!btn) return;
+    const n = visibleEvents(root).filter((e) => !e.read).length;
+    const span = btn.querySelector('span');
+    if (span) span.textContent = readAllLabel(n);
+    btn.hidden = !n;
+  }
+
+  /** After the button left (re-render), focus goes to the list heading, not <body> (TP-044). */
+  function focusList(root) {
+    const h = root.querySelector('[data-va-sec="list"] .tp-sec-title') || root.closest('main')?.querySelector('.tp-large-title');
+    if (!h) return;
+    if (!h.hasAttribute('tabindex')) h.setAttribute('tabindex', '-1');
+    try { h.focus({ preventScroll: true }); } catch { /* ignore */ }
+  }
+
+  /** Marks exactly the unread rows in view (filter, course and search applied) — never other courses (TP-152, TP-027). */
   async function readAll() {
-    const unread = allUnread();
-    if (!unread.length) return;
-    unread.forEach((e) => S.keepRead.add(String(e.id)));
-    await TP.data.markRead(unread);
-    VA().announce(t('announcements.allRead'));
+    const root = S.ctx && S.ctx.root;
+    if (!root) return;
+    const scope = visibleEvents(root).filter((e) => !e.read);
+    if (!scope.length) return;
+    const r = await TP.data.markAllRead({ events: scope });
+    // Read rows leave the "Ongelezen" list (Undo brings them back); the heading count follows.
+    for (const e of scope) S.keepRead.delete(String(e.id));
+    S.focusList = true;
     if (S.ctx) render(S.ctx);
+    const label = t('announcements.markedN', { n: r.unread });
+    TP.ui.undoToast(label, async () => { await r.undo(); if (S.ctx) render(S.ctx); }, { returnFocus: root.querySelector('[data-va-sec="list"] .tp-sec-title') });
+    // Toledo could not be told (offline, …): say so instead of a silent queue (TP-149).
+    r.synced.then((ok) => { if (!ok) VA().toast(t('announcements.syncPending')); });
   }
 
   /** The rows currently listed (filter + search applied), in order: what the sheet steps through. */
@@ -460,8 +505,10 @@
     searchPlaceholder: () => t('announcements.search'),
     render,
     onSearch(ctx, q) {
+      const was = !!S.q;
       S.q = (q || '').trim();
       VA().filter(ctx.root, S.q);
+      if (was !== !!S.q || S.q) syncReadAll(ctx.root);
     },
     destroy() { S.q = ''; S.keepRead.clear(); S.ctx = null; },
   });

@@ -265,6 +265,13 @@
     } else {
       try { ctx.setTitle && ctx.setTitle(t('settings.title')); } catch { /* ignore */ }
       root.innerHTML = `<div class="st-view tp-narrow">${language(s)}${look(s)}${overview(s)}${deadlines(s)}${coursesBlock()}${agenda()}${search(s)}${sync(s)}${advanced(s)}${about(s)}</div>`;
+      // '#/home?tplus=settings&id=about' (the onboarding card's privacy link): jump to that block once (TP-141).
+      const jump = (ctx.params || {}).id;
+      if (jump && ctx.__stJumped !== jump) {
+        ctx.__stJumped = jump;
+        const h = root.querySelector(`[data-section="st-${CSS.escape(String(jump))}"] .tp-sec-title`);
+        if (h) { h.setAttribute('tabindex', '-1'); setTimeout(() => { h.scrollIntoView({ block: 'start' }); h.focus({ preventScroll: true }); }, 0); return; }
+      }
     }
     restoreFocus(root, focus);
     // ⌘K › Instellingen › <section> (TP-173): open at that section once, its heading focused for screen readers.
