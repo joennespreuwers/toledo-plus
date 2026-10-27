@@ -50,6 +50,8 @@ textarea.tp-fb-input { min-height: 132px; resize: vertical; }
   let dlg = null;
   let opener = null;
   let fallbackHost = null;
+  // An unsent message survives Escape, Cancel, ✕ and a failed send: the next open starts from it (TP-142). Memory only.
+  let draft = null;
 
   /** Add the sheet's stylesheet to the root (constructable sheet: not subject to the page CSP). Re-checked on every
       open, because the shell assigns adoptedStyleSheets wholesale when it mounts. */
@@ -111,7 +113,7 @@ textarea.tp-fb-input { min-height: 132px; resize: vertical; }
   ${ui.segmented('tp-fb-kind', kinds, 'idea', { label: t('feedback.kind.label') })}
   <div class="tp-fb-field">
     <label class="tp-fb-label" for="${uid}-text">${esc(t('feedback.text.label'))}</label>
-    <textarea class="tp-fb-input" id="${uid}-text" name="text" rows="6" maxlength="${MAX}" required
+    <textarea class="tp-fb-input" id="${uid}-text" name="text" rows="6" required
       aria-describedby="${uid}-count ${uid}-public" placeholder="${esc(t('feedback.text.placeholder.idea'))}"></textarea>
     <span class="tp-fb-count" id="${uid}-count">${esc(t('feedback.text.count', { n: 0, max: MAX }))}</span>
   </div>
@@ -153,8 +155,23 @@ textarea.tp-fb-input { min-height: 132px; resize: vertical; }
       const n = cpLen(ta.value.trim());
       count.textContent = t('feedback.text.count', { n, max: MAX });
       count.classList.toggle('tp-fb-over', n > MAX);
-      if (n >= MIN && ta.getAttribute('aria-invalid') === 'true') { ta.removeAttribute('aria-invalid'); err.textContent = ''; }
+      if (n >= MIN && n <= MAX && ta.getAttribute('aria-invalid') === 'true') { ta.removeAttribute('aria-invalid'); err.textContent = ''; }
     };
+    const fields = () => ({
+      text: ta.value,
+      contact: $('input[name="contact"]').value,
+      kind: (form.querySelector('input[name="tp-fb-kind"]:checked') || {}).value || 'idea',
+      meta: $('input[name="tp-fb-meta"]').checked,
+    });
+    // restore an unsent draft
+    if (draft) {
+      ta.value = draft.text || '';
+      $('input[name="contact"]').value = draft.contact || '';
+      const k = form.querySelector(`input[name="tp-fb-kind"][value="${draft.kind}"]`);
+      if (k) { k.checked = true; ta.placeholder = t('feedback.text.placeholder.' + draft.kind); }
+      $('input[name="tp-fb-meta"]').checked = draft.meta !== false;
+      updateCount();
+    }
     const showError = (msg) => { err.textContent = ''; setTimeout(() => { err.textContent = msg; }, 30); };
     const busy = (on) => {
       sending = on;
@@ -169,11 +186,14 @@ textarea.tp-fb-input { min-height: 132px; resize: vertical; }
       const text = ta.value.trim();
       if (cpLen(text) < MIN || cpLen(text) > MAX) {
         ta.setAttribute('aria-invalid', 'true');
-        showError(t('feedback.text.short', { min: MIN }));
+        showError(cpLen(text) > MAX ? t('feedback.text.long', { max: MAX, n: cpLen(text) - MAX }) : t('feedback.text.short', { min: MIN }));
         ta.focus();
         return;
       }
+      // An updated/reloaded extension can't send from this tab: say so (retrying never works), keep the text (TP-145).
+      if (TP.net && TP.net.isStale && TP.net.isStale()) { draft = fields(); showError(t('feedback.error.stale')); return; }
       busy(true);
+      const sentFrom = fields();
       const kind = (form.querySelector('input[name="tp-fb-kind"]:checked') || {}).value || 'other';
       let r = { ok: false, error: 'network' };
       try {
@@ -187,7 +207,15 @@ textarea.tp-fb-input { min-height: 132px; resize: vertical; }
         }
       } catch (_) { /* sendFeedback never throws; belt and braces */ }
       busy(false);
+      const key = r && r.ok ? '' : ({ rate: 'feedback.error.rate', invalid: 'feedback.error.invalid', network: 'feedback.error.network', stale: 'feedback.error.stale' }[r && r.error] || 'feedback.error.server');
+      // Closed while "Versturen…": the outcome still reaches the student, as a toast (TP-143); a failure keeps the text.
+      if (!d.isConnected || !d.open) {
+        if (r && r.ok) draft = null; else draft = sentFrom;
+        try { TP.shell?.toast?.(r && r.ok ? t('feedback.done.title') : t(key)); } catch (_) { /* no shell */ }
+        return;
+      }
       if (r && r.ok) {
+        draft = null;
         form.hidden = true;
         const done = $('.tp-fb-done');
         done.hidden = false;
@@ -195,7 +223,6 @@ textarea.tp-fb-input { min-height: 132px; resize: vertical; }
         try { TP.shell?.announce?.(t('feedback.done.title')); } catch (_) { /* optional */ }
         return;
       }
-      const key = { rate: 'feedback.error.rate', invalid: 'feedback.error.invalid', network: 'feedback.error.network' }[r && r.error] || 'feedback.error.server';
       showError(t(key));
     }
 
@@ -219,6 +246,7 @@ textarea.tp-fb-input { min-height: 132px; resize: vertical; }
       ev.stopPropagation(); // keep the shell's shortcuts (/, ⌘\) out of the form
     });
     d.addEventListener('close', () => {
+      if (!form.hidden && !sending) draft = ta.value.trim() || $('input[name="contact"]').value.trim() ? fields() : null;
       const back = opener;
       opener = null;
       if (dlg === d) dlg = null;

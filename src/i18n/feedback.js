@@ -44,7 +44,7 @@
       'update.banner': 'Toledo+ {version} is beschikbaar.',
       'update.get': 'Downloaden',
       'update.how': 'Pak de zip uit, vervang de map en klik op ↻ bij Toledo+ op de extensiepagina van je browser.',
-      'update.dismiss': 'Later',
+      'update.dismiss': 'Verbergen',
     },
     en: {
       'feedback.menu': 'Send feedback',
@@ -85,7 +85,7 @@
       'update.banner': 'Toledo+ {version} is available.',
       'update.get': 'Download',
       'update.how': 'Unzip it, replace the folder and click ↻ on Toledo+ in your browser’s extensions page.',
-      'update.dismiss': 'Later',
+      'update.dismiss': 'Hide',
     },
     fr: {
       'feedback.menu': 'Donner ton avis',
@@ -126,7 +126,22 @@
       'update.banner': 'Toledo+ {version} est disponible.',
       'update.get': 'Télécharger',
       'update.how': 'Décompresse le zip, remplace le dossier et clique sur ↻ à côté de Toledo+ dans la page des extensions de ton navigateur.',
-      'update.dismiss': 'Plus tard',
+      'update.dismiss': 'Masquer',
+    },
+  });
+  // bug bash 2026-10: mark-as-read scope + undo, failure states, course page, courses edit
+  TP.i18n.add({
+    nl: {
+      'feedback.text.long': "Je bericht is {n} tekens te lang (max. {max}).",
+      'feedback.error.stale': "Toledo+ is net bijgewerkt. Kopieer je tekst, herlaad de pagina en verstuur opnieuw.",
+    },
+    en: {
+      'feedback.text.long': "Your message is {n} characters too long (max {max}).",
+      'feedback.error.stale': "Toledo+ was just updated. Copy your text, reload the page and send it again.",
+    },
+    fr: {
+      'feedback.text.long': "Ton message dépasse de {n} caractères (max. {max}).",
+      'feedback.error.stale': "Toledo+ vient d’être mis à jour. Copie ton texte, recharge la page et renvoie-le.",
     },
   });
 })();
