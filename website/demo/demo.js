@@ -14,9 +14,15 @@
 
   var LANGS = ['nl', 'en', 'fr'];
   var TEXT = {
-    nl: { back: 'Terug naar toledoplus.be', home: 'Home', home_href: '../', theme: { light: 'Thema: licht', dark: 'Thema: donker', toLight: 'Schakel over naar licht', toDark: 'Schakel over naar donker' }, demo: 'Demo met nepdata', install: 'Installeer Toledo+', lang: 'Taal', notInDemo: 'Dat werkt alleen in de echte Toledo, niet in de demo.', failed: 'De demo kon niet laden. Probeer de pagina te herladen.', site: 'https://toledoplus.be/' },
-    en: { back: 'Back to toledoplus.be', home: 'Home', home_href: '../en/', theme: { light: 'Theme: light', dark: 'Theme: dark', toLight: 'Switch to light', toDark: 'Switch to dark' }, demo: 'Demo with fake data', install: 'Install Toledo+', lang: 'Language', notInDemo: 'That only works in the real Toledo, not in the demo.', failed: 'The demo could not load. Try reloading the page.', site: 'https://toledoplus.be/en/' },
-    fr: { back: 'Retour à toledoplus.be', home: 'Accueil', home_href: '../fr/', theme: { light: 'Thème : clair', dark: 'Thème : sombre', toLight: 'Passer au thème clair', toDark: 'Passer au thème sombre' }, demo: 'Démo avec de fausses données', install: 'Installer Toledo+', lang: 'Langue', notInDemo: 'Cela ne fonctionne que dans le vrai Toledo, pas dans la démo.', failed: 'La démo n’a pas pu se charger. Rechargez la page.', site: 'https://toledoplus.be/fr/' },
+    nl: { back: 'Terug naar toledoplus.be', home: 'Home', home_href: '../', theme: { toLight: 'Schakel over naar licht', toDark: 'Schakel over naar donker' }, demo: 'Demo met nepdata', install: 'Installeer Toledo+', lang: 'Taal', notInDemo: 'Dat werkt alleen in de echte Toledo, niet in de demo.', failed: 'De demo kon niet laden. Probeer de pagina te herladen.', site: 'https://toledoplus.be/',
+      skip: 'Naar de demo', loading: 'De demo wordt geladen…', title: 'Toledo+ demo', description: 'Probeer Toledo+ in je browser, met nepdata. Geen installatie nodig.',
+      classicTitle: 'Hier zou nu de gewone Toledo staan.', classicText: 'Met “Klassieke Toledo” zet je Toledo+ even uit en zie je de originele pagina. Die zit niet in de demo.', classicBack: 'Terug naar Toledo+' },
+    en: { back: 'Back to toledoplus.be', home: 'Home', home_href: '../en/', theme: { toLight: 'Switch to light', toDark: 'Switch to dark' }, demo: 'Demo with fake data', install: 'Install Toledo+', lang: 'Language', notInDemo: 'That only works in the real Toledo, not in the demo.', failed: 'The demo could not load. Try reloading the page.', site: 'https://toledoplus.be/en/',
+      skip: 'Skip to the demo', loading: 'Loading the demo…', title: 'Toledo+ demo', description: 'Try Toledo+ in your browser, with fake data. Nothing to install.',
+      classicTitle: 'This is where the regular Toledo would be.', classicText: '“Classic Toledo” switches Toledo+ off for a moment and shows the original page. That page isn’t part of the demo.', classicBack: 'Back to Toledo+' },
+    fr: { back: 'Retour à toledoplus.be', home: 'Accueil', home_href: '../fr/', theme: { toLight: 'Passer au thème clair', toDark: 'Passer au thème sombre' }, demo: 'Démo avec de fausses données', install: 'Installer Toledo+', lang: 'Langue', notInDemo: 'Cela ne fonctionne que dans le vrai Toledo, pas dans la démo.', failed: 'La démo n’a pas pu se charger. Rechargez la page.', site: 'https://toledoplus.be/fr/',
+      skip: 'Aller à la démo', loading: 'Chargement de la démo…', title: 'Démo Toledo+', description: 'Essaie Toledo+ dans ton navigateur, avec de fausses données. Rien à installer.',
+      classicTitle: 'Ici, tu verrais le Toledo habituel.', classicText: '« Toledo classique » désactive Toledo+ un moment et affiche la page d’origine. Elle ne fait pas partie de la démo.', classicBack: 'Retour à Toledo+' },
   };
   var JOURNEY = 'https://icts-p-toledo-journey.cloud.icts.kuleuven.be';
   var M = window.TPDemoMock;
@@ -194,12 +200,27 @@
   };
 
   // ---------------------------------------------------------------- demo bar
+  // The bar is the first child of <body> (index.html keeps it visible while page.css hides the rest of the body);
+  // its first item is a skip link that is only visible on focus and jumps into the app.
   function buildBar() {
     var bar = document.createElement('div');
     bar.id = 'demo-bar';
     bar.setAttribute('role', 'region');
-    document.documentElement.insertBefore(bar, document.body);
+    document.body.insertBefore(bar, document.body.firstChild);
+    // The shell prepends #tplus-root to <body> (first in the tab order on the real portal): keep the bar above it.
+    if (window.MutationObserver) {
+      new MutationObserver(function () {
+        if (document.body.firstElementChild !== bar) document.body.insertBefore(bar, document.body.firstChild);
+      }).observe(document.body, { childList: true });
+    }
     bar.addEventListener('click', function (ev) {
+      if (ev.target.closest && ev.target.closest('a.demo-skip')) {
+        ev.preventDefault();
+        var host = document.getElementById('tplus-root');
+        var main = host && host.shadowRoot && host.shadowRoot.getElementById('tp-main');
+        if (main) main.focus();
+        return;
+      }
       if (ev.target.closest && ev.target.closest('button[data-theme-toggle]')) { setTheme(effTheme() === 'dark' ? 'light' : 'dark'); return; }
       var b = ev.target.closest && ev.target.closest('button[data-lang]');
       if (!b) return;
@@ -207,6 +228,33 @@
     });
     paintBar();
   }
+  /** Texts outside the bar that follow the language: title/description, the loading line, the classic stand-in. */
+  function paintPage() {
+    document.documentElement.lang = lang;
+    if (!document.documentElement.classList.contains('tplus-on')) document.title = tx('title');
+    var d = document.querySelector('meta[name="description"]');
+    if (d) d.setAttribute('content', tx('description'));
+    var ld = document.querySelector('#demo-loading .txt');
+    if (ld) ld.textContent = tx('loading');
+    var c = document.getElementById('demo-classic');
+    if (c) {
+      c.setAttribute('lang', lang);
+      c.querySelector('h1').textContent = tx('classicTitle');
+      c.querySelector('p').textContent = tx('classicText');
+      c.querySelector('button').textContent = tx('classicBack');
+    }
+  }
+  // "Klassieke Toledo" turns Toledo+ off: on the real portal the original page shows; the demo has none, so it shows
+  // a short stand-in with a way back (the app's own pill stays too).
+  function setClassic(on) {
+    var c = document.getElementById('demo-classic');
+    document.documentElement.classList.toggle('demo-classic', !!on);
+    if (c) c.hidden = !on;
+  }
+  (function () {
+    var c = document.getElementById('demo-classic');
+    if (c) c.querySelector('button').addEventListener('click', function () { try { TP.settings.set({ wrap: { portal: true } }); } catch (_) { /* not loaded */ } });
+  })();
   function paintBar() {
     var bar = document.getElementById('demo-bar');
     if (!bar) return;
@@ -218,12 +266,15 @@
     var th = tx('theme');
     var icons = '<svg class="ti-light" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></svg>' +
       '<svg class="ti-dark" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg>';
-    bar.innerHTML = '<a class="demo-back" href="' + tx('home_href') + '"><span aria-hidden="true">‹&nbsp;</span><span class="long">' + tx('back') + '</span><span class="short">' + tx('home') + '</span></a>' +
+    bar.innerHTML = '<a class="demo-skip" href="#main">' + tx('skip') + '</a>' +
+      '<a class="demo-back" href="' + tx('home_href') + '"><span aria-hidden="true">‹&nbsp;</span><span class="long">' + tx('back') + '</span><span class="short">' + tx('home') + '</span></a>' +
       '<span class="demo-mid"><span class="demo-tag">' + tx('demo') + '</span> <span class="demo-sep" aria-hidden="true">·</span> ' +
       '<a href="' + tx('site') + '#install">' + tx('install') + ' ›</a></span>' +
       '<span class="demo-end"><span class="demo-langs" role="group" aria-label="' + tx('lang') + '">' + langs + '</span>' +
-      '<button type="button" class="demo-theme" data-theme-toggle data-mode="' + effTheme() + '" aria-label="' + th[effTheme()] + '" title="' + (effTheme() === 'dark' ? th.toLight : th.toDark) + '">' + icons + '</button></span>';
+      '<button type="button" class="demo-theme" data-theme-toggle data-mode="' + effTheme() + '" aria-label="' + toggleName() + '" title="' + toggleName() + '">' + icons + '</button></span>';
   }
+  // Like the site: the name says what a click does; the icon shows the theme you see.
+  function toggleName() { var th = tx('theme'); return effTheme() === 'dark' ? th.toLight : th.toDark; }
   function setTheme(m, fromStorage) {
     if (THEMES.indexOf(m) < 0) return;
     theme = m;
@@ -235,19 +286,30 @@
   function paintToggle() {
     var b = document.querySelector('#demo-bar [data-theme-toggle]');
     if (!b) return;
-    var th = tx('theme'), eff = effTheme();
-    b.setAttribute('data-mode', eff); b.setAttribute('aria-label', th[eff]); b.title = eff === 'dark' ? th.toLight : th.toDark;
+    b.setAttribute('data-mode', effTheme()); b.setAttribute('aria-label', toggleName()); b.title = toggleName();
   }
   window.addEventListener('storage', function (e) { if (e.key === 'tp-theme') setTheme(storedTheme(), true); });
   try { mqDark.addEventListener('change', function () { if (theme === 'system') paintToggle(); }); } catch (_) { /* old Safari */ }
-  function setLang(l) {
+  // fromApp: the language was changed in the app's own Settings → the bar, URL and <html lang> follow (no focus move).
+  function setLang(l, fromApp) {
     if (LANGS.indexOf(l) < 0 || l === lang) return;
     lang = l;
-    document.documentElement.lang = l;
     paintBar();
+    paintPage();
     try { var q = new URLSearchParams(location.search); q.set('lang', l); history.replaceState(history.state, '', location.pathname + '?' + q + location.hash); } catch (_) { /* ignore */ }
+    if (fromApp) return;
     try { TP.settings.set({ language: l }); } catch (_) { /* not loaded yet */ }
     try { var f = document.querySelector('#demo-bar [data-lang="' + l + '"]'); if (f) f.focus(); } catch (_) { /* ignore */ }
+  }
+  function watchApp() {
+    try {
+      TP.settings.subscribe(function (s) {
+        var l = s && s.language;
+        if (l === 'system') { try { l = TP.i18n.lang(); } catch (_) { l = null; } }
+        if (l) setLang(l, true);
+        setClassic(!!(s && s.wrap && s.wrap.portal === false));
+      });
+    } catch (e) { console.warn('[Toledo+ demo]', e); }
   }
 
   // ---------------------------------------------------------------- boot
@@ -263,12 +325,15 @@
   function getJson(p) { return realFetch(p, { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error(p + ': ' + r.status); return r.json(); }); }
   function fail(e) {
     console.error('[Toledo+ demo]', e);
+    document.documentElement.classList.add('demo-failed');
     var p = document.getElementById('demo-fallback');
     if (p) { p.hidden = false; p.textContent = tx('failed'); }
   }
 
-  document.documentElement.lang = lang;
   if (!/^#\/home/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search + '#/home');
+  // The bar and the loading line show at once; the app (~30 scripts) follows.
+  buildBar();
+  paintPage();
 
   Promise.all([getJson(qs(new URL('manifest.json', base).href)), getJson(qs('data/portal.json')), getJson(qs('data/ultra.json')), getJson(qs('data/kuloket.json'))])
     .then(function (r) {
@@ -278,9 +343,9 @@
       (cs.css || []).forEach(function (c) {
         var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = new URL(c, base).href; document.head.appendChild(l);
       });
-      buildBar();
       // async=false: the browser fetches in parallel but executes in insertion (= manifest) order.
       return Promise.all(cs.js.map(function (f) { return loadScript(new URL(f, base).href); }));
     })
+    .then(watchApp)
     .catch(fail);
 })();

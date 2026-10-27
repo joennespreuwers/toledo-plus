@@ -5,13 +5,17 @@ The product website for Toledo+: plain static HTML/CSS with a few lines of JS, p
 ```
 index.html            NL (primary)          en/index.html, fr/index.html
 privacy.html          privacy policy (NL)   en/privacy.html, fr/privacy.html
-404.html              served by GitHub Pages for unknown paths (root-absolute URLs)
+404.html              served by GitHub Pages for unknown paths (root-absolute URLs); Dutch without JS, otherwise a small
+                      inline script switches it to the browser language (nl/en/fr; texts in the script, links via data-p)
 assets/site.css       brand tokens (Inter, orange/ink), layout, motion (the app's --dur/--ease tokens); light/dark via
                       prefers-color-scheme or <html data-theme> (theme toggle; an inline <head> script applies it before paint)
                       and the hero screenshot follows it (.shot-light / .shot-dark)
 assets/site.js        progressive enhancement: theme toggle Light ⇄ Dark (follows the system until the first click, which
-                      flips the theme you see; localStorage 'tp-theme', shared with the demo), copy buttons,
-                      scroll reveal, Lenis smooth wheel scrolling + anchor offsets (not under reduced motion, not on touch)
+                      flips the theme you see; localStorage 'tp-theme', shared with the demo; its name is the action),
+                      copy buttons (announced in a live region), Edge-specific install copy (elements with data-b="edge"
+                      replace data-b="chrome" for an Edg/ user agent; without JS everyone sees the Chrome-first copy),
+                      the narrow-screen header menu (<details class="nav-menu">, < 834 px), the language switch keeping
+                      #section, scroll reveal, Lenis smooth wheel scrolling + anchor offsets (not under reduced motion, not on touch)
 assets/fonts/         Inter (latin + latin-ext, variable) + OFL-Inter.txt — self-hosted, also used by the demo
 assets/vendor/lenis/  Lenis 1.3.27 (MIT, LICENSE) — loaded on demand by site.js, never in /demo/
 assets/img/           per language (nl/en/fr): overview-{light,dark}-<lang>.webp, overview-light-<lang>.png (no-WebP
@@ -71,6 +75,22 @@ text/link/button contrast ≥ 4.5:1 in both themes), Lenis + anchor offset + key
 running animations) and no-JS (nothing hidden). Demo: all routes, a course page and ⌘K in
 NL/EN/FR, light/dark, desktop/phone, with no console errors and no requests outside the page origin; the demo bar's
 "‹ Terug naar toledoplus.be" link (→ "‹ Home" at 320 px) and theme toggle (Light ⇄ Dark like the site, drives the app's appearance setting); motion stays on in the demo.
+Installer and header: step 2 has the unzip steps per OS and the "not the zip" warning, the release zip is still flat
+(`scripts/pack.mjs`: `manifest.json` at the root — Windows *Extract All* and a macOS double-click both make a folder
+`toledo-plus` named after the zip, which is what the guide names), Edge visitors get Edge copy, the header menu on
+phones, link targets ≥ 24 px, copy announced, the language switch keeps `#faq`. 404 in the browser language with a
+working theme toggle; legal pages without `site.js` show no toggle. Demo: the bar is the first child of `<body>` (with
+a skip link), follows a language change made in the app's Settings, shows a loading line until the app is on and a
+stand-in page for "Klassieke Toledo".
+
+### Install guide and the zip layout
+
+The release zip (`npm run pack`, `release.yml`) is **flat**: `manifest.json` sits at the root. That is deliberate:
+Windows' *Extract All* and macOS' Archive Utility both extract into a new folder named after the zip (`toledo-plus`),
+so the folder the guide names exists; a zip with a `toledo-plus/` folder inside would give Windows users
+`toledo-plus\toledo-plus\manifest.json` and a "manifest file is missing" error when they pick the outer folder. If the
+layout ever changes, update step 2/5 and the update card in all three languages (`check.mjs` fails when the zip is no
+longer flat).
 
 ## The demo
 

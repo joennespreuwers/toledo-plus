@@ -202,7 +202,8 @@ async function checkTheme(browser, origin) {
       if (!st.label) fail(`${tag}: toggle without a label`);
       if (st.mode !== st.attr) fail(`${tag}: toggle shows ${st.mode} while the page is ${st.attr}`);
       if (!st.icon || !st.icon.includes(`ti-${st.attr}`)) fail(`${tag}: toggle icon ${st.icon} while the page is ${st.attr}`);
-      if (st.label !== { light: 'Thema: licht', dark: 'Thema: donker' }[st.attr]) fail(`${tag}: toggle label "${st.label}" while the page is ${st.attr}`);
+      // TP-072: the name says what a click does (aria-label = title)
+      if (st.label !== { light: 'Schakel over naar donker', dark: 'Schakel over naar licht' }[st.attr]) fail(`${tag}: toggle label "${st.label}" while the page is ${st.attr}`);
       const shot = await visibleShot(page);
       if (!shot || !shot.includes(`overview-${st.attr}-nl.`)) fail(`${tag} → ${st.attr}: hero screenshot ${shot}`);
     }
@@ -325,7 +326,8 @@ async function checkDemo(browser, origin) {
         const bar = await page.evaluate(() => {
           const a = document.querySelector('#demo-bar a.demo-back');
           const r = a && a.getBoundingClientRect();
-          return a ? { href: a.getAttribute('href'), h: r.height, text: a.innerText.trim(), first: document.querySelector('#demo-bar').firstElementChild === a } : null;
+          const bar = document.querySelector('#demo-bar'), kids = [...bar.children].filter((k) => !k.classList.contains('demo-skip'));
+          return a ? { href: a.getAttribute('href'), h: r.height, text: a.innerText.trim(), first: kids[0] === a } : null;
         });
         const home = { nl: '../', en: '../en/', fr: '../fr/' }[lang];
         if (!bar) fail(`${tag}: no back link in the demo bar`);
@@ -382,6 +384,173 @@ async function checkDemoNarrow(browser, origin) {
   console.log('  demo bar at 320px checked');
 }
 
+// ---------------------------------------------------------------- bug-bash fixes (TP-060 … TP-191): installer, header, 404, demo
+const HOME_TEXT = {
+  nl: { unzip: ['Alles uitpakken', 'dubbelklik', 'niet de zip'], install: 'Installeren', remove: 'Verwijder' },
+  en: { unzip: ['Extract All', 'double-click', 'use the zip'], install: 'Install', remove: 'Remove' },
+  fr: { unzip: ['Extraire tout', 'double-clique', 'pas le zip'], install: 'Installer', remove: 'Supprime' },
+};
+const EDGE_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0';
+
+async function checkFixes(browser, origin) {
+  console.log('Installer, header, 404, demo (bug-bash fixes)');
+  // Zip layout (TP-132): the release zip is flat (manifest.json at the root). Windows "Extract All" and a macOS
+  // double-click both make a folder named after the zip, toledo-plus/, which is what the guide tells you to pick.
+  const { packFiles } = await import(new URL('../../scripts/pack.mjs', import.meta.url).href);
+  const files = packFiles(ROOT);
+  if (!files.includes('manifest.json') || files.some((f) => f.startsWith('toledo-plus/'))) fail('pack: the zip is no longer flat — update the install guide (step 2/5) to match');
+
+  for (const [p, l] of Object.entries({ '/': 'nl', '/en/': 'en', '/fr/': 'fr' })) {
+    const T = HOME_TEXT[l];
+    const html = fs.readFileSync(path.join(SITE, p, 'index.html'), 'utf8');
+    if (!/og:locale:alternate/.test(html) || !/name="twitter:title"/.test(html) || !/name="twitter:description"/.test(html)) fail(`${p}: head misses og:locale:alternate / twitter:title / twitter:description (TP-068)`);
+    for (const m of html.matchAll(/href="((?:\.\.\/)?demo\/[^"]*)"/g)) if (!m[1].includes(`lang=${l}`)) fail(`${p}: demo link ${m[1]} without ?lang=${l} (TP-064)`);
+    for (const [w, ua] of [[390, null], [1440, null], [1440, EDGE_UA]]) {
+      const ctx = await browser.newContext({ viewport: { width: w, height: 900 }, ...(ua ? { userAgent: ua } : {}) });
+      await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin });
+      const page = await ctx.newPage();
+      await page.goto(origin + p + '#faq', { waitUntil: 'load' });
+      const tag = `${p} ${w}${ua ? ' Edge' : ''}`;
+      const r = await page.evaluate(() => {
+        const vis = (el) => !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
+        const steps = [...document.querySelectorAll('.steps > li')];
+        const visText = (li) => [...li.querySelectorAll('h3, p')].filter(vis).map((e) => e.textContent).join(' ');
+        return {
+          step2: steps[1] ? visText(steps[1]) : '', step3: steps[2] ? visText(steps[2]) : '', step5: steps[4] ? visText(steps[4]) : '',
+          primary: document.querySelector('.nav-end .btn-primary')?.textContent.trim(),
+          menu: vis(document.querySelector('.nav-menu > summary')),
+          navLinkH: Math.min(...[...document.querySelectorAll('.nav-links a')].filter(vis).map((a) => a.getBoundingClientRect().height)),
+          phone: vis(document.querySelector('.hero .phone-note')),
+          faq5: document.querySelectorAll('.faq details')[4]?.querySelector('.answer p')?.textContent.trim(),
+          langHref: document.querySelector('.lang a:not([aria-current])')?.getAttribute('href'),
+        };
+      });
+      for (const s of T.unzip) if (!r.step2.includes(s)) fail(`${tag}: install step 2 does not say "${s}" (TP-060)`);
+      if (!/toledo-plus/.test(r.step2) || !/manifest\.json/.test(r.step5)) fail(`${tag}: steps 2/5 do not name the toledo-plus folder with manifest.json (TP-132)`);
+      if (ua && (!r.step3.includes('edge://extensions') || r.step3.includes('chrome://extensions'))) fail(`${tag}: Edge visitor sees "${r.step3}" (TP-133)`);
+      if (!ua && !r.step3.includes('chrome://extensions')) fail(`${tag}: step 3 lost chrome://extensions`);
+      if (r.primary !== T.install) fail(`${tag}: header button reads "${r.primary}" (expected ${T.install}, TP-070)`);
+      if (!r.faq5 || !r.faq5.startsWith(T.remove)) fail(`${tag}: FAQ 5 does not start with removal (TP-075): ${r.faq5}`);
+      if (!/#faq$/.test(r.langHref || '')) fail(`${tag}: language switch drops #faq (${r.langHref}, TP-071)`);
+      if (w === 390) {
+        if (!r.menu) fail(`${tag}: no header menu on a phone (TP-065)`);
+        if (!r.phone) fail(`${tag}: no "install on a computer" note on a phone (TP-062)`);
+        if (r.menu) {
+          await page.locator('.nav-menu > summary').click();
+          const inst = page.locator('.nav-menu a[href="#install"]');
+          if (!(await inst.isVisible())) fail(`${tag}: menu does not show Install`);
+          if (!(await page.locator('.nav-menu a[href*="demo/"]').isVisible())) fail(`${tag}: menu does not show the demo`);
+          const h = await inst.evaluate((a) => a.getBoundingClientRect().height);
+          if (h < 44) fail(`${tag}: menu link ${h}px high`);
+          await inst.click();
+          await page.waitForTimeout(300);
+          if (await page.locator('.nav-menu').evaluate((d) => d.open)) fail(`${tag}: menu stays open after a choice`);
+          await page.locator('.nav-menu > summary').click();
+          await page.keyboard.press('Escape');
+          if (await page.locator('.nav-menu').evaluate((d) => d.open)) fail(`${tag}: Escape does not close the menu`);
+        }
+      } else {
+        if (r.menu) fail(`${tag}: header menu shown on desktop`);
+        if (r.phone) fail(`${tag}: phone note shown on desktop`);
+        if (!(r.navLinkH >= 24)) fail(`${tag}: header links ${r.navLinkH}px high (< 24, TP-073)`);
+        // TP-074: copying is announced in a live region
+        const copy = page.locator('.steps .copy:visible').first();
+        if (await copy.count()) {
+          await copy.click();
+          await page.waitForTimeout(300);
+          const said = await page.evaluate(() => [...document.querySelectorAll('[aria-live]')].map((e) => e.textContent).join(' '));
+          if (!/:\/\/extensions/.test(said)) fail(`${tag}: copy is not announced (live region: "${said}")`);
+        } else fail(`${tag}: no visible copy button`);
+      }
+      await ctx.close();
+    }
+  }
+  // TP-074: forced colors keep the current language visible
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, forcedColors: 'active' });
+    const page = await ctx.newPage();
+    await page.goto(origin + '/en/', { waitUntil: 'load' });
+    const deco = await page.evaluate(() => getComputedStyle(document.querySelector('.lang a[aria-current="true"]')).textDecorationLine);
+    if (!/underline/.test(deco)) fail(`forced colors: current language not marked (${deco})`);
+    await ctx.close();
+  }
+  // TP-063: legal pages without site.js show no dead toggle; the 404 has a working one. TP-069: one language on the 404.
+  for (const [p, locale, want] of [['/privacy.html', 'nl-BE', null], ['/en/terms.html', 'en-GB', null], ['/nope', 'fr-BE', 'fr'], ['/nope', 'nl-BE', 'nl'], ['/nope', 'en-US', 'en']]) {
+    const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale });
+    const page = await ctx.newPage();
+    await page.goto(origin + p, { waitUntil: 'load' });
+    await page.waitForTimeout(150);
+    const r = await page.evaluate(() => {
+      const b = document.querySelector('[data-theme-toggle]');
+      return { shown: !!b && b.getClientRects().length > 0, mode: b && b.getAttribute('data-mode'), lang: document.documentElement.lang,
+        h1: document.querySelector('h1').textContent, nojs: document.querySelectorAll('[data-nojs]').length, demo: document.querySelector('.footer a[href*="demo/"]')?.getAttribute('href'),
+        current: document.querySelector('.lang a[aria-current="true"]')?.getAttribute('lang'), back: document.querySelector('main .btn-primary')?.getAttribute('href') };
+    });
+    const tag = `${p} ${locale}`;
+    if (r.shown && !r.mode) fail(`${tag}: theme toggle visible but not working (TP-063)`);
+    if (want) {
+      if (!r.shown) fail(`${tag}: no theme toggle on the 404 (TP-063)`);
+      else {
+        const bg0 = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+        await page.locator('[data-theme-toggle]').click(); await page.waitForTimeout(320);
+        if (bg0 === await page.evaluate(() => getComputedStyle(document.body).backgroundColor)) fail(`${tag}: 404 theme toggle does nothing`);
+      }
+      if (r.lang !== want || r.current !== want) fail(`${tag}: 404 in ${r.lang} (current ${r.current}), expected ${want} (TP-069)`);
+      if (r.nojs) fail(`${tag}: 404 still shows the other languages' lines`);
+      if (!r.demo || !r.demo.endsWith(`lang=${want}`)) fail(`${tag}: 404 demo link ${r.demo}`);
+      if (r.back !== (want === 'nl' ? '/' : `/${want}/`)) fail(`${tag}: 404 back link ${r.back}`);
+      if (want === 'fr' && !/n’existe pas/.test(r.h1)) fail(`${tag}: 404 heading "${r.h1}"`);
+    }
+    await ctx.close();
+  }
+  // Demo: the bar is in <body> (TP-066), follows the app's language (TP-067, TP-084), Classic has a stand-in (TP-191),
+  // and a loading line shows until the app is on (TP-134).
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: 'nl-BE' });
+    const page = await ctx.newPage();
+    const errs = []; page.on('pageerror', (e) => errs.push(e.message)); page.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
+    await page.goto(`${origin}/demo/?lang=en`, { waitUntil: 'domcontentloaded' });
+    const early = await page.evaluate(() => { const l = document.getElementById('demo-loading'); return { on: document.documentElement.classList.contains('tplus-on'), shown: !!l && l.getClientRects().length > 0, text: l && l.textContent }; });
+    if (!early.on && !early.shown) fail('demo: no loading state before the app is on (TP-134)');
+    await page.waitForFunction(() => document.documentElement.classList.contains('tplus-on'), null, { timeout: 15000 }).catch(() => fail('demo: app did not start'));
+    await page.waitForTimeout(500);
+    const r = await page.evaluate(() => {
+      const bar = document.getElementById('demo-bar');
+      return { parent: bar.parentElement.tagName, first: document.body.firstElementChild === bar, barShown: bar.getClientRects().length > 0,
+        loading: document.getElementById('demo-loading').getClientRects().length > 0, desc: document.querySelector('meta[name="description"]').content,
+        skip: bar.firstElementChild.classList.contains('demo-skip') };
+    });
+    if (r.parent !== 'BODY' || !r.first) fail(`demo: bar is not the first child of <body> (parent ${r.parent}, TP-066)`);
+    if (!r.barShown) fail('demo: bar hidden while the app is on');
+    if (!r.skip) fail('demo: the bar does not start with a skip link');
+    if (r.loading) fail('demo: loading line still shown after the app started');
+    if (!/^Try Toledo\+/.test(r.desc)) fail(`demo ?lang=en: description "${r.desc}" (TP-084)`);
+    // skip link focuses the app
+    await page.keyboard.press('Tab');
+    if (!(await page.evaluate(() => document.activeElement?.classList.contains('demo-skip')))) fail('demo: the first Tab stop is not the demo skip link');
+    await page.keyboard.press('Enter');
+    const focused = await page.evaluate(() => document.getElementById('tplus-root')?.shadowRoot?.activeElement?.id);
+    if (focused !== 'tp-main') fail(`demo: skip link focused ${focused}`);
+    // language changed in the app's Settings → bar, URL and <html lang> follow
+    await page.evaluate(() => TP.settings.set({ language: 'fr' }));
+    await page.waitForTimeout(400);
+    const lg = await page.evaluate(() => ({ lang: document.documentElement.lang, url: location.search, back: document.querySelector('#demo-bar .demo-back').textContent, pressed: document.querySelector('#demo-bar [aria-pressed="true"]')?.dataset.lang }));
+    if (lg.lang !== 'fr' || !/lang=fr/.test(lg.url) || !/Retour/.test(lg.back) || lg.pressed !== 'fr') fail(`demo: language change in the app not followed (${JSON.stringify(lg)}, TP-067)`);
+    // Classic Toledo → stand-in with a way back
+    await page.evaluate(() => TP.settings.set({ wrap: { portal: false } }));
+    await page.waitForTimeout(500);
+    const cl = await page.evaluate(() => { const c = document.getElementById('demo-classic'); return { shown: c.getClientRects().length > 0, text: c.textContent, loading: document.getElementById('demo-loading').getClientRects().length > 0 }; });
+    if (!cl.shown || !/Toledo/.test(cl.text)) fail('demo: Classic leaves an empty page (TP-191)');
+    if (cl.loading) fail('demo: Classic shows the loading line');
+    await page.locator('#demo-classic button').click();
+    await page.waitForFunction(() => document.documentElement.classList.contains('tplus-on'), null, { timeout: 5000 }).catch(() => fail('demo: "Back to Toledo+" in the Classic stand-in does not switch back'));
+    if (await page.locator('#demo-classic').isVisible()) fail('demo: Classic stand-in still visible after switching back');
+    if (errs.length) fail(`demo extras: console errors: ${[...new Set(errs)].join(' | ')}`);
+    await ctx.close();
+  }
+  console.log('  install guide (unzip, zip layout, Edge), header menu/targets, copy announce, language hash, 404, legal-page toggle, demo bar/language/classic/loading checked');
+}
+
 const sizes = () => {
   let total = 0; const walk = (d) => { for (const f of fs.readdirSync(d)) { const p = path.join(d, f); const rel = path.relative(SITE, '/' + path.relative(SITE, p)); if (EXCLUDED.test('/' + path.relative(SITE, p)) || /demo\/ext/.test(p)) continue; const s = fs.statSync(p); if (s.isDirectory()) walk(p); else total += s.size; void rel; } };
   walk(SITE); return total;
@@ -399,6 +568,7 @@ const sizes = () => {
     await checkTheme(browser, origin);
     await checkDemo(browser, origin);
     await checkDemoNarrow(browser, origin);
+    await checkFixes(browser, origin);
   } finally {
     await browser.close(); srv.close();
   }
