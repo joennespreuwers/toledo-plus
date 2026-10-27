@@ -110,8 +110,9 @@ test('own deadlines: edit keeps id, key and done mark; remove returns the item a
 test('allCustom lists an own deadline beyond the horizon (TP-015); setDone marks several at once', async () => {
   const { TP } = await at(local(2026, 10, 20));
   await TP.data.addCustomDeadline({ title: 'Ver weg', courseLuId: '', due: local(2030, 5, 1) });
-  assert.equal(TP.data.deadlines({ horizonDays: 366 }).some((d) => d.title === 'Ver weg'), false);
-  assert.equal(TP.data.deadlines({ horizonDays: 366, allCustom: true }).some((d) => d.title === 'Ver weg'), true);
+  assert.equal(TP.data.deadlines({ horizonDays: 30 }).some((d) => d.title === 'Ver weg'), false);
+  assert.equal(TP.data.deadlines({ horizonDays: 366 }).some((d) => d.title === 'Ver weg'), true, 'a full-year view lists every own deadline (HORIZON.viewDays)');
+  assert.equal(TP.data.deadlines({ horizonDays: 30, allCustom: true }).some((d) => d.title === 'Ver weg'), true);
   await TP.data.addCustomDeadline({ title: 'A', courseLuId: '', due: local(2026, 10, 1) });
   await TP.data.addCustomDeadline({ title: 'B', courseLuId: '', due: local(2026, 10, 2) });
   const keys = TP.data.deadlines().filter((d) => d.title === 'A' || d.title === 'B').map((d) => d.key);
