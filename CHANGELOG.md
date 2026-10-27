@@ -18,6 +18,10 @@ Het formaat volgt [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) en he
 - Deadlines › Te laat › "Ouder dan een week": één knop "Markeer deze n als klaar", met Ongedaan maken.
 - Agenda: de getoonde datum staat in de link (`agenda&id=2026-11-09`); herladen of een gedeelde link opent dezelfde week, en ‹ › / j k zijn stappen in de geschiedenis (Terug gaat een week terug).
 - Op een toestel dat niet op Belgische tijd staat, zeggen Deadlines, Agenda, KU Loket, het deadlinevenster en het formulier "Eigen deadline" in welke tijdzone de tijden staan (bv. "GMT+9").
+- **Als gelezen markeren, met Ongedaan maken**: one "mark as read" everywhere that covers exactly what you see — under a search only the items found ("Markeer 5 gevonden als gelezen"), under a course filter only that course ("Markeer 3 als gelezen") — and a toast with **Ongedaan maken** (or ⌘Z / Ctrl+Z) for a few seconds. New: "{vak} als gelezen markeren" in an open Overzicht › Nieuw group, and "Markeer nieuw als gelezen" on the course page.
+- Course page: jump chips (Inhoud, Deadlines, Mededelingen, Docenten) on phones; "Alle 19 mededelingen van dit vak" when a course has more than 8 (opens Mededelingen filtered on that course).
+- Overzicht › Rooster shows KU Loket exams of today and tomorrow.
+- Mededelingen and the Overzicht card show who sent an announcement (the search already matched it).
 - **Mededeling openen = een venster**: every announcement (Mededelingen, Overzicht, the course page, ⌘K) opens in a sheet with title, course/source and colour dot, author, date, the full text, attachments, "Open in Ultra"/"Open in Ad Valvas" and "Markeer als ongelezen". Step through the current (filtered/searched) list with ↑/↓ or j/k or the arrow buttons; Esc returns to the row. Scale/fade on desktop, slides up from the bottom on phones. Opening marks it read (as before).
 - "Kopieer link" in the deadline and announcement sheets: copies the item's Toledo link, to send to a groupmate.
 - ⌘K results are real links: middle-click or Ctrl/⌘-click opens a result in a new tab, right-click copies its link (Ctrl/⌘-click on a file still downloads it).
@@ -77,6 +81,22 @@ Het formaat volgt [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) en he
 - Printing: always the light palette (also in dark mode), without the sidebar, toolbar, filters, add form or row buttons; rows and headings stay together across pages; the Agenda prints the whole day instead of 11 hours, without the side column.
 - Buttons had lost their font weight when they were a `<button>` (e.g. "Alles gelezen" 400 next to "Alle deadlines" 500); one "opens elsewhere" icon size and colour everywhere; the form fields of "Eigen deadline toevoegen" are all 36 px with the same select chevron; deadline and lesson titles on the course page use the body weight like everywhere else; KU Loket "Agenda" lost its typed "›".
 - Touch: icon buttons (toolbar, done checkbox, open-in-Toledo, icon buttons) have a 44 px hit area on touch screens.
+- "Alles gelezen" heet nu "Alles als gelezen markeren" (het is een actie, geen status). Overzicht › Nieuw zegt in één regel wat het telt; "Alle mededelingen" toont hoeveel er ongelezen zijn.
+- The course header's "n nieuw" counts exactly the rows with a dot (new files/pages + unread announcements); Toledo notifications without a row on the page are shown apart as "+n meldingen".
+- Vakken › Bewerk: rows use the page width, the controls line up with the nickname field, the row shows the official course name, and the help text says what Verbergen does (and doesn't) hide. Bewerk is part of the URL (a reload keeps it). Red and pink are no longer offered as course colour (they mean "te laat"); colours other courses use are dimmed and named "in gebruik".
+- Course avatars in the collapsed sidebar use letters only, skip words like "tot de", keep a number ("Wiskunde II" → W2) and never repeat within the list.
+- The update banner's "Later" is now "Verbergen" (it hides that version for good) and focus no longer drops to the page start.
+- A very long course name is shown on two lines (full name in the tooltip). The tab title of Overzicht is "Overzicht", not the greeting.
+
+### Fixed
+- "Mark all read" in Mededelingen with a course picked marked every course; in Overzicht with a search active it marked everything; with "Markeer gelezen in Toledo" off the same announcements stayed unread elsewhere. Under "Ongelezen" the heading kept the old count and the rows stayed; focus dropped to the page start. When Toledo can't be told, a message now says it will be updated later.
+- A failed ↻ no longer toasts "Bijgewerkt" with the current time; it says Toledo couldn't be reached and since when you're looking at saved data. A stamp from another day shows the date ("Bijgewerkt ma 26 okt 14:05"). Overzicht no longer stacks three error messages (and two "Bijgewerkt") over data that is still shown; Deadlines no longer says "0 open" when nothing could be loaded.
+- A failed file download says "Download mislukt" instead of opening a tab with the error.
+- Course page: an unread announcement gets its dot (also on a first visit); "Zoek in dit vak" no longer lists files twice, opens a page whose text matches, and repeats your query as typed; "Zet in zijbalk" confirms itself (also on a phone); file rows have one clean screen-reader name; the link under a page says "Open in Toledo"; forum/journal items are no longer called "Pagina"; deep folders keep room for their names on phones.
+- Announcement and page texts keep bullets, numbering and nested lists, table borders, and long code lines scroll instead of being cut off. In-page "#…" links no longer open a duplicate tab; relative links in Ultra texts point to Ultra.
+- Courses that share a Toledo colour number get different colours, as intended.
+- Hiding every course leaves "Alle vakken zijn verborgen" with a "Toon alle vakken" button instead of an empty page. Imported nicknames are cut to 60 characters.
+- Feedback: Escape, Annuleren and ✕ keep what you typed for the next time; closing while it sends still tells you the outcome; too long a message is no longer cut silently (and emoji count once); after an extension update it says to reload instead of "try again". The onboarding card links straight to Instellingen › Over.
 - The first-start splash now always removes itself shortly after its planned end, even if its fade-out animation never reports back.
 - A click outside the open account menu only closes the menu; it no longer also activates what was under the pointer.
 - ⌘K closes when you go Back; an unknown Toledo+ address shows the start page and corrects the URL.

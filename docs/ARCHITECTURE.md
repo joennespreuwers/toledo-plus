@@ -766,3 +766,36 @@ error other than auth/ics), saved data with a "saved" note, and a skeleton while
 - **Course colours** (`TP.util`): `COURSE_COLORS` = `COLOR_ORDER` = blue, green, indigo, teal, purple, brown, navy, forest, plum, olive, slate, lavender (+ graphite
   for "no course"). Red/pink/orange/yellow are status-like and no longer handed out (a colour chosen before still renders); mint/cyan were
   near-duplicates of teal/blue. New keys are not accents.
+
+## Addendum v1.7 (unreleased) — reading & marking read (bug bash 2026-10)
+
+- **`TP.data.markAllRead(scope) → Promise<{n, unread, synced: Promise<bool>, undo(): Promise}>`** — the one "mark as read" (shared
+  pattern 5). `scope` = `{events}` (exactly these: the rows in view, filter + search applied) | `{luId}` (what Nieuw shows for one course)
+  | `{}` (all of Nieuw). Adds the items to `state.feedSeen` and **always** writes the local read-set via `markRead` (also with
+  `sync.markReadInToledo` off; with it on the unread ones are PATCHed, failures queue in `pendingRead` → `synced` resolves `false`).
+  `undo()` waits for the PATCH, restores the previous `feedSeen` (replace) and calls `markUnread` on the items it newly read.
+  `markFeedSeen()` is now `markAllRead({})` and resolves to the sync result. Callers: Overzicht (`ov-readall` with the search scope,
+  `ov-readgroup` per course), Mededelingen (`an-readall`: the visible unread rows), the course page (`read-new`: the course's unread feed
+  events + unread announcements; also resets the "since your last visit" dots for the session).
+- **`TP.ui.undoToast(label, restore, {ms=8000, undone, undoLabel, returnFocus, onDismiss}) → {undo, dismiss} | null`** — shared pattern 13:
+  a toast with "Ongedaan maken" in the shell's `.tp-toasts` (one offer at a time; paused while hovered/focused; ⌘Z/Ctrl+Z undoes outside
+  text fields; announced with the shortcut). Without the shell: a plain toast, `null`. Plain toasts are now `aria-hidden` one by one (the
+  container no longer is), so the undo button is reachable.
+- **`TP.ui.updatedText(ms)`** — "Bijgewerkt 14:05" today, "Bijgewerkt ma 26 okt 14:05" otherwise (`common.updatedOn`); used by the shell's
+  status line, the Overzicht subtitle and `TP.ui.empty({timestamp})`. **`TP.ui.initials(names[]) → string[]`** — rail avatars: letters/digits
+  only, function words skipped, trailing number/roman numeral kept, unique within the list. `TP.ui.swatches` options accept `used:true`
+  (`.tp-swatch-used`).
+- **Shell:** `doRefresh()` reads `refresh()`'s `{ok, auth, stale}`: only a success toasts "Bijgewerkt"; a failure toasts
+  `shell.refreshFailedCached` with `updatedText(lastUpdated)`. The status line drops its own stamp when the view's subtitle already shows it
+  (one "Bijgewerkt"). View contract: optional **`docTitle()`** — the document title when it should differ from the large title (Overzicht).
+- **`TP.data.ultraDownload()`** resolves `true` (saved) | `'opened'` (no blob possible here, e.g. portal: opened in a tab) | `false` (failed,
+  nothing opened — the caller toasts `course.downloadFailed`).
+- **`TP.util.sanitize(html, {base})`** — relative `href`/`src` resolve against `base` (Ultra bodies: `https://ultra.edu.kuleuven.cloud/`);
+  `<a href="#…">` keeps its text but loses the link (ids are stripped and a hash change would hit the portal router).
+- **Default course colours** come from `TP.util.courseColorKey(luId, n)` (unique among the current courses) in `resolveColor`.
+  `kindOf`: `x-bb-courselink` → link; forum/journal/blog/wiki links → tool.
+- **Routes:** `#/home?tplus=announcements&id=<luId|advalvas>` opens Mededelingen on that source; `#/home?tplus=settings&id=about` scrolls to
+  that block; Vakken › Bewerk keeps `&id=edit` in the hash (`history.replaceState`, no extra history entry).
+- **Course page:** announcement rows take their unread state from the matching portal event (`TP.annSheet.fromUltra`), else "created after the
+  previous visit"; the header's "n nieuw" = rows with a dot, other unread feed events of the course are "+n meldingen". `.cv-prose` also has
+  `.tp-prose` (lists, nested lists, tables, `<pre>` scroll: ui.css).
