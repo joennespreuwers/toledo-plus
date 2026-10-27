@@ -440,7 +440,7 @@
     <button type="button" class="tp-tb-btn" data-shell="detail-close" aria-label="${esc(t('shell.close'))}">${icon('xmark', { size: 18 })}</button></div>
   <div class="tp-detail-body"></div>
 </dialog>
-<div class="tp-toasts" aria-hidden="true"></div>
+<div class="tp-toasts"></div>
 <div class="tp-live tp-sr" role="status" aria-live="polite" aria-atomic="true"></div>`;
     const wrap = app.querySelector('.tp-view-wrap');
     if (keepRoot) wrap.appendChild(keepRoot);
@@ -500,18 +500,9 @@
     return `<li><a class="tp-sb-item${active ? ' active' : ''}" href="${esc(href(route))}" data-route="${route}"${active ? ' aria-current="page"' : ''}${tip}>${icon(route, { size: 20 })}<span class="tp-sb-label">${esc(t('nav.' + route))}</span>${navTrail(route, counts)}</a></li>`;
   }
 
-  // Rail: courses as coloured circles with two initials ("Montage Technieken 1" → "MT").
-  // Function words don't count (TP-115: "Inleiding tot de economie" → "IE", not "IT" like every "Inleiding tot …").
-  const STOP = new Set(['de', 'het', 'een', 'van', 'tot', 'en', 'in', 'op', 'voor', 'met', 'der', 'the', 'of', 'and', 'to', 'for', 'a', 'an',
-    'la', 'le', 'les', 'des', 'du', 'et', 'au', 'aux', 'd', 'l']);
-  function initialsText(name) {
-    const all = String(name || '').normalize('NFKD').replace(/[̀-ͯ]/g, '').split(/[\s\-_/:,.()[\]'’]+/).filter((x) => /^[a-z]/i.test(x));
-    const w = all.filter((x) => !STOP.has(x.toLowerCase()));
-    const use = w.length ? w : all;
-    return (use.length > 1 ? use[0][0] + use[1][0] : (use[0] || String(name || '') || '?').slice(0, 2)).toUpperCase();
-  }
-  function initials(c) {
-    const txt = initialsText(c.name);
+  // Rail: courses as coloured circles with two initials ("Montage Technieken 1" → "MT"), unique within the list (TP.ui.initials).
+  function initials(c, txt) {
+    txt = txt || (TP.ui.initials ? TP.ui.initials([c.name])[0] : String(c.name || '?').slice(0, 2).toUpperCase());
     const fg = safe(() => (TP.util.contrast('#FFFFFF', c.color) >= 4.5 ? '#FFFFFF' : '#000000'), '#FFFFFF');
     return `<span class="tp-sb-initials" aria-hidden="true" style="--c:${esc(TP.util.safeColor ? TP.util.safeColor(c.color) : c.color)};--fg:${fg}">${esc(txt)}</span>`;
   }
@@ -558,10 +549,11 @@
       const m = TP.state?.get?.()?.cidMap || {};
       return Object.keys(m).find((k) => m[k] === act.params?.cid) || null;
     }, null));
-    const rows = list.map((c) => {
+    const ini = safe(() => TP.ui.initials(list.map((c) => c.name)), []);
+    const rows = list.map((c, i) => {
       const isAct = !!actLu && c.luId === actLu;
       const tip = isRail() ? ` title="${esc(c.name)}"` : ` title="${esc(c.title || c.name)}"`;
-      return `<li><a class="tp-sb-item tp-sb-course${c.unread ? ' is-unread' : ''}${isAct ? ' active' : ''}" href="${esc(href('course', { luId: c.luId }))}" data-lu="${esc(c.luId)}"${isAct ? ' aria-current="page"' : ''}${tip}>${TP.ui.dot(c.color)}${initials(c)}<span class="tp-sb-label">${esc(c.name)}</span>${c.unread ? countHtml(c.unread, t('shell.unread', { n: c.unread })) : ''}</a></li>`;
+      return `<li><a class="tp-sb-item tp-sb-course${c.unread ? ' is-unread' : ''}${isAct ? ' active' : ''}" href="${esc(href('course', { luId: c.luId }))}" data-lu="${esc(c.luId)}"${isAct ? ' aria-current="page"' : ''}${tip}>${TP.ui.dot(c.color)}${initials(c, ini[i])}<span class="tp-sb-label">${esc(c.name)}</span>${c.unread ? countHtml(c.unread, t('shell.unread', { n: c.unread })) : ''}</a></li>`;
     }).join('');
     return `<h2 class="tp-sb-heading-wrap"><button type="button" class="tp-sb-group-btn" data-shell="sb-courses" aria-expanded="${!closed}" aria-controls="tp-sb-courses" id="tp-sb-courses-h"><span>${esc(t('nav.coursesGroup'))}</span>${icon('chevronRight', { size: 13, strokeWidth: 2.4 })}</button></h2>
 <ul class="tp-sb-list tp-sb-courses-list" id="tp-sb-courses" aria-labelledby="tp-sb-courses-h"${closed ? ' hidden' : ''}>${rows}</ul>`;
@@ -946,9 +938,11 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
       // Views can opt out of the "Bijgewerkt hh:mm" line (view.showUpdated === false, e.g. settings);
       // a load error is still shown.
       const showStamp = current.view?.showUpdated !== false;
-      const stamp = ms && showStamp ? esc(t('common.updated', { time: TP.fmt.time(ms) })) : '';
+      const stamp = ms && showStamp ? esc(TP.ui.updatedText ? TP.ui.updatedText(ms) : t('common.updated', { time: TP.fmt.time(ms) })) : '';
+      // The view's subtitle may already say "Bijgewerkt hh:mm" (overview): then the error line doesn't repeat it (TP-146).
+      const inSub = !!(stamp && $('.tp-subtitle')?.textContent.includes(TP.fmt.time(ms)));
       up.innerHTML = failed
-        ? `${stamp ? stamp + ' · ' : ''}<span class="tp-updated-err">${icon('warning', { size: 13 })}${esc(t('shell.loadError'))}</span> · <button type="button" class="tp-link-btn" data-shell="refresh">${esc(t('common.retry'))}</button>`
+        ? `${stamp && !inSub ? stamp + ' · ' : ''}<span class="tp-updated-err">${icon('warning', { size: 13 })}${esc(t('shell.loadError'))}</span> · <button type="button" class="tp-link-btn" data-shell="refresh">${esc(t('common.retry'))}</button>`
         : stamp;
       // Views may already show the timestamp in their subtitle; don't repeat it.
       const dup = !failed && stamp && $('.tp-subtitle')?.textContent.includes(TP.fmt.time(ms));
@@ -1401,7 +1395,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
   <span class="tp-deep-spacer"></span>
   <a class="tp-deep-link" href="${esc(href('deadlines'))}">${icon('deadlines', { size: 16 })}<span>${esc(t('deep.deadlines'))}</span></a>
   ${deepTail()}
-</nav><div class="tp-toasts" aria-hidden="true"></div>`;
+</nav><div class="tp-toasts"></div>`;
       bindDeepHide(root);
       if (cid && !courseNames.has(cid)) {
         deepCourseName(cid).then((name) => { if (name && mode === 'deep') renderDeep(); });
@@ -1668,11 +1662,20 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     announce(t('shell.refreshing'));
     const before = feedCount();
     try {
-      await TP.data.refresh();
-      highlightUntil = Date.now() + 4000;
-      const after = feedCount();
-      const diff = Math.max(0, after - before);
-      toast(diff ? t('shell.refreshedNew', { n: diff }) : `${t('shell.refreshed')} ${TP.fmt.time(Date.now())}`);
+      // refresh() never rejects: it resolves {ok, errors, auth, stale}. Only a real success may say "Bijgewerkt" (TP-136).
+      const res = (await TP.data.refresh()) || {};
+      if (res.stale) toast(t('shell.staleTitle'));
+      else if (res.auth) toast(t('shell.authTitle'));
+      else if (res.ok === false) {
+        const lu = safe(() => TP.data.lastUpdated(), null);
+        toast(lu ? t('shell.refreshFailedCached', { when: TP.ui.updatedText(lu) }) : t('shell.loadError'));
+      } else {
+        highlightUntil = Date.now() + 4000;
+        const after = feedCount();
+        const diff = Math.max(0, after - before);
+        const lu = safe(() => TP.data.lastUpdated(), null) || Date.now();
+        toast(diff ? t('shell.refreshedNew', { n: diff }) : `${t('shell.refreshed')} ${TP.fmt.time(lu)}`);
+      }
     } catch (e) {
       console.warn('[Toledo+] refresh failed', e);
       toast(t('shell.loadError'));

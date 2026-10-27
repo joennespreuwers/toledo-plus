@@ -345,7 +345,7 @@
       if (FILE_KINDS.has(it.kind)) {
         close(false);
         // Both keep the key press' user activation for window.open / the download.
-        if (mod) Promise.resolve(TP.data.ultraDownload(it.cid, it.id)).catch(() => S.toast(t('course.downloadFailed')));
+        if (mod) Promise.resolve(TP.data.ultraDownload(it.cid, it.id)).then((r) => { if (r === false) S.toast(t('course.downloadFailed')); }, () => S.toast(t('course.downloadFailed'))); // false = failed (TP-085)
         else Promise.resolve(TP.data.ultraOpen(it.cid, it.id)).catch(() => S.toast(t('course.openFailed')));
         return;
       }
@@ -357,7 +357,7 @@
       safe(() => Promise.resolve(TP.data.addRecent({ title: it.title, url: TP.data.ultraItemUrl(it.cid, it.id), courseName: it.course || '', courseLuId: it.luId || '', kind: 'file' })).catch(() => {}));
       close(false);
       // Both keep the key press' user activation (window.open / the download).
-      if (mod) Promise.resolve(TP.data.ultraDownload(it.cid, it.id)).catch(() => S.toast(t('course.downloadFailed')));
+      if (mod) Promise.resolve(TP.data.ultraDownload(it.cid, it.id)).then((r) => { if (r === false) S.toast(t('course.downloadFailed')); }, () => S.toast(t('course.downloadFailed'))); // false = failed (TP-085)
       else TP.fulltext.open(it.hit);
       return;
     }

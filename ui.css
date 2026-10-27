@@ -568,12 +568,15 @@ a.tp-mail { color: var(--tint-text); text-decoration: none; }
 .tp-toast:empty { display: none; }
 /* a toast with one action ("Ongedaan maken"): the only toast that takes clicks */
 .tp-toast.has-action { display: flex; align-items: center; gap: 12px; padding: 6px 6px 6px 16px; pointer-events: auto; text-align: left; }
+/* undo toast (TP.ui.undoToast): text + one action; the only toast you can click */
+.tp-toast.tp-toast-undo { display: flex; align-items: center; gap: 12px; pointer-events: auto; text-align: left; padding: 4px 6px 4px 16px; }
+.tp-toast-text { flex: 1 1 auto; min-width: 0; }
 .tp-toast-btn {
-  flex: none; min-height: 32px; padding: 0 12px; border: 0; border-radius: var(--r-pill); cursor: pointer;
-  background: rgba(255, 255, 255, .14); color: #FFFFFF; font: 600 var(--fs-subhead)/1 var(--font);
+  flex: none; min-height: 36px; padding: 6px 12px; border: 0; border-radius: var(--r-pill); cursor: pointer;
+  background: transparent; color: #F5A35F; font-weight: 600;
 }
-.tp-toast-btn:hover { background: rgba(255, 255, 255, .22); }
-.tp-toast-btn:focus-visible { outline: 2px solid #FFFFFF; outline-offset: 2px; }
+.tp-toast-btn:hover { background: rgba(255,255,255,.1); }
+.tp-toast-btn:focus-visible { outline: 2px solid #F5A35F; outline-offset: 1px; }
 
 /* --- responsive shell --- */
 /* compact navigation (tab bar) on phones and on short screens: landscape phones, 200% zoom (TP-035) */
@@ -999,6 +1002,15 @@ a.tp-row:active, button.tp-row:active, summary.tp-row:active { background: var(-
 .tp-prose img { border-radius: 8px; }
 .tp-prose table { border-collapse: collapse; max-width: 100%; display: block; overflow-x: auto; }
 .tp-prose td, .tp-prose th { border: var(--hairline) solid var(--separator); padding: 4px 8px; }
+.tp-prose li { display: list-item; }
+.tp-prose li > :where(ul, ol) { margin: .2em 0 0; }   /* nested lists keep their own indent and marker */
+.tp-prose ul ul { list-style: circle; } .tp-prose ul ul ul { list-style: square; }
+.tp-prose ol ol { list-style: lower-alpha; }
+.tp-prose th { font-weight: 600; text-align: left; }
+/* long code/preformatted lines scroll inside the card instead of being clipped at its edge */
+.tp-prose pre { max-width: 100%; overflow-x: auto; margin: 0 0 .7em; padding: 8px 10px; border-radius: 8px;
+  background: var(--fill, rgba(120,120,128,.12)); font: .875em/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre; }
+.tp-prose code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9em; }
 
 /* ========================================================================== banners (auth / stale) */
 .tp-banners:empty { display: none; }

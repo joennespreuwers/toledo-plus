@@ -407,4 +407,31 @@
       'fmt.daysAgo.other': 'il y a {n} jours',
     },
   });
+  // bug bash 2026-10: mark-as-read scope + undo, failure states, course page, courses edit
+  TP.i18n.add({
+    nl: {
+      'common.updatedOn': "Bijgewerkt {date} {time}",
+      'common.undo': "Ongedaan maken",
+      'common.undone': "Teruggezet",
+      'common.undoFailed': "Kon het niet terugzetten",
+      'common.undoHint': "Ongedaan maken met {key}",
+      'shell.refreshFailedCached': "Kon Toledo niet bereiken · {when}",
+    },
+    en: {
+      'common.updatedOn': "Updated {date} {time}",
+      'common.undo': "Undo",
+      'common.undone': "Undone",
+      'common.undoFailed': "Couldn’t undo that",
+      'common.undoHint': "Undo with {key}",
+      'shell.refreshFailedCached': "Couldn’t reach Toledo · {when}",
+    },
+    fr: {
+      'common.updatedOn': "Mis à jour le {date} à {time}",
+      'common.undo': "Annuler",
+      'common.undone': "Annulé",
+      'common.undoFailed': "Impossible d’annuler",
+      'common.undoHint': "Annuler avec {key}",
+      'shell.refreshFailedCached': "Impossible de joindre Toledo · {when}",
+    },
+  });
 })();

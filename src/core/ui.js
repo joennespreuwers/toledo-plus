@@ -178,11 +178,19 @@
     return `<span class="tp-datetile tp-dt-${tone}"><span class="tp-dt-d" aria-hidden="true">${esc(d)}</span><span class="tp-dt-m" aria-hidden="true">${esc(m)}</span><span class="tp-sr">${esc(full)}</span></span>`;
   }
 
+  /** "Bijgewerkt 14:05" today; "Bijgewerkt ma 26 okt 14:05" when the stamp is from another day (cached data, TP-138). */
+  function updatedText(ms) {
+    if (!ms) return '';
+    const sameDay = TP.fmt.dayKey ? TP.fmt.dayKey(ms) === TP.fmt.dayKey(Date.now()) : true;
+    return sameDay ? t('common.updated', { time: TP.fmt.time(ms) })
+      : t('common.updatedOn', { date: TP.fmt.date(ms, { weekday: 'short', day: 'numeric', month: 'short' }), time: TP.fmt.time(ms) });
+  }
+
   function empty(text, opts = {}) {
     let ts = '';
     if (opts.timestamp) {
       const ms = opts.timestamp === true ? TP.data?.lastUpdated?.() : opts.timestamp;
-      if (ms) ts = `<p class="tp-empty-ts">${esc(t('common.updated', { time: TP.fmt.time(ms) }))}</p>`;
+      if (ms) ts = `<p class="tp-empty-ts">${esc(updatedText(ms))}</p>`;
     }
     const art = opts.art === false ? '' : emptyArt();
     return `<div class="tp-empty">${art}<p>${esc(text)}</p>${ts}</div>`;
@@ -260,7 +268,7 @@
   function swatches(name, options, value) {
     const items = (options || []).map((opt) => {
       const c = TP.util.safeColor(opt.color);
-      return `<label class="tp-swatch" title="${esc(opt.label)}"><input type="radio" name="${esc(name)}" value="${esc(opt.value)}"${String(opt.value) === String(value) ? ' checked' : ''} aria-label="${esc(opt.label)}"><span class="tp-swatch-c" style="--sw:${c}" aria-hidden="true">${icon('check', { size: 13, strokeWidth: 3 })}</span></label>`;
+      return `<label class="tp-swatch${opt.used ? ' tp-swatch-used' : ''}" title="${esc(opt.label)}"><input type="radio" name="${esc(name)}" value="${esc(opt.value)}"${String(opt.value) === String(value) ? ' checked' : ''} aria-label="${esc(opt.label)}"><span class="tp-swatch-c" style="--sw:${c}" aria-hidden="true">${icon('check', { size: 13, strokeWidth: 3 })}</span></label>`;
     }).join('');
     return `<div class="tp-swatches" role="radiogroup">${items}</div>`;
   }
@@ -312,14 +320,115 @@
   const cols = (mainHtml, sideHtml) =>
     `<div class="tp-cols"><div class="tp-col-main">${mainHtml ?? ''}</div>${sideHtml ? `<div class="tp-col-side">${sideHtml}</div>` : ''}</div>`;
 
-  /** Undo after a destructive or bulk action (shared pattern): a toast `label` with an "Ongedaan maken" button that
-   *  calls restore(). Generic on purpose: any view can use it. → the toast element (or null without a shell). */
-  function undoToast(label, restore) {
-    try { return TP.shell.toast(label, { action: { label: t('common.undo'), hint: t('common.undoHint'), onClick: restore } }); } catch (_) { return null; }
+  // ---------------- course initials (rail avatars) ----------------
+  // Letters and digits only (no "B>" from a nickname with markup), function words skipped ("Inleiding tot de economie" → "IE"),
+  // a trailing number or roman numeral kept ("Wiskunde II" → "W2"), and collisions in one list resolved with the next candidate.
+  const STOP = new Set(('de het een van tot en in op voor met der des den te aan bij uit naar over '
+    + 'the of and to for a an on at with from into '
+    + 'le la les du des et au aux pour un une sur par dans l d').split(' '));
+  const ROMAN = { i: 1, ii: 2, iii: 3, iv: 4, v: 5, vi: 6, vii: 7, viii: 8, ix: 9, x: 10 };
+  function initialCandidates(name) {
+    const w = String(name ?? '').normalize('NFKD').replace(/[̀-ͯ]/g, '').split(/[^A-Za-z0-9]+/).filter(Boolean);
+    let num = '';
+    if (w.length > 1) {
+      const last = w[w.length - 1];
+      if (/^\d{1,2}$/.test(last)) num = last;
+      else if (ROMAN[last.toLowerCase()] && last === last.toUpperCase()) num = String(ROMAN[last.toLowerCase()]);
+      if (num) w.pop();
+    }
+    const letters = w.filter((x) => /^[a-z]/i.test(x));
+    const content = letters.filter((x) => !STOP.has(x.toLowerCase()));
+    const base = content.length ? content : letters;
+    const c = [];
+    if (base.length > 1) c.push(base[0][0] + base[1][0]);
+    if (base.length && num) c.push(base[0][0] + num[0]);
+    if (base.length > 2) c.push(base[0][0] + base[base.length - 1][0]);
+    if (base.length && base[0].length > 1) c.push(base[0].slice(0, 2));
+    for (const x of base.slice(1)) for (const ch of x.slice(1)) if (/[a-z]/i.test(ch)) c.push(base[0][0] + ch);
+    for (const ch of (base[0] || '').slice(2)) c.push(base[0][0] + ch);
+    if (!c.length) c.push(base[0] ? base[0][0] : (w[0] ? w[0].slice(0, 2) : '?'));
+    return [...new Set(c.map((x) => x.toUpperCase()))];
+  }
+  /** Two-character initials for a list of names, unique within the list where possible (same order as `names`). */
+  function initials(names) {
+    const used = new Set();
+    return (names || []).map((n) => {
+      const c = initialCandidates(n);
+      const pick = c.find((x) => !used.has(x)) || c[0];
+      used.add(pick);
+      return pick;
+    });
+  }
+
+  // ---------------- undo toast (shared pattern: one helper for every reversible action) ----------------
+  /**
+   * A toast with an "Ongedaan maken" button for an action that already happened (no confirm dialogs).
+   * label: plain text ("13 mededelingen gelezen"); restore(): undoes it (may return a promise).
+   * o.ms (default 8000; paused while hovered/focused), o.undone: text toasted after a successful undo,
+   * o.onDismiss(undone): called once when the offer ends. ⌘Z / Ctrl+Z undoes while the toast is shown.
+   * Only one offer at a time: a newer one ends the older (its change stays). Without the shell: a plain toast.
+   * → { undo(), dismiss() } | null
+   */
+  function undoToast(label, restore, o = {}) {
+    const S = TP.shell || {};
+    const app = S.app && S.app.isConnected ? S.app : null;
+    const box = app && app.querySelector('.tp-toasts');
+    if (!box || typeof restore !== 'function') { try { S.toast && S.toast(label); } catch (_) { /* no shell */ } return null; }
+    box.querySelectorAll('.tp-toast-undo').forEach((x) => x.__tpEnd && x.__tpEnd());
+    const el = document.createElement('div');
+    el.className = 'tp-toast tp-toast-undo show';
+    el.setAttribute('role', 'group');
+    el.setAttribute('aria-label', String(label ?? ''));
+    el.innerHTML = `<span class="tp-toast-text">${esc(label)}</span><button type="button" class="tp-toast-btn">${esc(o.undoLabel || t('common.undo'))}</button>`;
+    box.appendChild(el);
+    try { TP.motion && TP.motion.enter(el, { from: 'up', duration: TP.motion.DUR && TP.motion.DUR[3] }); } catch (_) { /* motion optional */ }
+    const ms = o.ms || 8000;
+    let timer = null;
+    let ended = false;
+    const arm = () => { clearTimeout(timer); timer = setTimeout(() => end(false), ms); };
+    const onKey = (ev) => {
+      if (!(ev.metaKey || ev.ctrlKey) || ev.shiftKey || ev.altKey || String(ev.key).toLowerCase() !== 'z') return;
+      const p = ev.composedPath ? ev.composedPath()[0] : ev.target;
+      if (p && (p.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(p.tagName || ''))) return; // the field's own undo
+      ev.preventDefault();
+      undo();
+    };
+    function end(undone) {
+      if (ended) return;
+      ended = true;
+      clearTimeout(timer);
+      removeEventListener('keydown', onKey, true);
+      const hadFocus = el.contains(el.getRootNode().activeElement);
+      const gone = () => el.remove();
+      try { if (TP.motion && !TP.motion.disabled) TP.motion.leave(el, { to: 'down', duration: TP.motion.DUR[2], onDone: gone }); else gone(); } catch (_) { gone(); }
+      if (hadFocus && o.returnFocus && o.returnFocus.isConnected) o.returnFocus.focus({ preventScroll: true });
+      try { o.onDismiss && o.onDismiss(undone); } catch (_) { /* ignore */ }
+    }
+    async function undo() {
+      if (ended) return;
+      end(true);
+      try {
+        await restore();
+        S.toast && S.toast(o.undone || t('common.undone'));
+      } catch (e) {
+        console.warn('[Toledo+] undo failed', e);
+        S.toast && S.toast(t('common.undoFailed'));
+      }
+    }
+    el.__tpEnd = () => end(false);
+    el.querySelector('button').addEventListener('click', (ev) => { ev.preventDefault(); undo(); });
+    el.addEventListener('pointerenter', () => clearTimeout(timer));
+    el.addEventListener('pointerleave', () => { if (!ended && !el.contains(el.getRootNode().activeElement)) arm(); });
+    el.addEventListener('focusin', () => clearTimeout(timer));
+    el.addEventListener('focusout', () => { if (!ended) arm(); });
+    addEventListener('keydown', onKey, true);
+    arm();
+    try { S.announce && S.announce(`${label}. ${t('common.undoHint', { key: (S.mod || 'Ctrl ') + 'Z' })}`); } catch (_) { /* ignore */ }
+    return { undo, dismiss: () => end(false) };
   }
 
   TP.ui = {
     icon, ICONS, logo, wordmark, emptyArt, attrs, section, group, row, disclosure, badge, dot, dateTile, empty, noResults, skeleton, errorRow,
-    button, segmented, toggle, select, swatches, cols, undoToast, rovingKey,
+    button, segmented, toggle, select, swatches, cols, updatedText, initials, undoToast, rovingKey,
   };
 })();
