@@ -47,7 +47,7 @@
       'courses.colors.brand': 'Toledo+', 'courses.colors.blue': 'Blauw', 'courses.colors.purple': 'Paars', 'courses.colors.pink': 'Roze', 'courses.colors.red': 'Rood',
       'courses.colors.orange': 'Oranje', 'courses.colors.yellow': 'Geel', 'courses.colors.green': 'Groen', 'courses.colors.mint': 'Mint',
       'courses.colors.teal': 'Blauwgroen', 'courses.colors.cyan': 'Cyaan', 'courses.colors.indigo': 'Indigo', 'courses.colors.brown': 'Bruin',
-      'courses.colors.graphite': 'Grafiet',
+      'courses.colors.graphite': 'Grafiet', 'courses.colors.navy': 'Marineblauw', 'courses.colors.forest': 'Bosgroen', 'courses.colors.plum': 'Pruim', 'courses.colors.olive': 'Olijf', 'courses.colors.slate': 'Leisteen', 'courses.colors.lavender': 'Lavendel',
     },
     en: {
       'courses.title': 'Courses',
@@ -92,7 +92,7 @@
       'courses.colors.brand': 'Toledo+', 'courses.colors.blue': 'Blue', 'courses.colors.purple': 'Purple', 'courses.colors.pink': 'Pink', 'courses.colors.red': 'Red',
       'courses.colors.orange': 'Orange', 'courses.colors.yellow': 'Yellow', 'courses.colors.green': 'Green', 'courses.colors.mint': 'Mint',
       'courses.colors.teal': 'Teal', 'courses.colors.cyan': 'Cyan', 'courses.colors.indigo': 'Indigo', 'courses.colors.brown': 'Brown',
-      'courses.colors.graphite': 'Graphite',
+      'courses.colors.graphite': 'Graphite', 'courses.colors.navy': 'Navy', 'courses.colors.forest': 'Forest green', 'courses.colors.plum': 'Plum', 'courses.colors.olive': 'Olive', 'courses.colors.slate': 'Slate', 'courses.colors.lavender': 'Lavender',
     },
     fr: {
       'courses.title': 'Cours',
@@ -137,7 +137,7 @@
       'courses.colors.brand': 'Toledo+', 'courses.colors.blue': 'Bleu', 'courses.colors.purple': 'Violet', 'courses.colors.pink': 'Rose', 'courses.colors.red': 'Rouge',
       'courses.colors.orange': 'Orange', 'courses.colors.yellow': 'Jaune', 'courses.colors.green': 'Vert', 'courses.colors.mint': 'Menthe',
       'courses.colors.teal': 'Bleu-vert', 'courses.colors.cyan': 'Cyan', 'courses.colors.indigo': 'Indigo', 'courses.colors.brown': 'Brun',
-      'courses.colors.graphite': 'Graphite',
+      'courses.colors.graphite': 'Graphite', 'courses.colors.navy': 'Bleu marine', 'courses.colors.forest': 'Vert forêt', 'courses.colors.plum': 'Prune', 'courses.colors.olive': 'Olive', 'courses.colors.slate': 'Ardoise', 'courses.colors.lavender': 'Lavande',
     },
   });
 

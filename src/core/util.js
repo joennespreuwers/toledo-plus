@@ -117,20 +117,26 @@
   const PALETTE = {
     brand: '#EE8B35', blue: '#007AFF', purple: '#AF52DE', pink: '#FF2D55', red: '#FF3B30', orange: '#FF9500', yellow: '#FFCC00',
     green: '#34C759', mint: '#00C7BE', teal: '#30B0C7', cyan: '#32ADE6', indigo: '#5856D6', brown: '#A2845E', graphite: '#8E8E93',
+    // course-only hues (v1.7): distinct from each other and from the status colours
+    navy: '#2B4C9B', forest: '#2E7D4F', plum: '#8E3A8A', olive: '#7C8A1E', slate: '#5B7489', lavender: '#9A8FE8',
   };
+  // Status colours (TP-114): red/pink = "te laat", orange/yellow ≈ amber "binnenkort". A course dot in one of those
+  // can't be told from an overdue/urgent row, so they are no course colours any more (a colour a student picked
+  // earlier still renders). Mint/cyan sat on top of teal/blue at dot size: replaced by darker, distinct hues.
+  const STATUS_LIKE = ['red', 'pink', 'orange', 'yellow'];
   // Toledo color numbers 1..16 → palette keys (deterministic; graphite reserved for "no course").
-  const COLOR_ORDER = ['blue', 'green', 'indigo', 'orange', 'pink', 'purple', 'red', 'teal', 'yellow', 'mint', 'cyan', 'brown'];
-  const staticKey = (n) => COLOR_ORDER[(Math.max(1, Math.floor(Number(n) || 1)) - 1) % COLOR_ORDER.length];
-  // Accent colours: red and pink are reserved for "te laat" (N7) and never offered as accent.
-  const NO_ACCENT = ['red', 'pink'];
+  const COLOR_ORDER = ['blue', 'green', 'indigo', 'teal', 'purple', 'brown', 'navy', 'forest', 'plum', 'olive', 'slate', 'lavender', 'graphite'];
+  const staticKey = (n) => COLOR_ORDER[(Math.max(1, Math.floor(Number(n) || 1)) - 1) % (COLOR_ORDER.length - 1)];
+  // Accent colours: red and pink are reserved for "te laat" (N7) and never offered as accent; the course-only hues aren't accents.
+  const NO_ACCENT = ['red', 'pink', 'navy', 'forest', 'plum', 'olive', 'slate', 'lavender'];
   const ACCENTS = Object.keys(PALETTE).filter((k) => !NO_ACCENT.includes(k));
   const accentKey = (k) => (PALETTE[k] && !NO_ACCENT.includes(k) ? k : 'brand');
-  /** Palette keys offered as course colours (everything except the brand accent). */
-  const COURSE_COLORS = Object.keys(PALETTE).filter((k) => k !== 'brand');
+  /** Palette keys offered as course colours: no brand accent, no status-like hue, no near-duplicates. */
+  const COURSE_COLORS = COLOR_ORDER.slice();
   // Brand-specified text colours (brandguide: orange text on white = #C2410C; on ink the lighter orange).
   const ACCENT_TEXT = { brand: { l: '#C2410C', d: '#F5A35F' } };
-  // Free colours for duplicates: red/pink last (they read as "overdue").
-  const SPARE = ['blue', 'green', 'indigo', 'orange', 'purple', 'teal', 'yellow', 'mint', 'cyan', 'brown', 'pink', 'red'];
+  // Free colours for duplicates (never a status-like hue).
+  const SPARE = COLOR_ORDER.slice(0, -1);
 
   // Unique default course colours (N7). Toledo colour numbers 1..16 fold onto 12 palette keys, so two current
   // courses can end up with the same colour (e.g. 4 and 16 → orange). For the current courses we hand out
@@ -155,7 +161,7 @@
       if (own(e.learningUnitId)) continue;
       const idx = Number(e.color) || 1;
       let k = staticKey(idx);
-      if (used.has(k) || k === 'red') k = SPARE.find((x) => !used.has(x)) || k;
+      if (used.has(k) || STATUS_LIKE.includes(k)) k = SPARE.find((x) => !used.has(x)) || k;
       used.add(k);
       byLu.set(e.learningUnitId, k);
       if (!byIdx.has(idx)) byIdx.set(idx, k);
