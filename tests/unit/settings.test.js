@@ -210,3 +210,75 @@ test('v4 → v5 (brand): the old default accent "blue" becomes "brand"; explicit
   const w4 = world();
   assert.equal((await boot(w4)).settings.get().accent, 'brand', 'new users get the brand accent');
 });
+
+// ---- privacy & import (bug bash TP-001, TP-002, TP-120) ----
+async function bootU(w) {
+  const s = sandbox();
+  s.ctx.chrome = fakeChrome(w);
+  s.load('src/core/util.js');
+  s.load('src/core/settings.js');
+  await s.TP.settings.load();
+  return s.TP;
+}
+
+test('reset() keeps the privacy choices: the usage signal and update check stay off (TP-001)', async () => {
+  const TP = await bootU(world());
+  await TP.settings.set({ privacy: { telemetry: false, updateCheck: false }, density: 'compact', custom: [{ id: 'x', title: 'Eigen', courseLuId: '', due: 1 }] });
+  await TP.settings.reset();
+  const s = TP.settings.get();
+  assert.deepEqual(plain(s.privacy), { telemetry: false, updateCheck: false });
+  assert.equal(s.density, 'standard');
+  assert.deepEqual(plain(s.custom), []);
+});
+
+test('import: invalid values reject the whole file and change nothing; the error names the fields (TP-002)', async () => {
+  const TP = await bootU(world());
+  await TP.settings.set({ density: 'compact' });
+  const before = JSON.stringify(TP.settings.get());
+  const bad = { v: 5, appearance: 'banana', language: 'klingon', accent: '#zzz', density: 'tiny', startPage: 'nope' };
+  assert.throws(() => TP.settings.import(JSON.stringify(bad)), (e) => e.code === 'invalid' && ['appearance', 'language', 'accent', 'density', 'startPage'].every((f) => e.fields.includes(f)));
+  assert.throws(() => TP.settings.import({ v: 5, courses: null }), (e) => e.code === 'invalid' && e.fields.includes('courses'));
+  assert.throws(() => TP.settings.import({ v: 5, wrap: null }), (e) => e.code === 'invalid' && e.fields.includes('wrap'));
+  assert.throws(() => TP.settings.import({ v: 5, deadlines: { horizonDays: -3 } }), (e) => e.fields.includes('deadlines.horizonDays'));
+  assert.throws(() => TP.settings.import('{nope'), (e) => e.code === 'json');
+  assert.equal(JSON.stringify(TP.settings.get()), before, 'nothing applied');
+});
+
+test('import: a file that is not a Toledo+ export is refused; a partial export merges instead of resetting (TP-120)', async () => {
+  const TP = await bootU(world());
+  await TP.settings.set({ density: 'compact', language: 'nl', custom: [{ id: 'a', title: 'Hier', courseLuId: '', due: 5 }] });
+  assert.throws(() => TP.settings.import({ hello: 'world', appearance: 'dark' }), (e) => e.code === 'foreign');
+  assert.throws(() => TP.settings.import([1, 2]), (e) => e.code === 'foreign');
+  assert.equal(TP.settings.get().appearance, 'system');
+  await TP.settings.import({ v: 5, appearance: 'dark', custom: [{ id: 'b', title: 'Uit bestand', courseLuId: '', due: 9 }], courses: { items: { LU1: { nickname: 'x'.repeat(80), color: 'teal' } } } });
+  const s = TP.settings.get();
+  assert.equal(s.appearance, 'dark');
+  assert.equal(s.density, 'compact', 'not named in the file → unchanged');
+  assert.equal(s.language, 'nl');
+  assert.deepEqual(s.custom.map((c) => c.id).sort(), ['a', 'b'], 'own deadlines are merged, not replaced');
+  assert.equal(s.courses.items.LU1.nickname.length, 60, 'nickname limit applies to imports too');
+});
+
+test('import never turns a privacy switch back on', async () => {
+  const TP = await bootU(world());
+  await TP.settings.set({ privacy: { telemetry: false, updateCheck: true } });
+  await TP.settings.import({ v: 5, privacy: { telemetry: true, updateCheck: false } });
+  assert.deepEqual(plain(TP.settings.get().privacy), { telemetry: false, updateCheck: false });
+});
+
+test('state.forget(keys) drops pending writes and removes the items; forget() removes every state item', async () => {
+  const w = world({ local: { 'state:me': { given: 'Alex' }, 'state:done': { d1: 1 }, 'staterev:me': { n: 1, by: 'x' } } });
+  const TP = await bootU(w);
+  assert.equal(TP.state.get().me.given, 'Alex');
+  TP.state.set({ recent: [{ title: 'Geheim.pdf' }] }); // pending (debounced)
+  await TP.state.forget(['me', 'recent']);
+  await tick(250);
+  assert.deepEqual(plain(TP.state.get().me), {});
+  assert.deepEqual(plain(TP.state.get().recent), []);
+  assert.equal(w.stores.local['state:me'], undefined);
+  assert.equal(w.stores.local['staterev:me'], undefined);
+  assert.equal(w.stores.local['state:recent'], undefined, 'the pending write was dropped');
+  assert.deepEqual(w.stores.local['state:done'], { d1: 1 }, 'other keys stay');
+  await TP.state.forget();
+  assert.equal(Object.keys(w.stores.local).filter((k) => k.startsWith('state')).length, 0);
+});

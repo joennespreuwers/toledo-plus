@@ -5,11 +5,13 @@
    - Usage ping (settings.privacy.telemetry, default ON, opt-out in Settings): at most once per 24 h, portal origin only,
      payload exactly {id, v, browser, lang}: a random install id (crypto.randomUUID, stored in chrome.storage.local
      'telemetry:id'), the extension version, a browser family and the UI language. No names, student numbers, courses,
-     URLs or other Toledo data. Opting out asks the server to forget the id, then deletes it locally; opting in again
+     URLs or other Toledo data. Opting out (or Settings › Reset everything) deletes the id locally and queues it in
+     'telemetry:forget'; POST /v1/forget is retried on every boot until the server confirms (TP-139). Opting in again
      creates a new, unrelated id.
    - Update check (settings.privacy.updateCheck, default ON): GET /v1/latest at most every 12 h; nothing is sent.
-   - Feedback: only what the user typed (+ version/browser/language when they leave that box ticked). Works with
-     telemetry off (explicit consent); the install id is only attached while telemetry is on.
+   - Feedback: only what the user typed (+ version/browser/language/page when they leave that box ticked). Works with
+     telemetry off (explicit consent). The install id is never attached (TP-179): feedback is posted publicly and must
+     not be linkable to the usage rows.
    Nothing here ever throws or rejects. */
 (() => {
   'use strict';
@@ -20,7 +22,7 @@
   const RELEASES = 'https://github.com/joennespreuwers/toledo-plus/releases/latest';
   const HOUR = 3600e3;
   const DAY = 24 * HOUR;
-  const K = { id: 'telemetry:id', ping: 'telemetry:lastPing', upd: 'telemetry:lastUpdateCheck', latest: 'telemetry:latest', dismissed: 'telemetry:dismissedUpdate' };
+  const K = { id: 'telemetry:id', ping: 'telemetry:lastPing', upd: 'telemetry:lastUpdateCheck', latest: 'telemetry:latest', dismissed: 'telemetry:dismissedUpdate', forget: 'telemetry:forget' };
   // Tunables (tests shrink them).
   const cfg = { api: API, pingEvery: DAY, retryAfterFail: HOUR, updateEvery: 12 * HOUR, idleDelay: 8000 };
   const UUID4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -151,18 +153,67 @@
     }
   }
 
-  /** Opt-out: ask the server to forget this id (best effort), then delete it locally. */
-  async function forget() {
+  /** Opt-out / reset: queue the id for deletion on the server, delete it locally, then send the queue.
+      opts.background: resolve once the id is queued and removed (the POST continues). → bool, never rejects. */
+  async function forget({ background = false } = {}) {
     try {
       const id = await installId(false);
+      if (id) {
+        const q = await forgetQueue();
+        if (!q.includes(id)) q.push(id);
+        await sset({ [K.forget]: q.slice(-20) });
+      }
       await sremove([K.id, K.ping]);
-      if (id && TP.net && !stale()) { try { await post('/v1/forget', { id }); } catch (_) { /* best effort */ } }
+      const sending = flushForget();
+      if (!background) await sending;
       return true;
     } catch (_) { return false; }
   }
 
+  async function forgetQueue() {
+    const q = await sget(K.forget);
+    return Array.isArray(q) ? q.filter((x) => typeof x === 'string' && UUID4.test(x)) : [];
+  }
+
+  let forgetting = null;
+  /** Send every queued /v1/forget; keep the ones that failed for the next boot. → 'none'|'sent'|'error'. Never rejects. */
+  function flushForget() {
+    if (forgetting) return forgetting.then(() => flushForget());
+    const run = (async () => {
+      try {
+        if (!TP.net || stale()) return 'error';
+        const q = await forgetQueue();
+        if (!q.length) return 'none';
+        const left = [];
+        for (const id of q) {
+          try { await post('/v1/forget', { id }); } catch (e) {
+            const s = (e && e.status) || 0;
+            if (!s || s === 429 || s >= 500) left.push(id); // 4xx (bad id): nothing to delete, drop it
+          }
+        }
+        const cur = await forgetQueue(); // ids queued meanwhile stay
+        const keep = cur.filter((id) => left.includes(id) || !q.includes(id));
+        if (keep.length) await sset({ [K.forget]: keep }); else await sremove([K.forget]);
+        return left.length ? 'error' : 'sent';
+      } catch (_) { return 'error'; }
+    })();
+    forgetting = run;
+    run.then(() => { if (forgetting === run) forgetting = null; });
+    return run;
+  }
+
   // ---------------------------------------------------------------- update check
-  const safeUrl = (u) => (typeof u === 'string' && /^https:\/\/(github\.com\/joennespreuwers\/toledo-plus\/|(www\.)?toledoplus\.be\/)/.test(u) ? u : RELEASES);
+  /** Only the project's GitHub pages or toledoplus.be (TP-178): parsed, so "/toledo-plus/../../other" can't escape. */
+  function safeUrl(u) {
+    try {
+      if (typeof u !== 'string' || !/^https:\/\//i.test(u)) return RELEASES;
+      const x = new URL(u);
+      if (x.protocol !== 'https:' || x.username || x.password || x.port) return RELEASES;
+      if (x.hostname === 'github.com' && x.pathname.startsWith('/joennespreuwers/toledo-plus/')) return x.href;
+      if (x.hostname === 'toledoplus.be' || x.hostname === 'www.toledoplus.be') return x.href;
+    } catch (_) { /* fall through */ }
+    return RELEASES;
+  }
 
   function normalizeLatest(x) {
     if (!x || typeof x !== 'object' || typeof x.version !== 'string' || !/^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$/.test(x.version)) return null;
@@ -215,9 +266,10 @@
       const body = { kind, text, website: String(o.website || '') };
       const contact = String(o.contact || '').trim();
       if (contact) body.contact = contact.slice(0, 200);
-      if (o.page && PAGE.test(String(o.page))) body.page = String(o.page);
-      if (o.includeMeta !== false) Object.assign(body, { v: version(), browser: browser(), lang: lang() });
-      if (enabled()) { const id = await installId(false); if (id) body.id = id; }
+      if (o.includeMeta !== false) {
+        Object.assign(body, { v: version(), browser: browser(), lang: lang() });
+        if (o.page && PAGE.test(String(o.page))) body.page = String(o.page);
+      }
       if (!TP.net || stale()) return { ok: false, error: 'network' };
       await post('/v1/feedback', body);
       return { ok: true };
@@ -249,7 +301,7 @@
     }
     if (scheduled) return;
     scheduled = true;
-    const run = () => { ping(); checkUpdate(); };
+    const run = () => { flushForget(); ping(); checkUpdate(); };
     const later = () => {
       try {
         if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 30000 });
@@ -260,8 +312,8 @@
   }
 
   TP.telemetry = {
-    ping, forget, checkUpdate, dismissUpdate, sendFeedback, schedule, on, off,
+    ping, forget, flushForget, checkUpdate, dismissUpdate, sendFeedback, schedule, on, off,
     enabled, pendingUpdate: () => pending, browser, compareVersions: cmp,
-    API, KEYS: K, _cfg: cfg,
+    API, KEYS: K, safeUrl, _cfg: cfg,
   };
 })();

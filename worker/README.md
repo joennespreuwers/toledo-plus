@@ -6,7 +6,7 @@ A small Cloudflare Worker (plain ES module, no framework, no runtime dependencie
 |---|---|---|
 | `POST /v1/ping` | Anonymous daily usage signal `{id, v, browser, lang}` → `204` | extension origin; 10/hour per hashed IP |
 | `POST /v1/forget` | Opt-out: deletes the install id's rows → `204` | extension origin; 10/hour per hashed IP |
-| `POST /v1/feedback` | In-extension feedback → D1 (+ optional GitHub issue) → `201 {ok:true}` | extension origin; 5/hour + 20/day per hashed IP, 10/day per install id, 500/day global |
+| `POST /v1/feedback` | In-extension feedback → D1 (+ optional GitHub issue) → `201 {ok:true}` | extension origin; 5/hour + 20/day per hashed IP, 500/day global; public issues: 10/day per hashed IP, 100/day global (over the cap: stored, no issue) |
 | `GET /v1/latest` | `{version, url, notes}` for the update banner | public, `Cache-Control: public, max-age=600` |
 | `GET /v1/stats` | JSON: installs, 1/7/28-day actives, by version/browser/language, feedback counts | `Authorization: Bearer $STATS_TOKEN` |
 | `GET /v1/stats.html` | Dashboard page; asks for the token, keeps it in `sessionStorage`, calls `/v1/stats` | token never in a URL |
@@ -14,6 +14,16 @@ A small Cloudflare Worker (plain ES module, no framework, no runtime dependencie
 All POST routes: `Content-Type: application/json`, body ≤ 8 KB, unknown fields rejected (`400 {error:'invalid', field}`),
 `Origin` must be `chrome-extension://<id>` or `extension://<id>` (optionally pinned with `EXTENSION_IDS`).
 A rate-limited request gets `429` with `Retry-After` (seconds).
+
+**Abuse model.** `Origin` is a CORS gate, not authentication: any script can send `Origin: chrome-extension://…`, and an
+unpacked extension (the way Toledo+ is installed) has no fixed id, so `EXTENSION_IDS` can only be pinned once the
+extension is published with a stable id (store listing or a `key` in the manifest). No limit trusts the Origin or the
+client-chosen install id: limits key on the hashed IP — **for IPv6 the /64 prefix**, since one end site gets a whole /64 —
+plus global caps. Feedback is stored first; only up to 10 per IP prefix and 100 per day become public GitHub issues, the
+rest waits in D1 (`status = 'new'`) for the maintainer. User text in an issue is a fenced code block (no links, images,
+`#refs`, SHAs or HTML); the title has `@`, `#123` and SHAs broken with a zero-width space. More than 3 links in any
+spelling (`https://`, `//host`, `www.`, `](`, `<a`/`<img`) → `422`. `/v1/latest` only returns a `url` on
+`github.com/<GITHUB_REPO>/…` or `toledoplus.be` (the extension checks the same).
 
 ## Setup
 
@@ -69,13 +79,13 @@ any other URL is replaced by the releases page.
 - **Usage ping**: a random UUID v4 per install (generated in the browser, deleted locally on opt-out, and removed
   here through `/v1/forget`), the extension version, a browser family (`chrome|edge|brave|opera|other`) and the UI
   language (`nl|en|fr`). At most once a day. No names, e-mail addresses, student numbers, courses, URLs or Toledo data.
-- **No IP addresses are stored or logged.** Rate-limit keys are `SHA-256(SALT | UTC day | IP)` truncated to 128
+- **No IP addresses are stored or logged.** Rate-limit keys are `SHA-256(SALT | UTC day | IP or IPv6 /64 prefix)` truncated to 128
   bits: not reversible without the secret, and not linkable across days. Counter rows are deleted after 2 days
   (daily cron). Keep Workers Logs / Logpush **off** (`[observability] enabled = false`): invocation logs would record
   the client IP. The worker logs only error messages, never request bodies.
 - **Feedback** contains only what the user typed. The optional contact field stays in D1 and is never copied into the
-  public GitHub issue; `@mentions` are neutralised. The install id is attached only while the usage signal is on and
-  is not shown in the issue. The form tells users their message may become a public issue.
+  public GitHub issue; `@mentions` are neutralised. The extension no longer sends the install id with feedback (older
+  versions did; it is still accepted, stored and NULLed by `/v1/forget`, but never used as a limit key or shown). The form tells users their message may become a public issue.
 - **Retention**: `daily` rows and `installs` unseen for 400 days are deleted by the cron; feedback is kept until
   triaged (delete with `wrangler d1 execute … "DELETE FROM feedback WHERE id = …"`).
 - Honeypot field `website`: a non-empty value gets a fake `201` and nothing is stored. More than 3 links → `422`.

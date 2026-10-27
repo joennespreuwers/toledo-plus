@@ -80,7 +80,7 @@ CSS loaded into the shadow root by the shell, in this order: `ui.css`, then ever
 ```
 TP.util.esc(s) → HTML-escaped string
 TP.util.abs(path) → absolute URL on the current origin (passes http(s) URLs through)
-TP.util.sanitize(html) → safe HTML string (drop script/style/iframe/object/embed/form/input/button/link/meta/base, on* attrs, style/class/id, javascript: urls; <a> get target=_blank rel=noopener)
+TP.util.sanitize(html, {base}) → safe HTML string (drop script/style/iframe/object/embed/form/input/button/link/meta/base/svg/math/track…; attribute ALLOWLIST (no on*, style/class/id, ping, referrerpolicy, srcset, autoplay, poster, background, data-*/aria-*); javascript:/data: urls dropped (except data:image on img); relative URLs resolve against `base` (default the Ultra origin); <a> get target=_blank rel="noopener noreferrer" except in-page #anchors; <img> get referrerpolicy=no-referrer loading=lazy; <audio>/<video> preload=none controls)
 TP.util.plain(html) → text
 TP.util.courseName("Filmtaal 1 [X10265]") → "Filmtaal 1"   (also strips leading "- ")
 TP.util.courseCode(title) → "X10265" | ""
@@ -616,3 +616,37 @@ TP.index.highlight(root, q|m, selector) → n ; TP.index.unmark(root)   // <mark
   and `TP.ui.noResults` clips the echoed query to 60 characters; the empty state adds `palette.empty.hint` (and `palette.empty.indexing`
   while the index crawls).
 - Tests: `tests/unit/index.test.js` (matcher, dates, typos, hayOf, ranges), `tests/e2e/search.e2e.js`.
+
+## Addendum v1.7 (unreleased) — privacy & data cluster (bug bash, pattern 7/8/9/11)
+
+- **`TP.data.wipeLocal({scope:'user'|'all'}) → Promise<true>`** (never rejects) — the one place that decides what "forget" means.
+  `'user'` (shell logout item, one line in `shell.js`): `cache:*`, `kuloket:*` (incl. the iCal link), `index`, `indexMeta`,
+  state `me, recent, focus, cidMap, openFolders, visits`, the file index when full-text is on; memory caches too. Kept:
+  settings, own deadlines, `done`/`read`/`feedSeen`/`pendingRead`, `ui`. `'all'` (Settings › Alles terugzetten, after
+  `TP.settings.reset()`): every `chrome.storage.local` key except `telemetry:forget`, `settingsLocal`, `customLocal`,
+  `*SavedAt`, `fulltext:budget`, `tp:loggedOutAt`, `tp:landingBounceAt`; plus `TP.state.forget()`, `TP.fulltext.wipe()` and
+  `TP.telemetry.forget({background:true})` (install id queued for server deletion first). Phase 1 is synchronous (memory,
+  fixed keys, marker `tp:wipePending`); `TP.data.init()` finishes an interrupted wipe before reading the cache. Loads that
+  started before a wipe are not cached. The settings view reloads the page after a reset (toast via sessionStorage
+  `tp:settingsFlash`). **New per-user storage keys must be added to the wipe lists.**
+- **`TP.state.forget(keys?)`** — drops pending writes for those keys, resets them in memory, removes `state:`/`staterev:` items
+  (storage removal issued synchronously); no argument = every state key.
+- **`TP.settings.reset()`** keeps the current `privacy` group. **`TP.settings.import(json)`** requires a numeric `v` and at least
+  one known key (`code:'foreign'`), validates every known key (enums, booleans, ranges, palette keys, course items, custom
+  deadlines) and on any invalid value throws `code:'invalid'` with `fields` and applies nothing; otherwise **merges** over the
+  current settings (own deadlines by id; privacy switches can only be turned off; nicknames clipped to 60). Not JSON → `code:'json'`.
+- **`TP.telemetry`**: `forget({background})` queues the id in `telemetry:forget` before deleting it; `flushForget()` sends the
+  queue (4xx drops an id, network/5xx/429 keep it) and runs on every boot regardless of the opt-out. Feedback never carries the
+  install id; `page` is sent only with the meta switch. `safeUrl(u)` parses the URL (github.com/joennespreuwers/toledo-plus/… or
+  toledoplus.be only).
+- **Time horizons — `TP.data.HORIZON`** `{donePastDays:120, overdueKeepDays:365, calPastDays:14, calDeepPastDays:120,
+  calDeepEveryMs:1 day, viewDays:366}`: done deadlines stay listed 120 days after due (default `pastDays`); the Ultra calendar
+  is read 120 days back on the first fetch and once a day (`range.deepAt`), 14 days on routine refreshes, ≤ 9 windows; items
+  that leave the window are kept (not done ≤ 365 d, done ≤ 120 d); own deadlines are not cut off when `horizonDays ≥ viewDays`.
+  Non-gradebook calendar items (`type` Course/User/…) are cached as `cache:ultraDeadlines.other` and exposed as
+  **`TP.data.calendarItems({from, to})`** → `[{id, title, type, start, end, courseLuId, courseTitle, cid, url}]` (not shown in
+  any view yet). The policy is explained in Settings › Deadlines (footer).
+- **Worker**: rate-limit key = hashed IP, IPv6 /64 prefix (`ipPrefix`); no limit on the install id; `LIMITS.issue` caps public
+  issues (10/day per IP, 100/day global); issue body = fenced code block, title refs/SHAs broken; spam rule counts `//host`, `](`,
+  `<a`/`<img`; `/v1/latest` url validated by `safeLatestUrl`.
+
