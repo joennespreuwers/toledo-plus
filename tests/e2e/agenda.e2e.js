@@ -298,7 +298,7 @@ describe('agenda — views, keyboard, layout, filters (desktop 1440)', () => {
       return { top: s.scrollTop, h: s.clientHeight, sh: s.scrollHeight, hh: sr.querySelector('.ag-hour').offsetHeight, first: inView(first), now: inView(sr.querySelector('.ag-now')) };
     });
     assert.ok(sc.sh > sc.h + 100, 'the grid scrolls inside its container');
-    assert.ok(Math.abs(sc.h - 11 * sc.hh) <= sc.hh, `about 11 hours visible (${sc.h}px)`);
+    assert.ok(sc.h >= 11 * sc.hh - 2 && sc.h <= 24 * sc.hh + 2, `at least 11 hours visible, more on a tall window (TP-021) (${sc.h}px)`);
     const nowH = new Date().getHours();
     if (nowH >= 7 && nowH <= 18) assert.ok(Math.abs(sc.top / sc.hh - 8) < 0.1, `scrolled to 08:00, 1 h before the first lesson (${sc.top / sc.hh} h)`);
     assert.ok(sc.now, 'the current time is in view');
@@ -430,7 +430,7 @@ describe('agenda — views, keyboard, layout, filters (desktop 1440)', () => {
     const pop = page.locator(`${ROOT} dialog.ag-pop-ev[open]`);
     await pop.waitFor();
     const txt = await pop.innerText();
-    for (const s of ['Hoorcollege', 'X10265', '09:00 – 11:00', 'Voorbeeldstraat 1', 'Leuven', 'Docent A', 'Groep A1']) assert.ok(txt.includes(s), `popover shows ${s}`);
+    for (const s of ['Hoorcollege', 'X10265', '09:00–11:00', 'Voorbeeldstraat 1', 'Leuven', 'Docent A', 'Groep A1']) assert.ok(txt.includes(s), `popover shows ${s}`);
     assert.equal(await pop.getAttribute('aria-labelledby'), 'ag-pop-title');
     const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 5000 }), pop.locator('[data-action="ag-ics-one"]').click()]);
     assert.match(dl.suggestedFilename(), /^filmtaal-1-\d{4}-\d\d-\d\d\.ics$/);

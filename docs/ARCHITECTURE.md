@@ -650,3 +650,59 @@ TP.index.highlight(root, q|m, selector) → n ; TP.index.unmark(root)   // <mark
   issues (10/day per IP, 100/day global); issue body = fenced code block, title refs/SHAs broken; spam rule counts `//host`, `](`,
   `<a`/`<img`; `/v1/latest` url validated by `safeLatestUrl`.
 
+## Addendum (unreleased) — time, planning & export (bug bash: TP-016, TP-137, TP-215…222, Agenda/Deadlines/Planning)
+
+**`TP.fmt` (util.js) — one date formatter and calendar-day arithmetic** (shared pattern 3; never `+ 24 h` or elapsed ms for days):
+```
+TP.fmt.sod(ms) / TP.fmt.addDays(ms, n)   // local midnight / same wall-clock time n calendar days on (23 h / 25 h on the DST days)
+TP.fmt.wallHours(ms)                     // hours since local midnight on the wall clock (09:00 → 9, also on the DST days)
+TP.fmt.when(ms, 'short'|'long'|'day', {zone})  // "wo 28 okt 23:59" (rows) · "Woensdag 28 oktober · 23:59" (sheets) · "wo 28 okt";
+                                         // + year when not this year; zone:true appends " (GMT+9)" when the device is not on Belgian time
+TP.fmt.timeRange(start, end)             // "09:00–11:00"; "23:00–01:00 (+1)" when it ends on a later calendar day
+TP.fmt.zone(ms?)                         // '' on Belgian time (Europe/Brussels or a zone with the same clock at ms), else e.g. "GMT+9"
+```
+`TP.fmt.daysUntil` (calendar days) is the base of "N d te laat" (`TP.viewsA.overdueText`) and `deadline.ageDays`.
+`TP.viewsA.zoneNote()` → one line "Tijden in de tijdzone van dit toestel (GMT+9)…" on Deadlines, Agenda and KU Loket (empty on Belgian time);
+the own-deadline form names the zone too. Showing times in Belgian time regardless of the device is not offered (maintainer decision).
+
+**Shell clock** (`shell.js`, TP-216): after every repaint the shell arms one timer for the next local midnight, the next open deadline's due
+time (+1 s) and the greeting's hours (05/12/18); it calls `rerender()` (nav badges + current view). `visibilitychange` → visible on another
+calendar day repaints at once. The Agenda keeps its own 60 s now-line timer.
+
+**Shell additions:** `TP.shell.toast(text, { action: { label, onClick, hint } })` — a toast with one real button (8 s, held while
+hovered/focused; plain toasts are now `aria-hidden` one by one, the `.tp-toasts` container is not). `TP.ui.undoToast(label, restore)` wraps it
+with "Ongedaan maken" (shared pattern 13; generic). `ctx.setParams(params, {replace})` puts a view's own state in the URL without a re-render
+(pushes a history entry; Back switches to the older URL, which renders the view from its params) — used by the Agenda (`agenda&id=YYYY-MM-DD`).
+
+**`TP.data` additions:**
+```
+TP.data.ics(deadlines, { exams, name })  // one file: deadlines (DTSTART = due − 30 min, VALARM TRIGGER;RELATED=END) + KU Loket exams
+                                         // ("Examen: <course>", location/teachers, VALARM before the start)
+TP.data.icsEvents([{uid,start,end,summary,location,description,url,alarm,alarmRel}], {name, now}) // the one ICS writer (agenda lessons too)
+TP.data.icsReminder() → '-P1D' | null    // settings.deadlines.reminder as a trigger
+TP.data.icsName(title, fallback)         // download file name: ASCII slug cut at a word boundary (≤ 60)
+TP.data.updateCustomDeadline(id, {title, courseLuId, due}) → item | null   // id (so key + done mark) stays
+TP.data.removeCustomDeadline(id) → removed item | null   // pass it to addCustomDeadline({id, …}) to undo (same id → same key)
+TP.data.setDone(keys, on)                // one state write for several deadlines (bulk "Markeer deze n als klaar" + its Undo)
+TP.data.deadlines({ …, allCustom })      // own deadlines beyond the horizon too (the Deadlines view uses it, with pastDays 120)
+```
+ICS text: CR/LF/CRLF → `\n`, other control characters dropped (a bare CR never starts a line), URL only plain http(s); lines folded at 75 octets;
+`PRODID:-//Toledo+//Toledo+//<UI language>`. Both "Zet in agenda" buttons export the same set: open deadlines still to come + upcoming exams
+(Deadlines follows its Vak filter and names the file after the course; the Agenda follows its kind toggles and hidden courses).
+
+**Views:** `TP.viewsA.openExam(exam, opener, root)` (exam sheet: when + duration, room, teachers, info; open course, "Zet in agenda", "Toon in
+agenda"), `TP.viewsA.upcomingExams({course, within})`, `TP.viewsA.removeCustom(id)` (delete with Undo), `TP.viewsA.parseDue(date, time)` →
+`{due, shifted}` (a wall-clock time the clocks skip is reported), `TP.viewsA.deadlineFields(values, courseOptions)` (add form + sheet edit form).
+Exam rows (`examRow`) are buttons with `data-action="va-exam-open" data-xid`; Deadlines, Overzicht and KU Loket route that action. Overzicht shows
+exams within 14 days on top of the Deadlines card and exams today/tomorrow in the Rooster. The deadline sheet has "Bewerk" for own deadlines.
+Detail sheet CSS: `.tp-detail-body` rows are `max-content` (groups no longer shrink and clip their actions); from 560 px height the actions group
+is sticky at the bottom of the scrolling body.
+
+**Agenda:** blocks are placed in wall-clock hours (`TP.agenda.blockGeom`), so DST days line up with the hour rows; the date is in the URL and
+each step is a history entry; ‹ › / j k / Go to date stay within two years of today (`clampAnchor`, `parseDay`; Go to date shows an inline error);
+a repaint with identical HTML leaves the DOM alone (taps after a swipe were lost while the data load replaced it); a swipe needs ¼ of the
+calendar's width (≥ 60 px); with Werkweek the weekend's items are counted in a note with "Toon hele week"; "Niets gepland" is a note above the
+calendar; open popovers re-anchor on resize (via the view's ResizeObserver).
+
+**KU Loket view:** exams/lessons show an error with "Opnieuw" (`TP.kuloket.refresh`) when KU Loket failed (`status().exams|lessons.ok === false`,
+error other than auth/ics), saved data with a "saved" note, and a skeleton while nothing is known yet — "no exams"/"no classes" only after an answer.
