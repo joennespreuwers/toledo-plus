@@ -12,6 +12,8 @@
   const REPO = 'https://github.com/joennespreuwers/toledo-plus';
   const ISSUE = 'https://github.com/joennespreuwers/toledo-plus/issues/new/choose';
   const ALL = 999; // feed.maxCourses value meaning "all"
+  const ARM_S = 8;  // seconds the "Reset everything" confirm stays armed (TP-121: stated in the label)
+  const FLASH = 'tp:settingsFlash'; // sessionStorage: toast to show after the reload that follows a reset
 
   const ui = { resetArmed: false, resetTimer: 0, icsEdit: false, drag: null };
   let cur = null;
@@ -106,7 +108,10 @@
     const hz = TP.ui.select('n:deadlines.horizonDays', [2, 4, 6, 8].map((w) => ({ value: w * 7, label: t('settings.dl.weeks', { n: w }) })), d.horizonDays, { ariaLabel: t('settings.dl.horizon') });
     const ur = TP.ui.select('n:deadlines.urgentDays', [1, 3, 7].map((n) => ({ value: n, label: t('settings.dl.days', { n }) })), d.urgentDays, { ariaLabel: t('settings.dl.urgent') });
     const rm = TP.ui.select('s:deadlines.reminder', ['none', '1h', '1d', '2d'].map((v) => ({ value: v, label: t('settings.dl.rem.' + v) })), d.reminder, { ariaLabel: t('settings.dl.reminder') });
-    return block('dl', t('settings.dl'), ctlRow(t('settings.dl.horizon'), hz) + ctlRow(t('settings.dl.urgent'), ur) + ctlRow(t('settings.dl.reminder'), rm));
+    // One time-horizon policy (TP.data.HORIZON), told to the student where the horizon is chosen.
+    const keepDone = (TP.data && TP.data.HORIZON && TP.data.HORIZON.donePastDays) || 120;
+    return block('dl', t('settings.dl'), ctlRow(t('settings.dl.horizon'), hz) + ctlRow(t('settings.dl.urgent'), ur) + ctlRow(t('settings.dl.reminder'), rm),
+      t('settings.dl.foot', { n: keepDone }));
   }
 
   // N5: one place for nickname/colour/hide/order → Vakken › Bewerk.
@@ -208,10 +213,10 @@
     const w = s.wrap || {};
     const fileId = nid('import');
     return block('advanced', t('settings.advanced'),
-      toggleRow('s:wrap.portal', w.portal, t('settings.wrap.portal'))
-      + toggleRow('s:wrap.courses', w.courses, t('settings.wrap.courses'))
-      + toggleRow('s:wrap.deepBar', w.deepBar, t('settings.wrap.deepBar'))
-      + toggleRow('s:wrap.skipLanding', w.skipLanding !== false, t('settings.wrap.skipLanding'))
+      toggleRow('s:wrap.portal', w.portal, t('settings.wrap.portal'), t('settings.wrap.portalDesc'))
+      + toggleRow('s:wrap.courses', w.courses, t('settings.wrap.courses'), t('settings.wrap.coursesDesc'))
+      + toggleRow('s:wrap.deepBar', w.deepBar, t('settings.wrap.deepBar'), t('settings.wrap.deepBarDesc'))
+      + toggleRow('s:wrap.skipLanding', w.skipLanding !== false, t('settings.wrap.skipLanding'), t('settings.wrap.skipLandingDesc'))
       + `<div class="st-row st-row-actions">
         <button type="button" class="st-action" data-action="export" data-fk="export">${TP.ui.icon('download', { size: 16 })}<span>${esc(t('settings.data.export'))}</span></button>
       </div>
@@ -219,8 +224,9 @@
         <input type="file" id="${fileId}" class="st-file" name="st-import" accept="application/json,.json">
         <label for="${fileId}" class="st-action">${TP.ui.icon('arrowUp', { size: 16 })}<span>${esc(t('settings.data.import'))}</span></label>
       </div>
-      <div class="st-row st-row-actions">
-        <button type="button" class="st-action st-danger${ui.resetArmed ? ' is-armed' : ''}" data-action="reset" data-fk="reset">${TP.ui.icon(ui.resetArmed ? 'warning' : 'refresh', { size: 16 })}<span>${esc(t(ui.resetArmed ? 'settings.data.confirm' : 'settings.data.reset'))}</span></button>
+      <div class="st-row st-row-actions st-row-reset">
+        <button type="button" class="st-action st-danger${ui.resetArmed ? ' is-armed' : ''}" data-action="reset" data-fk="reset" aria-describedby="${fileId}-rd">${TP.ui.icon(ui.resetArmed ? 'warning' : 'refresh', { size: 16 })}<span>${esc(ui.resetArmed ? t('settings.data.confirm', { s: ARM_S }) : t('settings.data.reset'))}</span></button>
+        <p class="st-desc" id="${fileId}-rd">${esc(t('settings.data.resetDesc'))}</p>
       </div>`, t('settings.advanced.foot'));
   }
 
@@ -349,8 +355,12 @@
       const text = await file.text();
       await TP.settings.import(text);
       TP.shell.toast?.(t('settings.data.imported'));
-    } catch {
-      TP.shell.toast?.(t('settings.data.importFailed'));
+    } catch (e) {
+      // Nothing was applied (TP.settings.import validates first). Say why.
+      const code = e && e.code;
+      if (code === 'foreign') TP.shell.toast?.(t('settings.data.importForeign'));
+      else if (code === 'invalid') TP.shell.toast?.(t('settings.data.importInvalid', { fields: (e.fields || []).join(', ') }));
+      else TP.shell.toast?.(t('settings.data.importFailed'));
     }
     input.value = '';
     rerender();
@@ -361,24 +371,40 @@
     if (!ui.resetArmed) {
       ui.resetArmed = true;
       rerender();
-      TP.shell.announce?.(t('settings.data.confirm'));
-      ui.resetTimer = setTimeout(() => { ui.resetArmed = false; rerender(); }, 5000);
+      TP.shell.announce?.(t('settings.data.confirm', { s: ARM_S }));
+      ui.resetTimer = setTimeout(() => { ui.resetArmed = false; rerender(); TP.shell.announce?.(t('settings.data.disarmed')); }, ARM_S * 1000);
       return;
     }
     ui.resetArmed = false;
-    try { await TP.settings.reset(); TP.shell.toast?.(t('settings.data.resetDone')); } catch { /* ignore */ }
-    try { await TP.fulltext?.wipe?.(); } catch { /* the file index lives in IndexedDB; best effort */ }
+    // Settings back to defaults (privacy choices kept, TP-001), then every local trace (cache, KU Loket, index, state,
+    // file index, install id → queued server deletion; TP-003). A reload starts every module from the empty store.
+    try { await TP.settings.reset(); } catch { /* ignore */ }
+    try { await TP.data?.wipeLocal?.({ scope: 'all' }); } catch { /* never rejects */ }
+    try { await TP.settings.flush?.(); } catch { /* ignore */ }
+    let flashed = false;
+    try { sessionStorage.setItem(FLASH, 'reset'); flashed = true; } catch { /* no session storage */ }
+    if (flashed) { location.reload(); return; }
+    TP.shell.toast?.(t('settings.data.resetDone'));
     rerender();
+  }
+  /** After the reload that follows a reset: say it happened (once). */
+  function showFlash() {
+    let f = null;
+    try { f = sessionStorage.getItem(FLASH); if (f) sessionStorage.removeItem(FLASH); } catch { f = null; }
+    if (f === 'reset') setTimeout(() => TP.shell.toast?.(t('settings.data.resetDone')), 0);
   }
 
   async function saveIcs(form) {
     const input = form.querySelector('input[name="st-ics"]');
     const err = form.querySelector('.st-form-error');
     const v = String((input && input.value) || '').trim();
+    // TP-109: a TimeEdit link that is not a feed (no .ics path) is not saved.
+    let feed = true;
+    try { feed = /\.ics$/i.test(new URL(v).pathname); } catch { feed = true; /* setIcsUrl rejects it below */ }
     let ok = false;
-    try { ok = !!v && (await TP.kuloket.setIcsUrl(v)) !== false; } catch { ok = false; }
+    if (feed) { try { ok = !!v && (await TP.kuloket.setIcsUrl(v)) !== false; } catch { ok = false; } }
     if (!ok) {
-      if (err) { err.hidden = false; err.textContent = t('settings.agenda.icsInvalid'); }
+      if (err) { err.hidden = false; err.textContent = t(feed ? 'settings.agenda.icsInvalid' : 'settings.agenda.icsNotFeed'); }
       if (input) { input.setAttribute('aria-invalid', 'true'); input.focus(); }
       return;
     }
@@ -393,6 +419,7 @@
     root.__tpSettingsBound = true;
 
     bindFullText();
+    showFlash();
     // Index status line + rebuild button follow the crawl (only while this view is shown).
     try {
       TP.index.on('change', () => {
@@ -456,6 +483,7 @@
       if (!p) return;
       save(p); // applied in memory synchronously; persistence is debounced by core
       rerender();
+      if (name === 's:privacy.telemetry' && value === false) TP.shell.toast?.(t('telemetry.off.toast')); // TP-140
     });
 
     // Sections subpage: drag handle (pointer); ↑/↓ are the keyboard path.

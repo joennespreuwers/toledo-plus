@@ -19,14 +19,25 @@
   const FRESH_MS = 30e3;           // load() without force reuses data younger than this
   const STALE_MS = 5 * 60e3;       // maybeRefresh(): refresh when the data is older than this
   const GRAPHITE = '#8E8E93';
-  // Deadlines (B2/B13)
-  const PAST_DAYS = 7;             // done items stay listed this long after their due date
-  const CAL_PAST_DAYS = 14;        // Ultra calendar fetch starts this many days back
+  // Deadlines (B2/B13) — time horizons: ONE policy (TP-015, TP-195, TP-196, TP-209), exported as TP.data.HORIZON and
+  // explained to the student in Settings › Deadlines. Nothing the student can act on silently falls out of every view:
+  //  - overdue + not done: always listed, however old (Ultra items are kept 365 days after they leave the fetch window);
+  //  - done: stays listed (Deadlines › Klaar, Agenda) for donePastDays after the due date, so a "Klaar" can be undone;
+  //  - the Ultra calendar is read calPastDays back on a routine refresh, and calDeepPastDays back on the first fetch
+  //    and once a day, so unfinished work from weeks ago (first run, back from a holiday) is found too;
+  //  - own deadlines are never cut off by a horizon of viewDays or more (the Deadlines page): a date years ahead still shows;
+  //  - Ultra calendar items that are not gradebook columns (course events, personal entries) are not deadlines: they are
+  //    kept apart (TP.data.calendarItems) instead of being dropped on the floor.
+  const HORIZON = Object.freeze({
+    donePastDays: 120, overdueKeepDays: 365, calPastDays: 14, calDeepPastDays: 120, calDeepEveryMs: DAY, viewDays: 366,
+  });
+  const PAST_DAYS = HORIZON.donePastDays;
+  const CAL_PAST_DAYS = HORIZON.calPastDays;
   const CAL_WINDOW = 60 * DAY;     // Blackboard calendar API: keep windows ≤ 60 days
-  const CAL_MAX_WINDOWS = 7;       // ≤ 7 windows → ~14 days back + 366 days ahead
-  const VIEW_DAYS = 366;           // what the Deadlines view asks for
+  const CAL_MAX_WINDOWS = 9;       // ≤ 9 windows → 120 days back + 366 days ahead
+  const VIEW_DAYS = HORIZON.viewDays; // what the Deadlines view asks for
   const DEDUPE_MS = 2 * HOUR;      // same title + course within ±2 h = one deadline
-  const KEEP_OVERDUE_DAYS = 365;   // overdue, not-done Ultra deadlines are kept this long after leaving the fetch window
+  const KEEP_OVERDUE_DAYS = HORIZON.overdueKeepDays;
   // State bounds
   const MAX_SEEN = 2000, MAX_READ = 3000, READ_DAYS = 120, DONE_DAYS = 60, VISIT_DAYS = 120, MAX_PENDING = 1000;
   const PATCH_CHUNK = 100;
@@ -200,7 +211,12 @@
   function init() {
     if (initPromise) return initPromise;
     initPromise = (async () => {
-      const got = await sget(KEYS.map((k) => CP + k).concat('cache'));
+      let got = await sget(KEYS.map((k) => CP + k).concat('cache', WIPE_KEY));
+      // A wipe (logout / reset) that the navigation interrupted: finish it before anything is shown from the cache.
+      if (got[WIPE_KEY] && typeof got[WIPE_KEY] === 'object') {
+        await wipeLocal({ scope: got[WIPE_KEY].scope, resume: true });
+        got = {};
+      }
       for (const k of KEYS) {
         const c = got[CP + k];
         if (c && typeof c === 'object' && 'v' in c) mem[k] = Object.assign({ t: 0, rev: 0 }, c);
@@ -321,15 +337,18 @@
     }
     const seen = new Set();
     const out = [];
+    const other = [];
     for (const it of items) {
-      if (it.type !== 'GradebookColumn') continue;
       const d = mapCalendarItem(it);
       if (!d.due || !d.title) continue;
       const k = d.id || d.title + d.due;
       if (seen.has(k)) continue;
-      seen.add(k); out.push(d);
+      seen.add(k);
+      if (it.type === 'GradebookColumn') out.push(d);
+      // TP-196: course events / personal entries are not deadlines, but they are not thrown away either.
+      else other.push(Object.assign(d, { type: String(it.type || ''), start: toMs(it.start) || d.due, end: toMs(it.end) || d.due }));
     }
-    return out;
+    return { list: out, other };
   }
 
   /** opts.extend: only fetch the part beyond what is cached (lazy, for the 366-day Deadlines view). */
@@ -338,24 +357,34 @@
     const horizon = Number((S().deadlines || {}).horizonDays) || 42;
     const days = Math.min(VIEW_DAYS, Math.max(horizon, wantDays, opts.days || 0));
     const prev = mem.ultraDeadlines;
-    const from = now - CAL_PAST_DAYS * DAY;
+    const deepAt = (prev && prev.range && prev.range.deepAt) || 0;
     const until = now + days * DAY;
+    const idOf = (d) => d.id || d.title + d.due;
     let list;
+    let other;
     let range;
-    if (opts.extend && prev && prev.range && prev.range.until > from) {
+    if (opts.extend && prev && prev.range && prev.range.until > now - CAL_PAST_DAYS * DAY) {
       const more = await fetchCalendar(prev.range.until, until);
-      const ids = new Set(more.map((d) => d.id || d.title + d.due));
-      list = (prev.v || []).filter((d) => !ids.has(d.id || d.title + d.due)).concat(more);
-      range = { from: prev.range.from, until };
+      const ids = new Set(more.list.map(idOf));
+      list = (prev.v || []).filter((d) => !ids.has(idOf(d))).concat(more.list);
+      const oids = new Set(more.other.map(idOf));
+      other = (prev.other || []).filter((d) => !oids.has(idOf(d))).concat(more.other);
+      range = { from: prev.range.from, until, deepAt };
     } else {
-      list = await fetchCalendar(from, until);
-      range = { from, until };
-      // B2: overdue deadlines that left the fetch window stay until they are marked done.
-      const ids = new Set(list.map((d) => d.id || d.title + d.due));
+      // Deep fetch on the first load and once a day (HORIZON.calDeepPastDays), else the short routine window.
+      const deep = !deepAt || deepAt > now || now - deepAt >= HORIZON.calDeepEveryMs;
+      const from = now - (deep ? HORIZON.calDeepPastDays : CAL_PAST_DAYS) * DAY;
+      const got = await fetchCalendar(from, until);
+      list = got.list;
+      other = got.other;
+      range = { from, until, deepAt: deep ? now : deepAt };
+      // B2: deadlines that left the fetch window stay: not done for HORIZON.overdueKeepDays, done for HORIZON.donePastDays.
+      const ids = new Set(list.map(idOf));
       const done = ST().done || {};
       for (const d of (prev && prev.v) || []) {
-        if (d.due >= from || d.due < now - KEEP_OVERDUE_DAYS * DAY || ids.has(d.id || d.title + d.due)) continue;
-        if (done[ultraKey(d)] || done[legacyKey(d.title, d.courseLuId, d.due)]) continue;
+        if (d.due >= from || ids.has(idOf(d))) continue;
+        const isDone = !!(done[ultraKey(d)] || done[legacyKey(d.title, d.courseLuId, d.due)]);
+        if (d.due < now - (isDone ? PAST_DAYS : KEEP_OVERDUE_DAYS) * DAY) continue;
         list.push(d);
       }
     }
@@ -364,7 +393,14 @@
     const add = {};
     for (const d of list) if (d.courseLuId && d.cid && !known[d.courseLuId]) add[d.courseLuId] = d.cid;
     if (Object.keys(add).length) setState({ cidMap: add });
-    return { value: list.sort((a, b) => a.due - b.due), extra: { range } };
+    return { value: list.sort((a, b) => a.due - b.due), extra: { range, other: other.sort((a, b) => a.start - b.start).slice(0, 500) } };
+  }
+
+  /** Ultra calendar items that are not deadlines (type 'Course', 'User', 'Institution', …) in [from, to), from the cache.
+      → [{id, title, type, start, end, courseLuId, courseTitle, cid, url}] sorted by start. */
+  function calendarItems({ from = -Infinity, to = Infinity } = {}) {
+    const e = mem.ultraDeadlines;
+    return ((e && e.other) || []).filter((d) => d && d.end >= from && d.start < to);
   }
 
   const LOADERS = {
@@ -388,11 +424,13 @@
     if (!opts.force && mem[key] && Date.now() - mem[key].t < FRESH_MS) return Promise.resolve(mem[key].v);
     if (checkStale()) return Promise.reject(Object.assign(new Error('extension context invalidated'), { status: 0, stale: true }));
     status[key] = { loading: true, error: null, auth: false };
+    const started = Date.now();
     const p = (async () => {
       try {
         const r = await LOADERS[key](opts);
         const v = r && r.extra ? r.value : r;
         status[key] = { loading: false, error: null, auth: false };
+        if (wipedAt && started <= wipedAt) return v; // the student logged out / reset meanwhile: don't cache it again
         put(key, v, r && r.extra);
         if (ULTRA_KEYS.includes(key)) setUltraAuth(false);
         setAuth(Object.entries(status).some(([k, s]) => !ULTRA_KEYS.includes(k) && s && s.auth), key);
@@ -730,8 +768,9 @@
 
   /**
    * opts.includeDone (default false), opts.horizonDays (default settings.deadlines.horizonDays),
-   * opts.pastDays (default 7: how long done items stay listed after their due date).
+   * opts.pastDays (default HORIZON.donePastDays: how long done items stay listed after their due date).
    * Overdue items that are not done are always included, however old (overdue:true, ageDays).
+   * Own (custom) deadlines are not cut off when horizonDays ≥ HORIZON.viewDays (the Deadlines page shows them all).
    * Toledo/Ultra duplicates (same normalized title + course, due within ±2 h) are merged.
    * Asking for a horizon beyond the fetched Ultra calendar range loads the rest lazily ('change' follows).
    */
@@ -741,6 +780,7 @@
     const now = Date.now();
     const pastFrom = now - (opts.pastDays != null ? Number(opts.pastDays) : PAST_DAYS) * DAY;
     const until = now + horizon * DAY;
+    const untilOwn = horizon >= VIEW_DAYS ? Infinity : until;
     lazyHorizon(horizon);
     const byLu = Object.fromEntries(allCourses().map((c) => [c.luId, c]));
     const done = st.done || {};
@@ -766,7 +806,7 @@
     }
     for (const c of Array.isArray(s.custom) ? s.custom : []) {
       const due = toMs(c && c.due);
-      if (!c || !c.id || !due || due > until) continue;
+      if (!c || !c.id || !due || due > untilOwn) continue;
       const key = 'c' + hash(c.id);
       const m = c.courseLuId ? meta(c.courseLuId, '') : { courseName: '', color: GRAPHITE };
       // Custom items are never deduped away (the student must be able to remove them).
@@ -990,7 +1030,58 @@
     parts.push(flushCache());
     return Promise.all(parts).then(() => undefined, () => undefined);
   }
-  try { if (typeof addEventListener === 'function') addEventListener('pagehide', () => { flushCache(); }); } catch (_) { /* not a page */ }
+  try { if (typeof addEventListener === 'function') addEventListener('pagehide', () => { if (!wipedAt) flushCache(); }); } catch (_) { /* not a page */ }
+
+  // ---------------------------------------------------------------- local wipe (pattern 7: TP-001, TP-003, TP-139, TP-181)
+  // One helper decides what "forget" means, for the two ways a student asks for it:
+  //  scope 'user' — log out through Toledo+: everything that was fetched for this Toledo user and would greet the next
+  //    student on a shared browser profile: the data cache (enrolments, events, deadlines, mail count, links, first name),
+  //    KU Loket (lessons, exams, the personal iCal link), the ⌘K index, recently opened documents, course/folder ids and,
+  //    when it is on, the file-content index. Kept: settings, own deadlines, done/read marks (ids only) and device prefs.
+  //  scope 'all' — Settings › Reset everything (after TP.settings.reset()): every key Toledo+ keeps in chrome.storage.local
+  //    and the file-content index; the anonymous install id is deleted here and queued for deletion on the server
+  //    (TP.telemetry.forget, retried until it succeeds). Kept: that deletion queue, the settings fallback items (reset
+  //    has just rewritten them), the download budget and the logout/landing timestamps.
+  // Phase 1 is synchronous (memory + the fixed keys + a 'tp:wipePending' marker), so a logout navigation right after the
+  // call cannot stop it; init() finishes an interrupted wipe before anything is read from the cache.
+  const WIPE_KEY = 'tp:wipePending';
+  const USER_STATE = ['me', 'recent', 'focus', 'cidMap', 'openFolders', 'visits'];
+  const USER_KEYS = ['cache', 'index', 'indexMeta', 'kuloket:meta', 'kuloket:exams', 'kuloket:icsUrl', 'kuloket:icsUrlT', 'kuloket:authAt'];
+  const USER_PREFIXES = [CP, 'kuloket:'];
+  const KEEP_ON_RESET = ['telemetry:forget', 'settingsLocal', 'customLocal', 'settingsSavedAt', 'customSavedAt', 'fulltext:budget', 'tp:loggedOutAt', 'tp:landingBounceAt'];
+  let wipedAt = 0;
+
+  /** → Promise<true>; never rejects. opts: {scope:'user'|'all'} */
+  function wipeLocal(opts = {}) {
+    const scope = opts.scope === 'all' ? 'all' : 'user';
+    const quiet = (p) => Promise.resolve(p).catch(() => {});
+    wipedAt = Date.now();
+    if (!opts.resume) sset({ [WIPE_KEY]: { scope, t: wipedAt } });
+    for (const k of Object.keys(writeTimers)) { clearTimeout(writeTimers[k]); delete writeTimers[k]; }
+    mem = {};
+    for (const k of Object.keys(status)) delete status[k];
+    courseCache.clear(); courseData.clear(); bodyCache.clear(); bodyInflight.clear();
+    aliasMap = new Map(); wantDays = 0; lazyAt = 0; lazyDays = 0; meTried = false;
+    const fixed = KEYS.map((k) => CP + k).concat(USER_KEYS);
+    const removed = sremove(fixed);
+    let st = null;
+    try { st = TP.state && TP.state.forget ? TP.state.forget(scope === 'all' ? undefined : USER_STATE) : null; } catch (_) { st = null; }
+    // The install id must be queued for server-side deletion before phase 2 removes 'telemetry:id'.
+    let tel = null;
+    try { tel = scope === 'all' && TP.telemetry && TP.telemetry.forget ? TP.telemetry.forget({ background: true }) : null; } catch (_) { tel = null; }
+    let ft = null;
+    try {
+      const F = TP.fulltext;
+      if (F && F.wipe && (scope === 'all' || (F.enabled && F.enabled()))) ft = F.wipe();
+    } catch (_) { ft = null; }
+    const rest = quiet(tel).then(() => sget(null)).then((all) => {
+      const drop = Object.keys(all || {}).filter((k) => (scope === 'all'
+        ? k !== WIPE_KEY && !KEEP_ON_RESET.includes(k)
+        : USER_PREFIXES.some((p) => k.startsWith(p)) || USER_KEYS.includes(k)));
+      return drop.length ? sremove(drop) : null;
+    });
+    return Promise.all([removed, st, ft, rest].map(quiet)).then(() => sremove([WIPE_KEY])).then(() => true, () => true);
+  }
 
   // ---------------------------------------------------------------- ICS
   const icsStamp = (ms) => new Date(ms).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
@@ -1492,11 +1583,11 @@
   }
 
   TP.data = {
-    KEYS,
-    init, peek, load, refresh, maybeRefresh, flush, lastUpdated, status: getStatus, on, off,
+    KEYS, HORIZON,
+    init, peek, load, refresh, maybeRefresh, flush, wipeLocal, lastUpdated, status: getStatus, on, off,
     authExpired: () => authExpired, loginUrl, isStale: () => stale,
     ultraAuthExpired: () => ultraAuth, ultraLoginUrl: () => `${ULTRA}/ultra/course`,
-    courses, course, feed, kindOf, deadlines, announcements, schedule, link, quickLinks,
+    courses, course, feed, kindOf, deadlines, calendarItems, announcements, schedule, link, quickLinks,
     markRead, markFeedSeen, setPinned, toggleDone, addCustomDeadline, removeCustomDeadline, addRecent, ics,
     userName, loadUser,
     ultraCourse, ultraTree, ultraDownload, ultraOpen, ultraAnnouncement, resolveCourseId, clearCourseCache, ultraItemUrl: itemLink,
@@ -1506,7 +1597,7 @@
       hash, normTitle, parseCalendarName, mapCalendarItem, icsFold, icsText, icsStamp, legacyKey, toledoKey, ultraKey,
       trimEntry, calWindows, firstName, migrateDoneKeys, pruneState, flushPendingRead, markStale, cfg,
       parseAdvalvas, valvasDate, setValvasParser(fn) { valvasParser = fn || parseAdvalvas; }, bodyCacheSize: () => bodyCache.size,
-      _reset() { mem = {}; courseCache.clear(); courseData.clear(); bodyCache.clear(); bodyInflight.clear(); aliasMap = new Map(); wantDays = 0; lazyAt = 0; lazyDays = 0; authExpired = false; ultraAuth = false; meTried = false; meInflight = null; for (const k of Object.keys(status)) delete status[k]; },
+      _reset() { mem = {}; courseCache.clear(); courseData.clear(); bodyCache.clear(); bodyInflight.clear(); aliasMap = new Map(); wantDays = 0; lazyAt = 0; lazyDays = 0; authExpired = false; ultraAuth = false; meTried = false; meInflight = null; wipedAt = 0; for (const k of Object.keys(status)) delete status[k]; },
       _put(k, v, extra) { mem[k] = Object.assign({ v, t: Date.now(), rev: 0 }, extra || {}); },
       _entry(k) { return mem[k]; },
       courseCacheSize: () => courseCache.size,

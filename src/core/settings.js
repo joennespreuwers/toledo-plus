@@ -96,6 +96,7 @@
     s.overview = { ...s.overview, sections: clean };
     if (!Array.isArray(s.custom)) s.custom = [];
     s.v = DEFAULTS.v; // older shapes (imports, other tabs) are normalized to the current version
+    if (!isObj(s.courses)) s.courses = clone(DEFAULTS.courses);
     if (!isObj(s.courses.items)) s.courses.items = {};
     // v3: pins/favourites removed (maintainer decision) — drop them from every shape we see.
     for (const it of Object.values(s.courses.items)) if (isObj(it)) for (const k of REMOVED_COURSE_KEYS) delete it[k];
@@ -247,15 +248,122 @@
 
   function subscribe(fn) { subs.add(fn); return () => subs.delete(fn); }
 
+  /** Back to DEFAULTS — except the privacy choices: a reset never turns the usage signal or the update check back on
+      (TP-001). Wiping local data is TP.data.wipeLocal({scope:'all'}); the settings view does both. */
   function reset() {
-    apply(clone(DEFAULTS), Object.keys(DEFAULTS));
+    const next = clone(DEFAULTS);
+    next.privacy = { ...next.privacy, ...clone(settings.privacy || {}) };
+    apply(next, Object.keys(DEFAULTS));
     return persist();
   }
   const exportJSON = () => JSON.stringify(settings, null, 2);
+
+  // ---- import validation (TP-002, TP-120) ----
+  // A Toledo+ export always carries a numeric `v`. Every known key is checked against its type/enum before anything is
+  // applied; one bad value rejects the whole file (nothing half-applies). Unknown keys are ignored. The result is merged
+  // over the current settings, so a partial file only changes what it names. Privacy switches can only be turned off.
+  const ENUMS = {
+    language: ['system', 'nl', 'en', 'fr'], appearance: ['system', 'light', 'dark'], density: ['compact', 'standard', 'comfortable'],
+    startPage: ['overview', 'courses', 'deadlines', 'agenda', 'planning'],
+    'deadlines.reminder': ['none', '1h', '1d', '2d'], 'courses.sort': ['activity', 'name', 'manual'],
+  };
+  const BOOLS = { wrap: ['portal', 'courses', 'deepBar', 'skipLanding'], feed: ['includeAnnouncements'], courses: ['showCommunities'],
+    sync: ['markReadInToledo'], search: ['indexAll', 'fullText'], privacy: ['telemetry', 'updateCheck'] };
+  const NUMS = { 'feed.maxCourses': [1, 999], 'deadlines.horizonDays': [1, 366], 'deadlines.urgentDays': [0, 60] };
+  const NICK_MAX = 60;
+  const palette = () => (TP.util && TP.util.PALETTE) || {};
+
+  /** → {clean, bad:[paths]} ; clean holds only known keys with valid values. */
+  function validateImport(obj) {
+    const bad = [];
+    const clean = {};
+    const isNum = (x, [lo, hi]) => typeof x === 'number' && Number.isFinite(x) && x >= lo && x <= hi;
+    for (const k of ['language', 'appearance', 'density', 'startPage']) {
+      if (!(k in obj)) continue;
+      if (ENUMS[k].includes(obj[k])) clean[k] = obj[k]; else bad.push(k);
+    }
+    if ('accent' in obj) { if (typeof obj.accent === 'string' && palette()[obj.accent]) clean.accent = obj.accent; else bad.push('accent'); }
+    for (const [grp, keys] of Object.entries(BOOLS)) {
+      if (!(grp in obj)) continue;
+      if (!isObj(obj[grp])) { bad.push(grp); continue; }
+      for (const k of keys) {
+        if (!(k in obj[grp])) continue;
+        if (typeof obj[grp][k] === 'boolean') (clean[grp] ||= {})[k] = obj[grp][k]; else bad.push(`${grp}.${k}`);
+      }
+    }
+    for (const [path, range] of Object.entries(NUMS)) {
+      const [grp, k] = path.split('.');
+      if (!(grp in obj)) continue;
+      if (!isObj(obj[grp])) { if (!bad.includes(grp)) bad.push(grp); continue; }
+      if (!(k in obj[grp])) continue;
+      if (isNum(obj[grp][k], range)) (clean[grp] ||= {})[k] = obj[grp][k]; else bad.push(path);
+    }
+    for (const path of ['deadlines.reminder', 'courses.sort']) {
+      const [grp, k] = path.split('.');
+      if (!isObj(obj[grp]) || !(k in obj[grp])) { if (grp in obj && !isObj(obj[grp]) && !bad.includes(grp)) bad.push(grp); continue; }
+      if (ENUMS[path].includes(obj[grp][k])) (clean[grp] ||= {})[k] = obj[grp][k]; else bad.push(path);
+    }
+    if ('overview' in obj) {
+      const secs = isObj(obj.overview) ? obj.overview.sections : null;
+      if (Array.isArray(secs) && secs.every((x) => isObj(x) && typeof x.id === 'string')) clean.overview = { sections: secs.map((x) => ({ id: x.id, on: x.on !== false })) };
+      else bad.push('overview');
+    }
+    if (isObj(obj.courses)) {
+      const c = obj.courses;
+      if ('order' in c) {
+        if (Array.isArray(c.order) && c.order.every((x) => typeof x === 'string')) (clean.courses ||= {}).order = c.order.slice(0, 500); else bad.push('courses.order');
+      }
+      if ('items' in c) {
+        if (!isObj(c.items)) bad.push('courses.items');
+        else {
+          const items = {};
+          const okItem = (it) => isObj(it)
+            && (!('nickname' in it) || typeof it.nickname === 'string')
+            && (!('color' in it) || it.color === null || (typeof it.color === 'string' && !!palette()[it.color]))
+            && ['hidden', 'inSidebar'].every((b) => !(b in it) || typeof it[b] === 'boolean');
+          if (!Object.values(c.items).every(okItem)) bad.push('courses.items');
+          else {
+            for (const [lu, it] of Object.entries(c.items)) {
+              const o = {};
+              if ('nickname' in it) o.nickname = [...it.nickname.trim()].slice(0, NICK_MAX).join('');
+              if ('color' in it) o.color = it.color;
+              for (const b of ['hidden', 'inSidebar']) if (b in it) o[b] = it[b];
+              items[lu] = o;
+            }
+            (clean.courses ||= {}).items = items;
+          }
+        }
+      }
+    }
+    if ('custom' in obj) {
+      const ok = Array.isArray(obj.custom) && obj.custom.every((c) => isObj(c) && typeof c.id === 'string' && c.id && typeof c.title === 'string'
+        && (c.courseLuId == null || typeof c.courseLuId === 'string') && Number.isFinite(typeof c.due === 'number' ? c.due : new Date(c.due).getTime()));
+      if (ok) clean.custom = obj.custom.map((c) => ({ id: c.id, title: c.title.slice(0, 200), courseLuId: c.courseLuId || '', due: typeof c.due === 'number' ? c.due : new Date(c.due).getTime() }));
+      else bad.push('custom');
+    }
+    return { clean, bad };
+  }
+
+  /** Import a settings export. Throws Error with .code: 'json' (not JSON), 'foreign' (not a Toledo+ settings file),
+      'invalid' (+ .fields: the offending keys) — and then changes nothing. */
   function importJSON(json) {
-    const obj = typeof json === 'string' ? JSON.parse(json) : json; // throws on invalid JSON (caller shows error)
-    if (!isObj(obj)) throw new Error('Invalid settings');
-    apply(merge(clone(DEFAULTS), obj), Object.keys(DEFAULTS));
+    let obj;
+    try { obj = typeof json === 'string' ? JSON.parse(json) : json; } catch (_) { throw Object.assign(new Error('json'), { code: 'json' }); }
+    const known = isObj(obj) ? Object.keys(obj).filter((k) => k !== 'v' && k in DEFAULTS) : [];
+    if (!isObj(obj) || typeof obj.v !== 'number' || !Number.isInteger(obj.v) || obj.v < 1 || !known.length) {
+      throw Object.assign(new Error('foreign'), { code: 'foreign' });
+    }
+    const { clean, bad } = validateImport(obj);
+    if (bad.length) throw Object.assign(new Error('invalid: ' + bad.join(', ')), { code: 'invalid', fields: [...new Set(bad)] });
+    if (clean.privacy) for (const k of Object.keys(clean.privacy)) if (clean.privacy[k] && settings.privacy?.[k] === false) delete clean.privacy[k];
+    if (clean.custom) { // own deadlines: union by id (the file wins for the same id), never a silent loss
+      const byId = new Map((settings.custom || []).map((c) => [c.id, clone(c)]));
+      for (const c of clean.custom) byId.set(c.id, c);
+      clean.custom = [...byId.values()];
+    }
+    const next = merge(clone(settings), clean);
+    const keys = Object.keys(clean).filter((k) => JSON.stringify(next[k]) !== JSON.stringify(settings[k]));
+    apply(next, keys.length ? keys : Object.keys(clean));
     return persist();
   }
 
@@ -462,10 +570,32 @@
     return pr;
   }
 
+  /** Drop state keys for good (TP.data.wipeLocal): pending writes for them are discarded, memory goes back to the
+      defaults and the 'state:<key>' / 'staterev:<key>' items are removed. keys = array, or omitted = every key.
+      The storage removal is issued synchronously (it must reach the browser before a logout navigation). */
+  function forgetState(keys) {
+    const all = keys == null;
+    const list = all ? [...new Set([...Object.keys(STATE_DEFAULTS), ...Object.keys(state)])] : keys.filter((k) => typeof k === 'string');
+    for (const k of list) { delete ops[k]; delete myWrites[k]; stateWritten[k] = 'null'; }
+    if (!Object.keys(ops).length) { clearTimeout(stateTimer); stateTimer = null; if (statePending) { statePending.resolve(); statePending = null; } }
+    const next = { ...state };
+    for (const k of list) { if (k in STATE_DEFAULTS) next[k] = clone(STATE_DEFAULTS[k]); else delete next[k]; }
+    state = next;
+    rev++;
+    const removal = sremove('local', list.flatMap((k) => [SP + k, RP + k]));
+    const extra = all ? sget('local', null).then((o) => {
+      const left = Object.keys(o).filter((k) => k.startsWith(SP) || k.startsWith(RP));
+      return left.length ? sremove('local', left) : undefined;
+    }) : Promise.resolve();
+    notifyState(list);
+    return Promise.all([removal, extra]).then(() => {});
+  }
+
   TP.state = {
     DEFAULTS: freeze(clone(STATE_DEFAULTS)),
     get: () => state,
     set: setState,
+    forget: forgetState,
     flush: flushState,
     rev: () => rev,
     subscribe: (fn) => { stateSubs.add(fn); return () => stateSubs.delete(fn); },

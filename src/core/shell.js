@@ -1238,6 +1238,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     // Logout: remember it for a few minutes so src/landing.js doesn't bounce the student straight back into Toledo (Agent J).
     if (el.tagName === 'A' && el.hasAttribute('data-tp-logout')) {
       try { chrome.storage.local.set({ 'tp:loggedOutAt': Date.now() }); sessionStorage.setItem('tp:loggedOutAt', String(Date.now())); } catch { /* storage gone */ }
+      try { TP.data?.wipeLocal?.({ scope: 'user' }); } catch { /* TP-181: forget this user's cached data (shared PCs) */ }
     }
     // External links in the menu / More sheet (mail → new tab): close the popover behind them.
     if (el.tagName === 'A' && el.target && el.closest('.tp-menu, .tp-sheet')) { closeMenu(false); closeSheet(); return; }

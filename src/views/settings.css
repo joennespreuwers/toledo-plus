@@ -113,3 +113,6 @@
 .st-brand-name .tp-wordmark { font-size: 1.25rem; }
 .st-brand-meta { color: var(--label-2); font-size: var(--fs-subhead, .8125rem); }
 @media (max-width: 480px) { .st-view .st-row.st-brand-row.st-brand-row { flex-direction: row; align-items: center; } }
+/* Reset everything: what it does, right under the button (TP-121) */
+.st-row-reset { flex-direction: column; align-items: flex-start; gap: 0; padding-bottom: 10px; }
+.st-desc { margin: 0; color: var(--label-2); font-size: var(--fs-subhead, .8125rem); line-height: var(--lh-subhead, 1.35); }

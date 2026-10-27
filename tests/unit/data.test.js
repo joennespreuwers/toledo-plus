@@ -229,8 +229,10 @@ test('deadlines: overdue items stay until done, whatever their age (B2)', async 
   assert.equal(future.overdue, false); assert.equal(future.ageDays, 0);
   await D.toggleDone(old.key);
   list = D.deadlines({ includeDone: true });
-  assert.ok(!list.some((d) => d.title === 'Lang geleden'), 'done and older than 7 days → gone');
-  assert.ok(D.deadlines({ includeDone: true, pastDays: 30 }).some((d) => d.title === 'Lang geleden'), 'pastDays widens it');
+  // TP-209: a done item stays listed (Klaar) for HORIZON.donePastDays after its due date, so the tick can be undone.
+  assert.equal(D.HORIZON.donePastDays, 120);
+  assert.ok(list.some((d) => d.title === 'Lang geleden' && d.done), 'done 10 days after due → still listed as done');
+  assert.ok(!D.deadlines({ includeDone: true, pastDays: 7 }).some((d) => d.title === 'Lang geleden'), 'pastDays narrows it');
   await D.toggleDone(y.key);
   const yd = D.deadlines({ includeDone: true }).find((d) => d.title === 'Gisteren');
   assert.ok(yd.done && !yd.overdue, 'done items are not overdue');
@@ -323,13 +325,53 @@ test('refresh keeps overdue, not-done Ultra deadlines that fell out of the fetch
   const { D, NOW } = await setup({ net: { json: async () => ({ results: [] }) } });
   await D.load('ultraDeadlines', { force: true });
   eq(D.peek('ultraDeadlines'), [], 'c4/c5 (≤ 14 days old) lie inside the fetch window → replaced');
-  // an older overdue one lies before the fetch window → retained until done:
-  D._test._put('ultraDeadlines', [{ id: 'o1', title: 'Heel oud', due: NOW - 40 * DAY, courseLuId: LU_B, courseTitle: '', cid: null, url: null }]);
+  // an older overdue one lies before the (routine, 14-day) fetch window → retained:
+  const routine = { range: { from: NOW - 14 * DAY, until: NOW + 42 * DAY, deepAt: NOW } };
+  D._test._put('ultraDeadlines', [{ id: 'o1', title: 'Heel oud', due: NOW - 40 * DAY, courseLuId: LU_B, courseTitle: '', cid: null, url: null }], routine);
   await D.load('ultraDeadlines', { force: true });
   eq(D.peek('ultraDeadlines').map((d) => d.title), ['Heel oud']);
+  // done: still kept (Klaar) within HORIZON.donePastDays …
   await D.toggleDone(D.deadlines().find((d) => d.title === 'Heel oud').key);
   await D.load('ultraDeadlines', { force: true });
-  eq(D.peek('ultraDeadlines'), [], 'dropped once done');
+  eq(D.peek('ultraDeadlines').map((d) => d.title), ['Heel oud'], 'done 40 days ago: kept');
+  // … and dropped once it is older than that.
+  D._test._put('ultraDeadlines', [{ id: 'o1', title: 'Heel oud', due: NOW - 130 * DAY, courseLuId: LU_B, courseTitle: '', cid: null, url: null }], routine);
+  await D.load('ultraDeadlines', { force: true });
+  eq(D.peek('ultraDeadlines'), [], 'done and older than donePastDays → dropped');
+});
+
+test('Ultra calendar: the first fetch and one a day reach 120 days back (TP-195); routine refreshes 14 days', async () => {
+  const urls = [];
+  const { D, NOW } = await setup({ net: { json: async (u) => { urls.push(u); return { results: [] }; } } });
+  D._test._reset();
+  const since = (u) => Date.parse(decodeURIComponent(/since=([^&]+)/.exec(u)[1]));
+  await D.load('ultraDeadlines', { force: true });
+  assert.equal(Math.round((NOW - Math.min(...urls.map(since))) / DAY), 120, 'first fetch is deep');
+  const deepAt = D._test._entry('ultraDeadlines').range.deepAt;
+  assert.ok(deepAt > 0);
+  urls.length = 0;
+  await D.load('ultraDeadlines', { force: true });
+  assert.equal(Math.round((NOW - Math.min(...urls.map(since))) / DAY), 14, 'routine refresh');
+  assert.equal(D._test._entry('ultraDeadlines').range.deepAt, deepAt);
+});
+
+test('Ultra calendar: items that are not gradebook columns are kept apart, not dropped (TP-196)', async () => {
+  const item = (id, type, title, startOff) => ({ id, type, title, start: new Date(Date.now() + startOff).toISOString(), end: new Date(Date.now() + startOff + HOUR).toISOString(), calendarName: 'ULTRA-B-X10300-2627: Montage [X10300]', calendarId: '_900002_1' });
+  const { D } = await setup({ net: { json: async () => ({ results: [
+    item('a', 'Course', 'Online vragenuurtje', 2 * DAY), item('b', 'GradebookColumn', 'Tentamen Statistiek', 3 * DAY), item('c', 'User', 'Eigen herinnering', 4 * DAY),
+  ] }) } });
+  await D.load('ultraDeadlines', { force: true });
+  eq(D.peek('ultraDeadlines').map((d) => d.title), ['Tentamen Statistiek']);
+  eq(D.calendarItems().map((d) => [d.title, d.type]), [['Online vragenuurtje', 'Course'], ['Eigen herinnering', 'User']]);
+  eq(D.calendarItems({ from: Date.now() + 3.5 * DAY }).map((d) => d.title), ['Eigen herinnering']);
+});
+
+test('deadlines: own deadlines are never cut off on the Deadlines page horizon (TP-015)', async () => {
+  const { TP, D, NOW } = await setup();
+  await D.addCustomDeadline({ title: 'Ver weg', courseLuId: '', due: NOW + 4 * 365 * DAY });
+  assert.ok(D.deadlines({ horizonDays: D.HORIZON.viewDays }).some((d) => d.title === 'Ver weg'), 'Deadlines page shows it');
+  assert.ok(!D.deadlines({ horizonDays: 42 }).some((d) => d.title === 'Ver weg'), 'Overview keeps its own horizon');
+  void TP;
 });
 
 // ---- announcements / kindOf / ICS ---------------------------------------------
@@ -691,4 +733,69 @@ test('loadUser: Ultra users/me → state.me (local only); cached a week; failure
   TP.net.json = async () => { throw Object.assign(new Error('401'), { status: 401, auth: true }); };
   assert.equal(await TP.data.loadUser({ force: true }), 'Alex');
   assert.equal(TP.data.authExpired(), false);
+});
+
+// ---- local wipe (pattern 7: TP-181 logout, TP-003 reset) ----------------------
+const { world: mkWorld } = require('../helpers/tp');
+function seededWorld() {
+  return mkWorld({ local: {
+    'cache:enrollments': { v: [{ id: 1, learningUnitId: LU_A, title: 'Filmtaal 1 [X10265]', type: 'course', academicYear: 2627 }], t: 1, rev: 0 },
+    'cache:events': { v: [], t: 1, rev: 0 }, 'cache:mail': { v: 3, t: 1, rev: 0 },
+    'kuloket:icsUrl': 'https://cloud.timeedit.net/kuleuven/web/x/s.ics?sid=secret', 'kuloket:icsUrlT': 1, 'kuloket:exams': { t: 1, items: [] },
+    'kuloket:lessons:2026-W44': { t: 1, items: [] }, 'kuloket:meta': { weeks: ['2026-W44'] },
+    index: { c1: { items: [] } }, indexMeta: { lastCrawl: 1 },
+    'state:me': { given: 'Alex', t: 1 }, 'state:recent': [{ title: 'Geheim.pdf' }], 'state:done': { d1: 1 }, 'state:ui': { sidebarCollapsed: true },
+    'telemetry:id': '3f2b8c1e-5d4a-4c3b-9a8e-1b2c3d4e5f60', 'telemetry:lastPing': 1, 'telemetry:forget': [],
+    'tp:loggedOutAt': 1, settingsLocal: { v: 5 }, 'fulltext:budget': { day: 'x', bytes: 1 },
+  } });
+}
+
+test('wipeLocal({scope:"user"}) (logout): cached Toledo/KU Loket data, the iCal link, index, name and recent docs are gone; marks and prefs stay', async () => {
+  const w = seededWorld();
+  const { TP } = await boot({ world: w });
+  assert.equal(TP.data.peek('mail'), 3);
+  const p = TP.data.wipeLocal({ scope: 'user' });
+  // phase 1 is synchronous: the fixed keys are already gone before the promise settles (a logout navigation follows)
+  assert.equal(w.stores.local['cache:enrollments'], undefined);
+  assert.equal(w.stores.local['kuloket:icsUrl'], undefined);
+  assert.equal(TP.data.peek('mail'), null, 'memory cleared too');
+  assert.equal(await p, true);
+  await settle(50);
+  const left = Object.keys(w.stores.local).sort();
+  for (const k of left) assert.ok(!/^(cache:|kuloket:|index)/.test(k), 'left behind: ' + k);
+  assert.ok(!('state:me' in w.stores.local) && !('state:recent' in w.stores.local));
+  for (const k of ['state:done', 'state:ui', 'telemetry:id', 'tp:loggedOutAt', 'settingsLocal']) assert.ok(k in w.stores.local, 'kept: ' + k);
+  assert.ok(!(('tp:wipePending') in w.stores.local), 'marker removed when done');
+});
+
+test('wipeLocal({scope:"all"}) (reset): everything goes except the deletion queue and settings fallbacks; the install id is queued for /v1/forget', async () => {
+  const w = seededWorld();
+  const forgot = [];
+  const { TP, s } = await boot({ world: w });
+  s.ctx.TP.telemetry = { forget: async () => { forgot.push(w.stores.local['telemetry:id']); w.stores.local['telemetry:forget'] = [w.stores.local['telemetry:id']]; delete w.stores.local['telemetry:id']; return true; } };
+  await TP.data.wipeLocal({ scope: 'all' });
+  await settle(50);
+  assert.deepEqual(forgot, ['3f2b8c1e-5d4a-4c3b-9a8e-1b2c3d4e5f60'], 'queued before the store is cleared');
+  assert.deepEqual(Object.keys(w.stores.local).sort(), ['fulltext:budget', 'settingsLocal', 'telemetry:forget', 'tp:loggedOutAt']);
+});
+
+test('an interrupted wipe (navigation) is finished by init() before the cache is shown', async () => {
+  const w = seededWorld();
+  w.stores.local['tp:wipePending'] = { scope: 'user', t: 1 };
+  const { TP } = await boot({ world: w });
+  assert.equal(TP.data.peek('enrollments'), null, 'nothing from the old cache');
+  assert.equal(TP.data.userName(), '', 'no first name');
+  await settle(50);
+  assert.equal(w.stores.local['kuloket:lessons:2026-W44'], undefined);
+  assert.equal(w.stores.local['tp:wipePending'], undefined);
+});
+
+test('a load that was in flight during a wipe is not cached again', async () => {
+  let release;
+  const { TP } = await boot({ world: seededWorld(), net: { json: () => new Promise((r) => { release = () => r({ value: 9 }); }) } });
+  const p = TP.data.load('mail', { force: true });
+  await TP.data.wipeLocal({ scope: 'user' });
+  release();
+  await p;
+  assert.equal(TP.data.peek('mail'), null);
 });
