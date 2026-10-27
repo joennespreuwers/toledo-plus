@@ -43,7 +43,7 @@ describe('ultra course page', () => {
     assert.equal(await page.locator(S.sidebar).count(), 1, 'shell sidebar on Ultra');
     // Header line: "13 items · 3 nieuw" in label-2, no coloured dot.
     const sub = page.locator('#tplus-root .cv-sub');
-    assert.match(await sub.innerText(), /^\d+ items?( · \d+ nieuw)?$/);
+    assert.match(await sub.innerText(), /^\d+ items?( · \d+ nieuw)?( · \+\d+ meldingen?)?$/);
     assert.equal(await sub.locator('.tp-dot').count(), 0, 'no coloured dot in the header line');
     await screenshot(page, 'ultra-course-light-desktop');
   });

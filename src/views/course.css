@@ -1,6 +1,6 @@
 /* Toledo+ — Course view (views-B). Colours only through semantic variables. */
 .cv-view { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
-.cv-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.cv-sr, .cv-srx { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .cv-sec[hidden], .cv-view [data-lq][hidden], .cv-view details.cv-folder[hidden] { display: none !important; }
 
 /* ---------- header ---------- */
@@ -163,3 +163,6 @@ button.cv-row.cv-ann:hover { background: var(--fill); }
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
 }
 .cv-more .cv-name { color: var(--tint-text, var(--tint)); }
+/* the Inhoud header holds up to three actions (Alleen nieuw, Markeer nieuw als gelezen, Alles uitklappen): wrap, never overflow */
+.cv-sec .tp-sec-head { flex-wrap: wrap; row-gap: 4px; }
+.cv-sec .tp-sec-actions { flex: 0 1 auto; flex-wrap: wrap; justify-content: flex-end; min-width: 0; margin-left: auto; row-gap: 8px; }

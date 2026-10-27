@@ -258,23 +258,24 @@
     const label = kindLabel(n, k);
     const date = created(n);
     const pathTxt = x.path.filter(Boolean).join(' › ');
-    const meta = [label, date ? TP.fmt.ago(date) : '', opts.showPath ? pathTxt : ''].filter(Boolean).join(' · ');
+    // Accessible name in reading order without visual separators (TP-013): "Slides.pdf, PDF, gisteren, Les 4, nieuw, openen" —
+    // the " · " are aria-hidden (a screen reader hears ", "), and "nieuw" comes after the name instead of before it.
+    const SEP = '<span aria-hidden="true"> · </span><span class="cv-srx">, </span>';
+    const meta = [label, date ? TP.fmt.ago(date) : '', opts.showPath ? pathTxt : ''].filter(Boolean).map(esc).join(SEP);
     const lq = esc([n.title, label, pathTxt].join(' ').toLowerCase());
     const fresh = isNew(n);
-    const dot = `<span class="cv-new">${fresh ? `<span class="cv-new-dot" role="img" aria-label="${esc(t('course.new'))}"></span>` : ''}</span>`;
+    const dot = `<span class="cv-new">${fresh ? '<span class="cv-new-dot" aria-hidden="true"></span>' : ''}</span>`;
     const ico = `<span class="cv-ico cv-ico-${esc(k)}">${TP.ui.icon(KIND_ICON[k] || 'doc', { size: 16 })}</span>`;
-    const main = `<span class="cv-main"><span class="cv-name" title="${esc(n.title)}">${esc(n.title)}</span><span class="cv-meta">${esc(meta)}</span></span>`;
+    const main = `<span class="cv-main"><span class="cv-name" title="${esc(n.title)}">${esc(n.title)}</span><span class="cv-srx">, </span><span class="cv-meta">${meta}</span>${fresh ? `<span class="cv-srx">, ${esc(t('course.new').toLowerCase())}</span>` : ''}</span>`;
     const depth = Math.min(opts.depth || 0, 3);
     const h = H(n);
     const fk = (opts.showPath ? 'r:' : 't:') + n.id;
 
     if (h === 'resource/x-bb-file' || ((k === 'file' || k === 'video' || k === 'image') && !/link/.test(h))) {
       const busy = st.busy.has(n.id);
-      // One clean accessible name: "Slides_les4.pdf, PDF, gisteren, Les 4, nieuw" (no "·"/"—" separators or a stray ", open", TP-013).
-      const name = [n.title, label, date ? TP.fmt.ago(date) : '', opts.showPath ? pathTxt : '', fresh ? t('course.new').toLowerCase() : ''].filter(Boolean).join(', ');
       return `
         <div class="cv-row cv-leaf" data-lq="${lq}" style="--depth:${depth}">
-          <button type="button" class="cv-row-main" data-action="open" data-id="${esc(n.id)}" data-fk="o${fk}" aria-label="${esc(name)}">${dot}${ico}${main}</button>
+          <button type="button" class="cv-row-main" data-action="open" data-id="${esc(n.id)}" data-fk="o${fk}">${dot}${ico}${main}<span class="cv-sr">, ${esc(t('course.openSuffix'))}</span></button>
           <button type="button" class="cv-mini" data-action="download" data-id="${esc(n.id)}" data-fk="d${fk}" aria-label="${esc(t('course.download', { title: n.title }))}" ${busy ? 'aria-busy="true" disabled' : ''}>${busy ? spinner() : TP.ui.icon('download', { size: 17 })}</button>
         </div>`;
     }

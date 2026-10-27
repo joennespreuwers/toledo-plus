@@ -235,8 +235,15 @@ describe('course page: reading', () => {
   });
 
   it('file rows have one clean accessible name (TP-013); the per-page link says "Open in Toledo" (TP-098)', async () => {
-    const name = await sr(page, (r) => r.querySelector('[data-tree] .cv-leaf [data-action="open"]')?.getAttribute('aria-label') || '');
-    assert.ok(name && !/[·—]/.test(name) && !/openen$/.test(name), name);
+    // what a screen reader reads: the button's text without aria-hidden parts
+    const name = await sr(page, (r) => {
+      const b = r.querySelector('[data-tree] .cv-leaf [data-action="open"]');
+      const c = b.cloneNode(true); c.querySelectorAll('[aria-hidden="true"]').forEach((x) => x.remove());
+      return { text: c.textContent.replace(/\s+/g, ' ').trim(), title: b.querySelector('.cv-name').textContent, label: b.getAttribute('aria-label') };
+    });
+    assert.equal(name.label, null, 'no aria-label: the name is the visible text');
+    assert.ok(name.text.startsWith(name.title + ', '), name.text);
+    assert.ok(!/[·—]/.test(name.text), `no visual separators read out: ${name.text}`);
     const link = await sr(page, (r) => [...r.querySelectorAll('.cv-doc-link')].map((a) => a.textContent));
     for (const x of link) assert.equal(x, nl['course.openToledo']);
     assert.deepEqual(h.errors, []);
