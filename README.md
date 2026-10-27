@@ -28,7 +28,7 @@
 - **Planning** en **Mededelingen** (aankondigingen en Ad Valvas, met filters). Een mededeling opent in een venster met de volledige tekst – ook Ad Valvas-berichten – en je bladert met ↑/↓.
 - **Gelezen = gelezen in Toledo**: wat je in Toledo+ als gelezen markeert, staat ook in Toledo als gelezen (uit te zetten).
 - **Nederlands, English, Français**; licht/donker; accentkleur; dichtheid; secties aan/uit en herschikken.
-- **⌘K** (of **/**) zoekt overal: vakken, deadlines, mededelingen én **documenten in al je vakken** (een lokale index, nooit gedeeld). ⌘↵ downloadt meteen; mappen en opdrachten openen in hun vak.
+- **⌘K** (of **/**) zoekt overal: vakken, deadlines, mededelingen, KU Loket-apps, instellingen én **documenten in al je vakken** (een lokale index, nooit gedeeld). Accenten, woordvolgorde en een tikfout maken niet uit, en datums zoals "morgen" of "28 okt" werken ook. ⌘↵ downloadt meteen; mappen en opdrachten openen in hun vak.
 - Inklapbare zijbalk: met **⌘\\** wordt hij een smalle **iconenbalk**. Werkt op laptop én smartphonebreedte (tabbalk onderaan).
 - **Klassieke Toledo** is altijd één klik weg (accountmenu); de knop *Toledo+* zet het weer aan.
 

@@ -7,6 +7,9 @@ Het formaat volgt [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) en he
 ## [Unreleased]
 
 ### Added
+- **Zoeken, overal hetzelfde**: the toolbar search, the course search and ⌘K now match the same way: accents and word order don't matter ("chemie verslag", "economie"), course codes work with or without the space ("zx1003"), dates as you see them work ("morgen", "28 okt", "vr 30 okt", "30/10"), and one typo in a longer word still finds it ("programeren"). The same item is found by the same things everywhere (title, course, code, teacher/sender, date), and the matching words are highlighted.
+- ⌘K finds KU Loket apps ("ISP", "MOBIB", "vrijstellingen") and individual settings ("iCal", "donker", "reset", "volledige tekst" open Instellingen at that section); view names also work in the other languages ("instellingen" in English).
+- ⌘K shows 8 results per group and then "Nog n resultaten tonen" instead of silently dropping the rest; it opens with the text you already typed in the search field.
 - **Ad Valvas in Toledo+**: an Ad Valvas notice now opens with its full text, sender, recipients, date and attachments inside Toledo+ instead of only a link. The first time in a browser session Ad Valvas may ask you to sign in once: "Open en meld aan" opens the notice in a new tab (KU Leuven sign-in completes there) and when you come back Toledo+ loads it by itself. Needs one new read-only site permission (`icts-p-toledo-valvas.cloud.icts.kuleuven.be`, only the message page of a notice); the text stays in memory only (≤ 30 min), images in the message are not loaded.
 - **Mededeling openen = een venster**: every announcement (Mededelingen, Overzicht, the course page, ⌘K) opens in a sheet with title, course/source and colour dot, author, date, the full text, attachments, "Open in Ultra"/"Open in Ad Valvas" and "Markeer als ongelezen". Step through the current (filtered/searched) list with ↑/↓ or j/k or the arrow buttons; Esc returns to the row. Scale/fade on desktop, slides up from the bottom on phones. Opening marks it read (as before).
 
@@ -16,6 +19,9 @@ Het formaat volgt [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) en he
 - Course announcements from the portal now find their text also when the event links to a generic Ultra page (by id from the event, else by title in the course's announcements).
 
 ### Fixed
+- Deadlines search: after a query that hid a whole section (e.g. "Te laat"), the next query found nothing in that section and showed no "Geen resultaten" either. Sections are now checked again on every query.
+- ⌘K: a query that only matches a course name no longer fills Documenten with every file of that course; "[" or "1" no longer list everything; a pasted wall of text is cut off in the "Geen resultaten" line; "Geen resultaten" while documents are still being indexed says so, with a hint what you can search for; the palette closes when you go Back; the placeholder ends in "…" on narrow phones.
+- The empty search state shows your query as you typed it (not lowercased).
 - The first-start splash now always removes itself shortly after its planned end, even if its fade-out animation never reports back.
 - Keyboard hints follow your OS: ⌘ on macOS, Ctrl+ on Windows/Linux. On a Mac Toledo+ showed "Ctrl K" because Chromium reports the platform as "macOS" (lowercase "mac"); every "⌘" in texts (⌘K, ⌘↵, ⌘\) now adapts.
 - Website, installer: step 2 now says how to unzip (Windows: right-click → *Alles uitpakken*; Mac: double-click) and warns not to load Toledo+ from inside the zip; steps 2/5 and "Updaten" match the zip (a folder `toledo-plus` with `manifest.json`); Edge visitors see `edge://extensions` and Edge wording; an honest "a few minutes" with the developer-mode note up front; phones get a "install on a computer" note.

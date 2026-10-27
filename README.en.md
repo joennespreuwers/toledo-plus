@@ -28,7 +28,7 @@
 - **Planning** and **Announcements** (course announcements and Ad Valvas, with filters). An announcement opens in a sheet with its full text – Ad Valvas notices too – and ↑/↓ steps through the list.
 - **Read = read in Toledo**: items you mark as read in Toledo+ are marked read in Toledo too (can be turned off).
 - **Nederlands, English, Français**; light/dark; accent colour; density; show/hide and reorder sections.
-- **⌘K** (or **/**) searches everywhere: courses, deadlines, announcements and **documents in all your courses** (a local index, never shared). ⌘↵ downloads right away; folders and assignments open in their course.
+- **⌘K** (or **/**) searches everywhere: courses, deadlines, announcements, KU Loket apps, settings and **documents in all your courses** (a local index, never shared). Accents, word order and a typo don't matter, and dates like "tomorrow" or "28 Oct" work too. ⌘↵ downloads right away; folders and assignments open in their course.
 - Collapsible sidebar: **⌘\\** turns it into a slim **icon rail**. Works on laptop and phone widths (tab bar at the bottom).
 - **Classic Toledo** is always one click away (account menu); the *Toledo+* button turns it back on.
 
