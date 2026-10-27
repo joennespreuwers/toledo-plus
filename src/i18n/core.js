@@ -90,6 +90,9 @@
       'shell.results.other': '{n} resultaten',
       'shell.sidebarRail': 'Zijbalk ingeklapt tot iconen',
       'shell.sidebarExpanded': 'Zijbalk uitgeklapt',
+      'shell.copyLink': 'Kopieer link',
+      'shell.linkCopied': 'Link gekopieerd',
+      'shell.copyFailed': 'Kon de link niet kopiëren',
 
       'deep.label': 'Toledo+ balk',
       'deep.home': 'Toledo+ overzicht',
@@ -97,6 +100,9 @@
       'deep.course': 'vak',
       'deep.overview': 'Overzicht',
       'deep.deadlines': 'Deadlines',
+      'deep.settings': 'Instellingen',
+      'deep.hide': 'Verberg deze balk',
+      'deep.hideHint': 'Terugzetten kan in Instellingen › Geavanceerd.',
 
       'common.retry': 'Opnieuw',
       'common.updated': 'Bijgewerkt {time}',
@@ -217,6 +223,9 @@
       'shell.results.other': '{n} results',
       'shell.sidebarRail': 'Sidebar collapsed to icons',
       'shell.sidebarExpanded': 'Sidebar expanded',
+      'shell.copyLink': 'Copy link',
+      'shell.linkCopied': 'Link copied',
+      'shell.copyFailed': 'Couldn’t copy the link',
 
       'deep.label': 'Toledo+ bar',
       'deep.home': 'Toledo+ overview',
@@ -224,6 +233,9 @@
       'deep.course': 'course',
       'deep.overview': 'Overview',
       'deep.deadlines': 'Deadlines',
+      'deep.settings': 'Settings',
+      'deep.hide': 'Hide this bar',
+      'deep.hideHint': 'You can turn it back on in Settings › Advanced.',
 
       'common.retry': 'Try again',
       'common.updated': 'Updated {time}',
@@ -344,6 +356,9 @@
       'shell.results.other': '{n} résultats',
       'shell.sidebarRail': 'Barre latérale réduite aux icônes',
       'shell.sidebarExpanded': 'Barre latérale dépliée',
+      'shell.copyLink': 'Copier le lien',
+      'shell.linkCopied': 'Lien copié',
+      'shell.copyFailed': 'Impossible de copier le lien',
 
       'deep.label': 'Barre Toledo+',
       'deep.home': 'Aperçu Toledo+',
@@ -351,6 +366,9 @@
       'deep.course': 'cours',
       'deep.overview': 'Aperçu',
       'deep.deadlines': 'Échéances',
+      'deep.settings': 'Réglages',
+      'deep.hide': 'Masquer cette barre',
+      'deep.hideHint': 'Tu peux la réactiver dans Réglages › Avancé.',
 
       'common.retry': 'Réessayer',
       'common.updated': 'Mis à jour à {time}',

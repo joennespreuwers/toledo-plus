@@ -136,6 +136,9 @@
     if (inPlace) {
       const h = hashFor(route, params);
       if (location.hash === h) { onLocation(true); return; }
+      // Leaving from an open detail sheet's history entry: replace it, so Back returns to the list, not to a sheet
+      // entry with nothing to reopen (TP-199).
+      if (sheetOf(location.hash) != null) { hist.intent = 'replace'; location.replace(location.pathname + location.search + h); return; }
       hist.intent = 'push';
       location.hash = h; // → hashchange → onLocation
       return;
@@ -143,26 +146,66 @@
     location.assign(href(route, params));
   }
 
-  /** ctx.setParams(params, {replace}): a view puts its own state in the URL (e.g. the Agenda's date, TP-200) without
-   *  being re-rendered. Pushes a history entry (replace → replaces it), so Back returns to the previous state (that
-   *  switches the view to the older URL, which renders it from its params). Portal only. */
-  function setParams(params = {}, o = {}) {
-    if (origin !== 'portal' || !current) return;
-    const h = hashFor(current.route, params);
-    if (location.hash === h) return;
+  // ---------------- route state + history (bug bash pattern 12) ----------------
+  // State that matters lives in the hash, so reload, Back and bookmarks keep it:
+  //  - setParams({ id }, { replace }) — a view puts its own state in '&id=' (Courses › Bewerk, the Agenda date) without
+  //    a re-render; Back/Forward re-render the view with the earlier params (ctx.params).
+  //  - the open detail sheet gets its own entry ('…&sheet=<key>'): Back closes the sheet and stays on the view.
+  // Portal only (the Ultra course page keeps Ultra's own URL).
+  function sheetOf(h) {
+    const m = /^#\/home\/?\?/.test(h || '') ? /[?&]sheet=([^&]*)/.exec(h) : null;
+    return m ? safe(() => decodeURIComponent(m[1]), m[1]) : null;
+  }
+  function setHash(h, replace) {
     const url = location.pathname + location.search + h;
-    if (o.replace) {
-      history.replaceState(history.state, '', url);
-      if (hist.pos >= 0) hist.stack[hist.pos] = h;
-    } else {
-      history.pushState(history.state, '', url);
-      hist.stack = hist.stack.slice(0, hist.pos + 1);
-      hist.stack.push(h);
-      if (hist.stack.length > 50) hist.stack.shift();
-      hist.pos = hist.stack.length - 1;
+    hist.intent = replace ? 'replace' : 'push';
+    if (replace) history.replaceState(history.state, '', url); else history.pushState(history.state, '', url);
+    safe(historyDirection); // no hashchange fires for push/replaceState: keep the direction stack in step
+  }
+  function setParams(params, o = {}) {
+    if (!current || mode !== 'shell' || origin !== 'portal' || current.route === 'course') return false;
+    const v = params && (params.id ?? params.param);
+    const r = mkRoute(current.route, v != null ? String(v) : '');
+    if (!r) return false;
+    const h = hashFor(r.route, r.params);
+    if (location.hash === h) return false;
+    setHash(h, !!o.replace || sheetOf(location.hash) != null);
+    current.params = r.params;
+    current.ctx.params = r.params;
+    current.key = r.route + JSON.stringify(r.params);
+    updateHead();
+    return true;
+  }
+  /** → the hash pushed for a sheet that just opened (null when it gets no entry). */
+  function pushSheet(key) {
+    if (origin !== 'portal' || mode !== 'shell' || !current || current.route === 'course') return null;
+    const h = hashFor(current.route, current.params) + '&sheet=' + encodeURIComponent(String(key || '1').slice(0, 120));
+    if (location.hash !== h) setHash(h, sheetOf(location.hash) != null); // stepping to another item: same entry
+    return h;
+  }
+  /** On a URL change: a sheet whose entry was left (Back) closes; a sheet entry with no open sheet (Forward, reload)
+   *  is dropped from the URL. */
+  function syncSheet() {
+    if (origin !== 'portal') return;
+    const open = !!$('.tp-detail')?.open;
+    const inUrl = sheetOf(location.hash) != null;
+    if (open && detail?.pushed && !inUrl) { detail.popped = true; closeDetail(); return; }
+    if (!open && inUrl) {
+      const r = parseHash(location.hash);
+      if (r) setHash(hashFor(r.route, r.params), true);
     }
-    current.params = { ...params };
-    current.key = current.route + JSON.stringify(current.params);
+  }
+  /** "Kopieer link" in the detail sheet head (when the view passes `link`). */
+  async function copyLink(url, btn) {
+    let ok = false;
+    try { await navigator.clipboard.writeText(url); ok = true; } catch (_) { ok = false; }
+    const msg = t(ok ? 'shell.linkCopied' : 'shell.copyFailed');
+    announce(msg); // a toast would sit under the modal sheet's backdrop: the button says it instead
+    if (!btn) return;
+    btn.innerHTML = icon(ok ? 'check' : 'warning', { size: 18 });
+    btn.title = msg;
+    clearTimeout(btn.__tpT);
+    btn.__tpT = setTimeout(() => { btn.innerHTML = icon('link', { size: 18 }); btn.title = t('shell.copyLink'); }, 2000);
   }
 
   // ---------------- registration ----------------
@@ -392,6 +435,7 @@
 </dialog>
 <dialog class="tp-detail" aria-labelledby="tp-detail-title">
   <div class="tp-detail-head"><h2 id="tp-detail-title"></h2>
+    <button type="button" class="tp-tb-btn" data-shell="detail-copy" aria-label="${esc(t('shell.copyLink'))}" title="${esc(t('shell.copyLink'))}" hidden>${icon('link', { size: 18 })}</button>
     <button type="button" class="tp-tb-btn" data-shell="detail-close" aria-label="${esc(t('shell.close'))}">${icon('xmark', { size: 18 })}</button></div>
   <div class="tp-detail-body"></div>
 </dialog>
@@ -455,9 +499,17 @@
   }
 
   // Rail: courses as coloured circles with two initials ("Montage Technieken 1" → "MT").
+  // Function words don't count (TP-115: "Inleiding tot de economie" → "IE", not "IT" like every "Inleiding tot …").
+  const STOP = new Set(['de', 'het', 'een', 'van', 'tot', 'en', 'in', 'op', 'voor', 'met', 'der', 'the', 'of', 'and', 'to', 'for', 'a', 'an',
+    'la', 'le', 'les', 'des', 'du', 'et', 'au', 'aux', 'd', 'l']);
+  function initialsText(name) {
+    const all = String(name || '').normalize('NFKD').replace(/[̀-ͯ]/g, '').split(/[\s\-_/:,.()[\]'’]+/).filter((x) => /^[a-z]/i.test(x));
+    const w = all.filter((x) => !STOP.has(x.toLowerCase()));
+    const use = w.length ? w : all;
+    return (use.length > 1 ? use[0][0] + use[1][0] : (use[0] || String(name || '') || '?').slice(0, 2)).toUpperCase();
+  }
   function initials(c) {
-    const w = String(c.name || '').normalize('NFKD').replace(/[̀-ͯ]/g, '').split(/[\s\-_/]+/).filter((x) => /^[a-z]/i.test(x));
-    const txt = (w.length > 1 ? w[0][0] + w[1][0] : (w[0] || c.name || '?').slice(0, 2)).toUpperCase();
+    const txt = initialsText(c.name);
     const fg = safe(() => (TP.util.contrast('#FFFFFF', c.color) >= 4.5 ? '#FFFFFF' : '#000000'), '#FFFFFF');
     return `<span class="tp-sb-initials" aria-hidden="true" style="--c:${esc(TP.util.safeColor ? TP.util.safeColor(c.color) : c.color)};--fg:${fg}">${esc(txt)}</span>`;
   }
@@ -536,7 +588,7 @@
         const a = act === r;
         const dotHtml = r === 'deadlines' && counts.overdue ? `<span class="tp-tab-dot" aria-hidden="true"></span><span class="tp-sr">${esc(t('shell.overdue', { n: counts.overdue }))}</span>` : '';
         return `<li><a class="tp-tab${a ? ' active' : ''}" href="${esc(href(r))}" data-route="${r}"${a ? ' aria-current="page"' : ''}>${icon(r, { size: 22 })}<span class="tp-tab-label">${esc(t('nav.' + r))}</span>${dotHtml}</a></li>`;
-      }).join('')}<li><button type="button" class="tp-tab${moreActive ? ' active' : ''}" data-shell="more" aria-haspopup="dialog"${moreActive ? ' aria-current="page"' : ''}>${icon('ellipsis', { size: 22 })}<span class="tp-tab-label">${esc(t('nav.more'))}</span></button></li></ul>`; };
+      }).join('')}<li><button type="button" class="tp-tab${moreActive ? ' active' : ''}" data-shell="more" aria-haspopup="dialog"${moreActive ? ' aria-current="page"' : ''}>${icon('ellipsis', { size: 22 })}<span class="tp-tab-label">${esc(t('nav.more'))}</span>${moreDot(counts)}</button></li></ul>`; };
       // The selection pill slides to the new tab (FLIP across the re-render); only when the tab bar is shown.
       if (M() && tabbar.getClientRects().length && tabbar.querySelector('.tp-tab-ind:not([hidden])')) TP.motion.flip(tabbar, paint, { selector: '.tp-tab-ind' });
       else paint();
@@ -560,6 +612,13 @@
     }
     const back = $('.tp-tb-back');
     if (back) back.hidden = current?.route !== 'course';
+  }
+
+  // TP-038: unread announcements live behind "Meer" on phones — a neutral dot says so (red stays for overdue).
+  function moreDot(counts) {
+    const n = counts.announcements;
+    if (!n) return '';
+    return `<span class="tp-tab-dot is-unread" aria-hidden="true"></span><span class="tp-sr">, ${esc(t('nav.announcements'))}: ${esc(t('shell.unread', { n }))}</span>`;
   }
 
   function toggleCoursesGroup(btn) {
@@ -631,8 +690,16 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
   document.addEventListener('pointerdown', (ev) => {
     if (!app) return;
     const acct = $('.tp-account');
-    if (acct && !ev.composedPath().includes(acct)) closeMenu(false);
+    if (acct && !ev.composedPath().includes(acct) && closeMenu(false)) swallowClick(ev);
   }, true);
+  // TP-148: the press that dismisses the account menu only dismisses it — the click that follows never reaches
+  // whatever was under the pointer (a deadline row, "Alles als gelezen markeren", …).
+  function swallowClick(down) {
+    if (!host || !down.composedPath().includes(host)) return;
+    const stop = (e) => { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); };
+    window.addEventListener('click', stop, { capture: true, once: true });
+    setTimeout(() => window.removeEventListener('click', stop, { capture: true }), 700);
+  }
 
   function openSheet() {
     const d = $('.tp-sheet');
@@ -747,10 +814,16 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     const opener = o.opener || safe(() => shadow.activeElement, null);
     // The view may re-render while the sheet is open (e.g. "klaar"): remember how to find the opener again.
     const sel = safe(() => ['data-action', 'data-key', 'data-id', 'data-eid'].map((k) => (opener.getAttribute(k) != null ? `[${k}="${CSS.escape(opener.getAttribute(k))}"]` : '')).join(''), '');
-    detail = { onAction: o.onAction || null, onKey: o.onKey || null, opener, sel };
+    const was = d.open ? detail : null;
+    detail = { onAction: o.onAction || null, onKey: o.onKey || null, opener, sel, pushed: !!was?.pushed };
     d.querySelector('#tp-detail-title').textContent = o.title || '';
     d.querySelector('.tp-detail-body').innerHTML = o.html || '';
+    const copy = d.querySelector('[data-shell="detail-copy"]');
+    if (copy) { copy.hidden = !o.link; copy.dataset.link = o.link || ''; }
     if (!d.open) d.showModal();
+    // TP-199: the sheet is the newest "page" — Back closes it (key: o.key or the opener's data-key/-id)
+    const key = o.key || safe(() => opener.dataset.key || opener.dataset.id || opener.dataset.eid, null);
+    if (safe(() => pushSheet(key), null)) detail.pushed = true;
     d.querySelector('.tp-detail-body [data-detail-action], .tp-detail-body a, .tp-detail-body button')?.focus();
     return d;
   }
@@ -770,6 +843,9 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
   function onDetailClosed() {
     let op = detail?.opener;
     const sel = detail?.sel;
+    // Closed with Esc / ✕ / an action: leave the sheet's history entry too (not when Back closed it, or a navigation
+    // already moved on to another URL).
+    if (detail?.pushed && !detail.popped && origin === 'portal' && sheetOf(location.hash) != null && !$('.tp-detail')?.open) history.back();
     detail = null;
     const restore = () => {
       if ((!op || !op.isConnected) && sel) op = safe(() => app.querySelector(sel), null);
@@ -882,7 +958,20 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
         if (had) acts.querySelector(`[data-id="${CSS.escape(had)}"]`)?.focus(); // e.g. "Zet in zijbalk" → "Uit zijbalk"
       }
     }
-    if (mode === 'shell') document.title = `${title} · Toledo+`;
+    if (mode === 'shell') document.title = `${docTitle()} · Toledo+`;
+  }
+  // Tab/history title (TP-006, TP-204): the page's name, not the greeting; a sub-page keeps its parent
+  // ("Secties · Instellingen"); the course page its course name. A view may set `docTitle` (string or fn(ctx)).
+  function docTitle() {
+    if (!current) return '';
+    const v = current.view;
+    const own = safe(() => (typeof v?.docTitle === 'function' ? v.docTitle(current.ctx) : v?.docTitle), '');
+    if (own) return String(own);
+    if (current.route === 'course') return viewTitle();
+    const nav = t('nav.' + current.route);
+    if (!current.params?.id) return nav;
+    const title = viewTitle();
+    return title && title !== nav ? `${title} · ${nav}` : nav;
   }
 
   // ---------------- search ----------------
@@ -981,8 +1070,8 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
       setTitle(text) { if (current?.ctx === ctx) { current.title = text == null ? '' : String(text); updateHead(); } },
       setSubtitle(html) { if (current?.ctx === ctx) { current.subtitle = html == null ? '' : String(html); updateHead(); } },
       navigate: (r, p) => navigate(r, p),
-      setParams(p, o) { if (current?.ctx === ctx) setParams(p, o); },
       href: (r, p) => href(r, p),
+      setParams(p, o) { return current?.ctx === ctx ? setParams(p, o) : false; },
       get query() { return searchQ; },
     };
     return ctx;
@@ -1088,6 +1177,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     const h = origin === 'portal' ? location.hash : location.pathname;
     const intent = hist.intent;
     hist.intent = null;
+    if (intent === 'replace') { if (hist.pos >= 0) hist.stack[hist.pos] = h; else { hist.stack = [h]; hist.pos = 0; } return null; }
     if (intent !== 'push') {
       if (hist.pos > 0 && hist.stack[hist.pos - 1] === h) { hist.pos--; return 'back'; }
       if (hist.stack[hist.pos + 1] === h) { hist.pos++; return 'forward'; }
@@ -1142,7 +1232,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
       // The new view is in the DOM already (input never waits): it fades/slides in over it.
       motion('transition', root, null, { direction: dir });
       $('.tp-large-title')?.focus({ preventScroll: true });
-      announce(t('shell.navigated', { title: viewTitle() }));
+      announce(t('shell.navigated', { title: docTitle() }));
     } else {
       // First paint: rows fade up in a short stagger (cached data renders synchronously; async views when ready).
       Promise.resolve(rendered).then(() => { if (current?.key === key) motion('stagger', rowsOf(root)); });
@@ -1155,7 +1245,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
   function setPill(show) {
     whenBody(() => {
       let b = document.getElementById('tplus-switch');
-      if (!show) { b?.remove(); return; }
+      if (!show) { b?.remove(); document.getElementById('tplus-switch-hint')?.remove(); return; }
       ensureFonts();
       if (!b) {
         b = document.createElement('button');
@@ -1169,8 +1259,27 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
       }
       b.textContent = t('shell.pill');
       b.title = t('shell.pillTitle');
+      b.setAttribute('aria-label', t('shell.pillTitle')); // "Terug naar Toledo+": the name says where it goes (TP-192)
       b.classList.toggle('dark', isDark());
+      if (classicExplain) { classicExplain = false; explainClassic(b); }
     });
+  }
+  // TP-192/193: right after "Klassieke Toledo" — say what happened and how to get back (a bubble by the pill, also
+  // read out), and put focus on the way back instead of leaving it on <body>.
+  let classicExplain = false;
+  function explainClassic(pill) {
+    document.getElementById('tplus-switch-hint')?.remove();
+    const tip = document.createElement('div');
+    tip.id = 'tplus-switch-hint';
+    tip.setAttribute('role', 'status');
+    if (pill.classList.contains('left')) tip.className = 'left';
+    tip.classList.toggle('dark', isDark());
+    document.body.appendChild(tip);
+    setTimeout(() => { tip.textContent = t('shell.classicOn'); }, 60); // after insertion, so the live region announces it
+    const gone = () => tip.remove();
+    setTimeout(gone, 9000);
+    pill.addEventListener('click', gone, { once: true });
+    safe(() => pill.focus({ preventScroll: true }));
   }
 
   // ---------------- deep bar ----------------
@@ -1215,14 +1324,29 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
   ${cid ? `<a class="tp-deep-back" href="${esc(href('course', { cid }))}">${icon('chevronLeft', { size: 16, strokeWidth: 2.4 })}<span class="tp-deep-back-label">${esc(backLabel)}</span><span class="tp-sr">${esc(t('deep.back', { course: backLabel }))}</span></a>` : ''}
   <span class="tp-deep-spacer"></span>
   <a class="tp-deep-link" href="${esc(href('deadlines'))}">${icon('deadlines', { size: 16 })}<span>${esc(t('deep.deadlines'))}</span></a>
-  <a class="tp-deep-link" href="${esc(href('overview'))}">${icon('overview', { size: 16 })}<span>${esc(t('deep.overview'))}</span></a>
+  ${deepTail()}
 </nav><div class="tp-toasts" aria-hidden="true"></div>`;
+      bindDeepHide(root);
       if (cid && !courseNames.has(cid)) {
         deepCourseName(cid).then((name) => { if (name && mode === 'deep') renderDeep(); });
       }
     });
   }
   function removeDeep() { deepHost?.remove(); }
+  // TP-194: the mark already goes to Overzicht; the bar's other end reaches Settings and can hide the bar itself
+  // (settings.wrap.deepBar, the same switch as Instellingen › Geavanceerd).
+  function deepTail() {
+    return `<a class="tp-deep-link" href="${esc(href('settings'))}">${icon('settings', { size: 16 })}<span>${esc(t('deep.settings'))}</span></a>
+  <button type="button" class="tp-deep-hide" data-deep="hide" aria-label="${esc(t('deep.hide'))}" title="${esc(`${t('deep.hide')}. ${t('deep.hideHint')}`)}">${icon('xmark', { size: 14, strokeWidth: 2.4 })}</button>`;
+  }
+  function bindDeepHide(root) {
+    if (root.__tpHide) return;
+    root.__tpHide = true;
+    root.addEventListener('click', (ev) => {
+      if (!ev.target.closest?.('[data-deep="hide"]')) return;
+      safe(() => TP.settings.set({ wrap: { deepBar: false } }));
+    });
+  }
 
   // ---------------- apply location ----------------
   function onLocation(force) {
@@ -1239,10 +1363,24 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     backgroundRefresh();
     whenBody(() => {
       mount();
+      safe(normaliseHash);
       const key = r.route + JSON.stringify(r.params || {});
+      if (current && current.key !== key) safe(() => TP.palette?.isOpen?.() && TP.palette.close(false)); // TP-033
       if (!current || current.key !== key || (force && !current.view && views[r.route])) switchView(r.route, r.params);
-      else if (prevMode !== 'shell' || force) { renderNav(); updateHead(); renderView(); }
+      else {
+        if (prevMode !== 'shell' || force) { renderNav(); updateHead(); renderView(); }
+        else safe(historyDirection); // same view, other entry (a sheet opened/closed): keep the direction stack in step
+      }
+      safe(syncSheet);
     });
+  }
+  // TP-037: an unknown '#/home?tplus=<x>' shows the start page; say so in the URL too (no polluted history entry).
+  function normaliseHash() {
+    if (origin !== 'portal') return;
+    const h = location.hash;
+    const m = /^#\/home\/?\?(.*)$/.exec(h);
+    const tp = m && safe(() => new URLSearchParams(m[1]).get('tplus'), null);
+    if (tp && !parseHash(h)) { hist.intent = 'replace'; history.replaceState(history.state, '', location.pathname + location.search + hashFor(startRoute())); }
   }
 
   // Old '#/tplus/<route>[/<p>]' links (bookmarks, v1.0 builds) → the form the portal router keeps.
@@ -1289,11 +1427,13 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
         case 'classic':
         case 'classic-sig':
           closeMenu(false);
+          classicExplain = true;
           safe(() => TP.settings.set({ wrap: origin === 'ultra' ? { courses: false } : { portal: false } }));
           return;
         case 'more': openSheet(); return;
         case 'sheet-close': closeSheet(); return;
         case 'detail-close': closeDetail(); return;
+        case 'detail-copy': if (el.dataset.link) copyLink(el.dataset.link, el); return;
         case 'sb-courses': toggleCoursesGroup(el); return;
         case 'reload': location.reload(); return;
         case 'feedback': closeMenu(false); closeSheet(); safe(() => TP.feedback?.open({ page: current?.route, opener: $('.tp-avatar') })); return;
@@ -1531,7 +1671,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
 
   TP.shell = {
     CSS: CSS_FILES, ROUTES,
-    register, navigate, href, toast, announce, sortCourses, inSidebar, setInSidebar, sidebarCourses,
+    register, navigate, href, setParams, toast, announce, sortCourses, inSidebar, setInSidebar, sidebarCourses,
     detail: { open: openDetail, update: updateDetail, close: closeDetail, isOpen: () => !!$('.tp-detail')?.open },
     rerender: () => rerender(),
     start, preflight,

@@ -177,7 +177,7 @@
     load(it);
     markShownRead(it);
     const row = safe(() => SH.hooks.rowFor && SH.hooks.rowFor(it), null);
-    TP.shell.detail.open({ title: it.title, html: sheetHtml(), opener: row && row.isConnected ? row : SH.opener, onAction, onKey });
+    TP.shell.detail.open({ title: it.title, html: sheetHtml(), opener: row && row.isConnected ? row : SH.opener, onAction, onKey, key: it.key, link: it.url || '' });
     const dlg = safe(() => TP.shell.app.querySelector('.tp-detail'), null);
     if (dlg) {
       SH.showing = true;

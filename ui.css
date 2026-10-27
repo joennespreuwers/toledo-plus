@@ -337,11 +337,12 @@
   height: var(--hairline); margin: 12px 8px; overflow: hidden; color: transparent; background: var(--separator);
   font-size: 1px; line-height: 1px;
 }
+/* counts keep their number in the rail (TP-188): a small tinted pill, like the red overdue badge */
 .sb-rail .tp-sb-count {
-  position: absolute; top: 7px; right: 9px; width: 8px; height: 8px; border-radius: 50%;
-  background: var(--tint-fill); box-shadow: 0 0 0 2px var(--bg-2);
+  position: absolute; top: 3px; right: 2px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: var(--r-pill);
+  background: var(--tint-fill); color: var(--on-tint); box-shadow: 0 0 0 2px var(--bg-2);
+  font: 600 10px/16px var(--font); text-align: center;
 }
-.sb-rail .tp-sb-count > [aria-hidden="true"] { display: none; }
 .sb-rail .tp-sb-item > .tp-badge {
   position: absolute; top: 3px; right: 2px; min-width: 16px; height: 16px; min-height: 16px; padding: 0 4px;
   font-size: 10px; line-height: 16px; box-shadow: 0 0 0 2px var(--bg-2);
@@ -352,6 +353,15 @@
   background: var(--c, var(--fill)); color: var(--fg, var(--label)); font: 700 11px/1 var(--font); letter-spacing: .01em;
 }
 .sb-rail .tp-sb-course.active .tp-sb-initials { box-shadow: 0 0 0 2px var(--bg-2), 0 0 0 4px var(--tint-text); }
+/* touch screens never show the tooltips: the rail's nav items carry a small caption under the icon (TP-186) */
+@media (hover: none) {
+  .sb-rail .tp-sb-scroll, .sb-rail .tp-sb-foot { padding-left: 4px; padding-right: 4px; }
+  .sb-rail .tp-sb-item:not(.tp-sb-course) { flex-direction: column; width: 56px; min-height: 52px; gap: 2px; padding: 4px 0; }
+  .sb-rail .tp-sb-item:not(.tp-sb-course) .tp-sb-label {
+    position: static; flex: none; width: auto; max-width: 54px; height: auto; margin: 0; clip: auto; overflow: hidden;
+    text-overflow: ellipsis; font-size: 10px; line-height: 12px; font-weight: 500; letter-spacing: -.01em; text-align: center;
+  }
+}
 
 .tp-scrim { position: fixed; inset: 0; z-index: 25; background: var(--scrim); }
 
@@ -462,6 +472,8 @@ a.tp-mail { color: var(--tint-text); text-decoration: none; }
 
 /* main + large title */
 .tp-app { --content-max: var(--content-wide); }
+/* 4K / ultrawide at 100% scaling: use more of the width instead of a third of it (TP-116) */
+@media (min-width: 2200px) { .tp-app { --content-max: min(1680px, 62vw); } }
 .tp-main {
   /* one centred column right of the sidebar (≤ 1240px), the same for every view,
      so wide screens have balanced space on both sides instead of a strip next to an empty area */
@@ -520,6 +532,7 @@ a.tp-mail { color: var(--tint-text); text-decoration: none; }
 .tp-tabs:not(:has(.tp-tab-ind)) .tp-tab.active { background: color-mix(in srgb, var(--tint) 7%, var(--bg-2)); } /* translucent --tint-soft dropped the 11px label to ~4:1 */
 .tp-tab-label { font-size: .6875rem; line-height: .8125rem; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tp-tab-dot { position: absolute; top: 6px; left: calc(50% + 8px); width: 8px; height: 8px; border-radius: 50%; background: var(--red-fill); }
+.tp-tab-dot.is-unread { background: var(--tint-fill); } /* "Meer": unread announcements (not an alarm) */
 
 /* "More" sheet (native <dialog>) */
 .tp-sheet {
@@ -556,7 +569,8 @@ a.tp-mail { color: var(--tint-text); text-decoration: none; }
 .tp-toast-btn:focus-visible { outline: 2px solid #FFFFFF; outline-offset: 2px; }
 
 /* --- responsive shell --- */
-@media (max-width: 699px) {
+/* compact navigation (tab bar) on phones and on short screens: landscape phones, 200% zoom (TP-035) */
+@media (max-width: 699px), (max-height: 500px) and (max-width: 1099px) {
   .tp-app, .tp-app.sb-collapsed, .tp-app.sb-rail { grid-template-columns: minmax(0, 1fr); }
   .tp-sidebar, .tp-sb-toggle, .tp-scrim { display: none !important; }
   .tp-tabbar { display: block; }
@@ -572,7 +586,15 @@ a.tp-mail { color: var(--tint-text); text-decoration: none; }
   .tp-kbd { display: none; }
   .tp-menu { position: fixed; right: 8px; left: 8px; top: calc(var(--toolbar-h) + 4px); min-width: 0; }
 }
-@media (min-width: 700px) and (max-width: 899px) {
+/* short screens: a slimmer tab bar (icon and label side by side) leaves more of the ~360–400px height to the content */
+@media (max-height: 500px) and (max-width: 1099px) {
+  .tp-tab { min-height: 36px; flex-direction: row; gap: 6px; padding: 2px 4px; }
+  .tp-tab .tp-ic { width: 18px; height: 18px; }
+  .tp-tab-dot { top: 4px; left: auto; right: 6px; }
+  .tp-main { padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
+  .tp-toasts { bottom: calc(60px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (min-width: 700px) and (max-width: 899px) and (min-height: 501px) {
   /* the rail by default; the toolbar button / ⌘\ expands the full sidebar as an overlay */
   .tp-app, .tp-app.sb-collapsed, .tp-app.sb-open { grid-template-columns: var(--rail-w) minmax(0, 1fr); }
   .tp-app.sb-open .tp-sidebar {
@@ -623,7 +645,7 @@ a.tp-mail { color: var(--tint-text); text-decoration: none; }
 }
 .tp-pal-opt {
   display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 6px 10px;
-  border-radius: var(--r-control); cursor: pointer;
+  border-radius: var(--r-control); cursor: pointer; color: var(--label); text-decoration: none; /* results are <a href> */
 }
 .tp-pal-opt[aria-selected="true"] { background: var(--tint-soft); }
 .tp-pal-tile {
@@ -685,6 +707,11 @@ mark.tp-hl { background: color-mix(in srgb, var(--tint) 22%, transparent); color
 .tp-deep-mark .tp-wordmark { font-size: 15px; }
 .tp-deep-back-label { max-width: 34vw; overflow: hidden; text-overflow: ellipsis; }
 .tp-deep-spacer { flex: 1; }
+.tp-deep-hide {
+  flex: none; display: inline-grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 8px;
+  background: none; color: var(--label-2); cursor: pointer;
+}
+.tp-deep-hide:hover { background: var(--fill); color: var(--label); }
 @media (max-width: 520px) { .tp-deep-link span, .tp-deep-name { display: none; } }
 
 /* ========================================================================== components */

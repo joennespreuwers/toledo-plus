@@ -240,6 +240,8 @@
 
   function toggleEdit() {
     ui.edit = !ui.edit;
+    // TP-206: edit mode is in the URL ('&id=edit'), so reload and Back keep it
+    try { if (cur && cur.setParams) cur.setParams(ui.edit ? { id: 'edit' } : {}); } catch { /* best effort */ }
     if (live()) repaint();
     TP.shell.announce?.(t(ui.edit ? 'courses.editOn' : 'courses.editOff'));
   }

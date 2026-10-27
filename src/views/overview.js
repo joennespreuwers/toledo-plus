@@ -521,6 +521,7 @@
         title: d.title,
         html: html(),
         opener,
+        key: d.key, link: d.url ? TP.util.abs(d.url) : '', // history entry (Back closes it) + "Kopieer link" (TP-199, TP-202)
         onKey(ev) {
           // Enter in a field of the edit form saves (no <form>: the sheet routes its own actions)
           if (st.edit && ev.key === 'Enter' && ev.target && ev.target.tagName === 'INPUT') { ev.preventDefault(); save(); }

@@ -97,7 +97,9 @@ describe('device compatibility', () => {
       const sb = await box(h.page, 'nav.tp-sidebar');
       const main = await box(h.page, 'main#tp-main');
       const area = width - sb.right;
-      assert.ok(main.width <= 1241, `${width}: content column ≤ 1240 (${main.width})`);
+      const cap = width >= 2200 ? Math.min(1680, width * 0.62) : 1240; // 4K/ultrawide use more of the width (TP-116)
+      assert.ok(main.width <= cap + 1, `${width}: content column ≤ ${cap} (${main.width})`);
+      if (width >= 2200) assert.ok(main.width > 1300, `${width}: wide screens use more than 1240px (${main.width})`);
       const gapL = main.left - sb.right, gapR = width - main.right;
       assert.ok(Math.abs(gapL - gapR) <= 2, `${width}: centred in the area right of the sidebar (${gapL} vs ${gapR})`);
       if (area <= 1240) assert.ok(gapL <= 1, `${width}: fills the area when it is narrower`);
