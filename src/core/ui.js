@@ -253,8 +253,14 @@
   const cols = (mainHtml, sideHtml) =>
     `<div class="tp-cols"><div class="tp-col-main">${mainHtml ?? ''}</div>${sideHtml ? `<div class="tp-col-side">${sideHtml}</div>` : ''}</div>`;
 
+  /** Undo after a destructive or bulk action (shared pattern): a toast `label` with an "Ongedaan maken" button that
+   *  calls restore(). Generic on purpose: any view can use it. → the toast element (or null without a shell). */
+  function undoToast(label, restore) {
+    try { return TP.shell.toast(label, { action: { label: t('common.undo'), hint: t('common.undoHint'), onClick: restore } }); } catch (_) { return null; }
+  }
+
   TP.ui = {
     icon, ICONS, logo, wordmark, emptyArt, attrs, section, group, row, disclosure, badge, dot, dateTile, empty, noResults, skeleton, errorRow,
-    button, segmented, toggle, select, swatches, cols,
+    button, segmented, toggle, select, swatches, cols, undoToast,
   };
 })();

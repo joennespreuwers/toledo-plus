@@ -768,7 +768,7 @@
 
   /**
    * opts.includeDone (default false), opts.horizonDays (default settings.deadlines.horizonDays),
-   * opts.pastDays (default HORIZON.donePastDays: how long done items stay listed after their due date).
+   * opts.pastDays (default HORIZON.donePastDays: how long done items stay listed after their due date), opts.allCustom (own deadlines beyond the horizon too).
    * Overdue items that are not done are always included, however old (overdue:true, ageDays).
    * Own (custom) deadlines are not cut off when horizonDays ≥ HORIZON.viewDays (the Deadlines page shows them all).
    * Toledo/Ultra duplicates (same normalized title + course, due within ±2 h) are merged.
@@ -806,7 +806,7 @@
     }
     for (const c of Array.isArray(s.custom) ? s.custom : []) {
       const due = toMs(c && c.due);
-      if (!c || !c.id || !due || due > untilOwn) continue;
+      if (!c || !c.id || !due || (due > untilOwn && !opts.allCustom)) continue; // allCustom: own items beyond the horizon too (TP-015)
       const key = 'c' + hash(c.id);
       const m = c.courseLuId ? meta(c.courseLuId, '') : { courseName: '', color: GRAPHITE };
       // Custom items are never deduped away (the student must be able to remove them).
@@ -819,7 +819,7 @@
       if (d.due < pastFrom && d.done) continue;                 // old and done: gone
       if (!opts.includeDone && d.done) continue;
       d.overdue = !d.done && d.due < now;
-      d.ageDays = d.due < now ? Math.floor((now - d.due) / DAY) : 0;
+      d.ageDays = d.due < now ? Math.max(0, -TP.fmt.daysUntil(d.due)) : 0; // calendar days, like "gisteren" (TP-219)
       for (const k of d.keys) nextAliases.set(k, d.keys);
       out.push(d);
     }
@@ -998,19 +998,50 @@
     return next;
   }
 
-  async function addCustomDeadline({ title, courseLuId, due }) {
-    const id = U().uid();
-    const item = { id, title: String(title || '').trim(), courseLuId: courseLuId || '', due: toMs(due) };
-    const custom = (Array.isArray(S().custom) ? S().custom : []).concat(item);
-    await TP.settings.set({ custom });
+  /** Set "klaar" for several deadlines at once (one state write; bulk action + its Undo). keys: deadline keys. */
+  async function setDone(keys, on = true) {
+    const all = [...new Set([].concat(keys || []).flatMap((k) => aliasMap.get(k) || [k]))];
+    if (!all.length) return;
+    const now = Date.now();
+    await setState({ done: Object.fromEntries(all.map((k) => [k, on ? now : null])) });
+    emit('change', 'state');
+  }
+
+  const customList = () => (Array.isArray(S().custom) ? S().custom : []);
+  /** Add an own deadline. Passing the `id` of a removed one restores it (Undo): same key, so its "klaar" mark survives. */
+  async function addCustomDeadline({ id, title, courseLuId, due }) {
+    const list = customList();
+    const keep = id && !list.some((c) => c.id === id) ? String(id) : U().uid();
+    const item = { id: keep, title: String(title || '').trim(), courseLuId: courseLuId || '', due: toMs(due) };
+    await TP.settings.set({ custom: list.concat(item) });
     emit('change', 'settings');
     return item;
   }
 
-  async function removeCustomDeadline(id) {
-    const custom = (Array.isArray(S().custom) ? S().custom : []).filter((c) => c.id !== id);
+  /** Change an own deadline in place (title, course, due); the id (and so its key and done mark) stays. → item | null */
+  async function updateCustomDeadline(id, patch = {}) {
+    let out = null;
+    const custom = customList().map((c) => {
+      if (!c || c.id !== id) return c;
+      out = { ...c };
+      if (patch.title != null) out.title = String(patch.title).trim() || c.title;
+      if (patch.courseLuId != null) out.courseLuId = String(patch.courseLuId || '');
+      if (patch.due != null && toMs(patch.due)) out.due = toMs(patch.due);
+      return out;
+    });
+    if (!out) return null;
     await TP.settings.set({ custom });
     emit('change', 'settings');
+    return out;
+  }
+
+  /** → the removed item (pass it to addCustomDeadline to undo) | null */
+  async function removeCustomDeadline(id) {
+    const list = customList();
+    const gone = list.find((c) => c && c.id === id) || null;
+    await TP.settings.set({ custom: list.filter((c) => c.id !== id) });
+    emit('change', 'settings');
+    return gone;
   }
 
   async function addRecent(item) {
@@ -1084,8 +1115,12 @@
   }
 
   // ---------------------------------------------------------------- ICS
+  // One writer for every calendar file (deadlines, exams, agenda lessons): RFC 5545 escaping, octet folding, UTC times.
   const icsStamp = (ms) => new Date(ms).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
-  const icsText = (s) => String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r\n|\r|\n/g, '\\n');
+  /** TEXT value: CR/LF/CRLF → "\n", other control characters dropped (a bare CR must never start a new line, TP-176). */
+  const icsText = (s) => String(s == null ? '' : s).replace(/\r\n|\r|\n/g, '\n').replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, '')
+    .replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+  const icsUrl = (u) => (typeof u === 'string' && /^https?:\/\/[^\s\u0000-\u001f\u007f]+$/i.test(u) ? u : '');
   const enc = typeof TextEncoder !== 'undefined' ? new TextEncoder() : null;
   const octets = (ch) => (enc ? enc.encode(ch).length : unescape(encodeURIComponent(ch)).length);
 
@@ -1103,28 +1138,77 @@
   }
 
   const TRIGGER = { '1h': '-PT1H', '1d': '-P1D', '2d': '-P2D' };
+  /** settings.deadlines.reminder as a VALARM trigger duration, or null. */
+  const icsReminder = () => TRIGGER[(S().deadlines || {}).reminder || 'none'] || null;
+  // The language of the text in the file (e.g. "Examen:") is the UI language (TP-017: was always NL).
+  const icsLang = () => { try { return String(TP.i18n.lang() || 'nl').toUpperCase(); } catch (_) { return 'NL'; } };
+  const tr = (k) => { try { return TP.t(k); } catch (_) { return k; } };
 
-  /** UID = the deadline key (source id based since v1.2), so a moved deadline updates the same calendar event. */
-  function ics(list) {
-    const reminder = (S().deadlines || {}).reminder || 'none';
-    const trig = TRIGGER[reminder];
-    const now = icsStamp(Date.now());
-    const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Toledo+//Deadlines//NL', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'X-WR-CALNAME:Toledo+ deadlines'];
-    for (const d of list || []) {
-      if (!d || !d.due) continue;
-      const summary = d.courseName ? `${d.courseName}: ${d.title}` : d.title;
+  /**
+   * One VCALENDAR. events: [{ uid, start, end, summary, location?, description?, url?, alarm?: '-P1D', alarmRel?: 'START'|'END' }].
+   * opts: { name (X-WR-CALNAME), now }.
+   */
+  function icsEvents(events, opts = {}) {
+    const now = icsStamp(opts.now || Date.now());
+    const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', `PRODID:-//Toledo+//Toledo+//${icsLang()}`, 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH'];
+    if (opts.name) L.push(`X-WR-CALNAME:${icsText(opts.name)}`);
+    for (const e of events || []) {
+      if (!e || !Number.isFinite(e.start)) continue;
+      const end = Number.isFinite(e.end) && e.end > e.start ? e.end : e.start + 60e3;
       L.push('BEGIN:VEVENT',
-        `UID:${d.key || hash(d.title + d.due)}@toledo-plus`,
+        `UID:${String(e.uid || hash(String(e.summary) + e.start)).replace(/[\s\u0000-\u001f\u007f]/g, '')}`,
         `DTSTAMP:${now}`,
-        `DTSTART:${icsStamp(d.due - 30 * 60e3)}`,
-        `DTEND:${icsStamp(d.due)}`,
-        `SUMMARY:${icsText(summary)}`);
-      if (d.url && /^https?:\/\/[^\s]+$/i.test(d.url)) L.push(`URL:${d.url}`);
-      if (trig) L.push('BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${icsText(summary)}`, `TRIGGER:${trig}`, 'END:VALARM');
+        `DTSTART:${icsStamp(e.start)}`,
+        `DTEND:${icsStamp(end)}`,
+        `SUMMARY:${icsText(e.summary)}`);
+      if (e.location) L.push(`LOCATION:${icsText(e.location)}`);
+      if (e.description) L.push(`DESCRIPTION:${icsText(e.description)}`);
+      const url = icsUrl(e.url);
+      if (url) L.push(`URL:${url}`);
+      if (e.alarm) L.push('BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${icsText(e.summary)}`, `TRIGGER${e.alarmRel === 'END' ? ';RELATED=END' : ''}:${e.alarm}`, 'END:VALARM');
       L.push('END:VEVENT');
     }
     L.push('END:VCALENDAR');
     return L.map(icsFold).join('\r\n') + '\r\n';
+  }
+
+  /** Deadline → event: the 30 min before the due time; the reminder counts back from the due time itself (TP-107). */
+  function deadlineEvent(d, trig) {
+    const summary = d.courseName ? `${d.courseName}: ${d.title}` : d.title;
+    return { uid: `${d.key || hash(d.title + d.due)}@toledo-plus`, start: d.due - 30 * 60e3, end: d.due, summary, url: d.url, alarm: trig, alarmRel: 'END' };
+  }
+  /** KU Loket exam (TP.kuloket exam shape) → event titled "Examen: <course>" with the reminder (TP-105). */
+  function examEvent(x, trig) {
+    const loc = x.location || {};
+    let c = null;
+    try { c = x.courseLuId ? course(x.courseLuId) : null; } catch (_) { c = null; }
+    const name = (c && c.name) || x.title || '';
+    return {
+      uid: `${String(x.id || hash(name + x.start)).replace(/[^\w.-]/g, '')}@toledoplus`,
+      start: x.start, end: x.end,
+      summary: `${tr('agenda.exam')}: ${name}`,
+      location: [loc.room, loc.building && loc.building !== loc.room ? loc.building : '', loc.street, loc.city].filter(Boolean).join(', '),
+      description: [x.courseCode, x.text, x.group, (x.teachers || []).join(', ')].filter(Boolean).join('\n'),
+      url: loc.url, alarm: trig,
+    };
+  }
+
+  /** UID = the deadline key (source id based since v1.2), so a moved deadline updates the same calendar event.
+   *  opts.exams: KU Loket exams to add to the same file (bulk "Zet in agenda", TP-104). */
+  function ics(list, opts = {}) {
+    const trig = icsReminder();
+    const evs = (list || []).filter((d) => d && d.due).map((d) => deadlineEvent(d, trig));
+    for (const x of opts.exams || []) if (x && x.start) evs.push(examEvent(x, trig));
+    return icsEvents(evs, { name: opts.name || 'Toledo+ deadlines' });
+  }
+
+  /** File name for a download: lowercase ASCII slug cut at a word boundary (≤ 60 chars, TP-017). */
+  function icsName(title, fallback = 'toledo') {
+    const s = String(title || '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    if (s.length <= 60) return s || fallback;
+    const cut = s.slice(0, 61);
+    const i = cut.lastIndexOf('-');
+    return (i >= 12 ? cut.slice(0, i) : s.slice(0, 60)).replace(/-$/, '') || fallback;
   }
 
   // ---------------------------------------------------------------- Ultra
@@ -1588,7 +1672,8 @@
     authExpired: () => authExpired, loginUrl, isStale: () => stale,
     ultraAuthExpired: () => ultraAuth, ultraLoginUrl: () => `${ULTRA}/ultra/course`,
     courses, course, feed, kindOf, deadlines, calendarItems, announcements, schedule, link, quickLinks,
-    markRead, markFeedSeen, setPinned, toggleDone, addCustomDeadline, removeCustomDeadline, addRecent, ics,
+    markRead, markFeedSeen, setPinned, toggleDone, setDone, addCustomDeadline, updateCustomDeadline, removeCustomDeadline, addRecent,
+    ics, icsEvents, icsName, icsReminder,
     userName, loadUser,
     ultraCourse, ultraTree, ultraDownload, ultraOpen, ultraAnnouncement, resolveCourseId, clearCourseCache, ultraItemUrl: itemLink,
     announcementBody, annIds, advalvasMessage, advalvasUrl, advalvasId: valvasId, markUnread, VALVAS,

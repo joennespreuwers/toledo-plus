@@ -414,7 +414,7 @@ test('ics: valid structure, CRLF, escaping, folding, alarm', async () => {
   assert.ok(lines.includes('DTEND:20261103T225900Z'));
   assert.ok(lines.includes('SUMMARY:Filmtaal 1: Scène 1\\; deel 2\\, \\\\ final\\nversie'));
   assert.ok(lines.includes('URL:https://e/9'));
-  assert.ok(lines.includes('TRIGGER:-P1D'));
+  assert.ok(lines.includes('TRIGGER;RELATED=END:-P1D'), 'reminder counts back from the due time, not from DTSTART (TP-107)');
   assert.equal(lines.filter((l) => l === 'BEGIN:VEVENT').length, 2);
   assert.equal(lines.filter((l) => l === 'BEGIN:VALARM').length, 2);
   const unfolded = s.replace(/\r\n /g, '');
@@ -422,7 +422,7 @@ test('ics: valid structure, CRLF, escaping, folding, alarm', async () => {
   await TP.settings.set({ deadlines: { reminder: 'none' } });
   assert.ok(!D.ics([d]).includes('VALARM'));
   await TP.settings.set({ deadlines: { reminder: '1h' } });
-  assert.ok(D.ics([d]).includes('TRIGGER:-PT1H'));
+  assert.ok(D.ics([d]).includes('TRIGGER;RELATED=END:-PT1H'));
 });
 
 // ---- mark read ------------------------------------------------------------------

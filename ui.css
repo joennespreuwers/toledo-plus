@@ -546,6 +546,14 @@ a.tp-mail { color: var(--tint-text); text-decoration: none; }
   font-size: var(--fs-subhead); line-height: var(--lh-subhead); font-weight: 500; text-align: center;
 }
 .tp-toast:empty { display: none; }
+/* a toast with one action ("Ongedaan maken"): the only toast that takes clicks */
+.tp-toast.has-action { display: flex; align-items: center; gap: 12px; padding: 6px 6px 6px 16px; pointer-events: auto; text-align: left; }
+.tp-toast-btn {
+  flex: none; min-height: 32px; padding: 0 12px; border: 0; border-radius: var(--r-pill); cursor: pointer;
+  background: rgba(255, 255, 255, .14); color: #FFFFFF; font: 600 var(--fs-subhead)/1 var(--font);
+}
+.tp-toast-btn:hover { background: rgba(255, 255, 255, .22); }
+.tp-toast-btn:focus-visible { outline: 2px solid #FFFFFF; outline-offset: 2px; }
 
 /* --- responsive shell --- */
 @media (max-width: 699px) {
@@ -966,7 +974,13 @@ a.tp-row:active, button.tp-row:active, summary.tp-row:active { background: var(-
 .tp-detail::backdrop { background: var(--scrim); }
 .tp-detail-head { flex: none; display: flex; align-items: flex-start; gap: 12px; padding: 16px 12px 8px 20px; }
 .tp-detail-head h2 { flex: 1; min-width: 0; font: 700 var(--fs-title2)/var(--lh-title2) var(--font-display); letter-spacing: var(--ls-title2); overflow-wrap: anywhere; }
-.tp-detail-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 4px 16px 20px; display: grid; gap: 16px; align-content: start; }
+/* rows are max-content: the groups clip their corners (overflow:hidden), so 'auto' rows would shrink them to fit a short
+   sheet and hide the actions; now the body scrolls instead (TP-016: 150 % zoom, 1366×600, 640×360) */
+.tp-detail-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px 16px 20px; display: grid; grid-auto-rows: max-content; gap: 16px; align-content: start; }
+/* tall enough: the actions stay in view under a long assignment text (sticky to the bottom of the scrolling body) */
+@media (min-height: 560px) {
+  .tp-detail-body > .tp-detail-actions { position: sticky; bottom: 0; z-index: 2; box-shadow: 0 -8px 16px -12px rgba(0, 0, 0, .35); }
+}
 .tp-detail-meta .tp-row { min-height: 40px; }
 .tp-detail-meta .tp-row-title { white-space: normal; }
 .tp-detail-desc { padding: 12px 16px; font-size: var(--fs-body); line-height: 1.45; }
