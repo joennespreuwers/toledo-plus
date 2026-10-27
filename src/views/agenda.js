@@ -446,19 +446,22 @@
     const head = [];
     for (let i = 0; i < 7; i++) head.push(`<th scope="col" abbr="${esc(fdate(addDays(from, i), { weekday: 'long' }))}">${esc(fdate(addDays(from, i), { weekday: 'narrow' }))}</th>`);
     const rows = [];
+    // one tab stop (TP.ui.rovingKey: arrows move between days): the selected day, else today, else the 1st
+    const days = Array.from({ length: 42 }, (_, k) => addDays(from, k));
+    const stop = [sod(S.anchor), today, base].find((x) => days.includes(x));
     for (let w = 0; w < 6; w++) {
       const cells = [];
       for (let i = 0; i < 7; i++) {
         const d = addDays(from, w * 7 + i);
         const inR = mode() !== 'month' && d >= r.from && d < r.to;
-        cells.push(`<td><button type="button" class="ag-mini-d${new Date(d).getMonth() !== m ? ' is-out' : ''}${d === today ? ' is-today' : ''}${inR ? ' in-range' : ''}${d === sod(S.anchor) ? ' is-sel' : ''}" data-action="ag-goto-day" data-day="${d}" aria-label="${esc(cap(fdate(d, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })))}"${d === today ? ' aria-current="date"' : ''}${inR ? ' aria-pressed="true"' : ' aria-pressed="false"'}>${esc(fdate(d, { day: 'numeric' }))}</button></td>`);
+        cells.push(`<td><button type="button" data-roving-item tabindex="${d === stop ? 0 : -1}" class="ag-mini-d${new Date(d).getMonth() !== m ? ' is-out' : ''}${d === today ? ' is-today' : ''}${inR ? ' in-range' : ''}${d === sod(S.anchor) ? ' is-sel' : ''}" data-action="ag-goto-day" data-day="${d}" aria-label="${esc(cap(fdate(d, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })))}"${d === today ? ' aria-current="date"' : ''}${inR ? ' aria-pressed="true"' : ' aria-pressed="false"'}>${esc(fdate(d, { day: 'numeric' }))}</button></td>`);
       }
       rows.push(`<tr>${cells.join('')}</tr>`);
     }
-    return `<div class="ag-mini" role="group" aria-label="${esc(t('agenda.mini'))}">
+    return `<div class="ag-mini" role="group" aria-label="${esc(t('agenda.mini'))}" data-roving="7">
   <div class="ag-mini-head"><h3>${esc(cap(fdate(base, { month: 'long', year: 'numeric' })))}</h3>
-    <button type="button" class="ag-mini-nav" data-action="ag-mini-prev" aria-label="${esc(t('agenda.mini.prev'))}">${icon('chevronLeft', { size: 14 })}</button>
-    <button type="button" class="ag-mini-nav" data-action="ag-mini-next" aria-label="${esc(t('agenda.mini.next'))}">${icon('chevronRight', { size: 14 })}</button></div>
+    <button type="button" class="ag-mini-nav" data-action="ag-mini-prev" data-roving-prev aria-label="${esc(t('agenda.mini.prev'))}">${icon('chevronLeft', { size: 14 })}</button>
+    <button type="button" class="ag-mini-nav" data-action="ag-mini-next" data-roving-next aria-label="${esc(t('agenda.mini.next'))}">${icon('chevronRight', { size: 14 })}</button></div>
   <table class="ag-mini-t"><thead><tr>${head.join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>
 </div>`;
   }
@@ -972,6 +975,7 @@ ${src ? `<p class="ag-pop-src">${esc(t('agenda.pop.source.' + src))}${l.source =
     if (isEditable(tg)) return false;
     const k = ev.key;
     const done = () => { ev.preventDefault(); return true; };
+    if (TP.ui.rovingKey(ev)) return true; // mini calendar: arrows move between days
     if (/^Arrow/.test(k) && !ev.shiftKey) {
       const evEl = tg && tg.closest && tg.closest('.ag-ev[data-key], .ag-chip[data-key], .ag-lrow[data-key]');
       if (evEl && S.ctx.root.contains(evEl)) { moveFocus(evEl, k); return done(); }

@@ -107,6 +107,7 @@
       'common.retry': 'Opnieuw',
       'common.updated': 'Bijgewerkt {time}',
       'common.noResults': 'Geen resultaten voor “{q}”',
+      'common.items.one': ', {n} item', 'common.items.other': ', {n} items', // screen-reader count after a section title
       'common.noResults.title': 'Geen resultaten',
       'common.noResults.for': 'voor “{q}”',
       'common.loading': 'Laden…',
@@ -240,6 +241,7 @@
       'common.retry': 'Try again',
       'common.updated': 'Updated {time}',
       'common.noResults': 'No results for “{q}”',
+      'common.items.one': ', {n} item', 'common.items.other': ', {n} items',
       'common.noResults.title': 'No results',
       'common.noResults.for': 'for “{q}”',
       'common.loading': 'Loading…',
@@ -373,6 +375,7 @@
       'common.retry': 'Réessayer',
       'common.updated': 'Mis à jour à {time}',
       'common.noResults': 'Aucun résultat pour « {q} »',
+      'common.items.one': ', {n} élément', 'common.items.other': ', {n} éléments',
       'common.noResults.title': 'Aucun résultat',
       'common.noResults.for': 'pour « {q} »',
       'common.loading': 'Chargement…',
