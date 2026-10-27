@@ -46,6 +46,7 @@ a.cv-row:hover, summary.cv-row:hover, .cv-view .cv-folder > summary:hover, .cv-r
 .cv-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .cv-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-body, .9375rem); }
 .cv-strong { font-weight: 600; }
+.cv-dl .cv-strong, .cv-lesson .cv-strong { font-weight: 400; } /* same row as in Deadlines / Overzicht: title 400 */
 .cv-meta { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--label-2); font-size: var(--fs-subhead, .8125rem); }
 .cv-trail, .cv-chev { flex: 0 0 auto; display: inline-flex; color: var(--label-3); }
 .cv-chev svg { transition: transform .2s ease-out; }
@@ -142,3 +143,4 @@ button.cv-row.cv-ann:hover { background: var(--fill); }
 .cv-ft-text { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
 .cv-ft-text .tp-ic { color: var(--tint-text); }
 .cv-ft-btns { display: inline-flex; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 699px) { .tp-head-actions [data-id="sidebar"] { display: none; } } /* phones have no sidebar */

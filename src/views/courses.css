@@ -33,6 +33,10 @@
 .cs-view .cs-sb-btn:hover { background: var(--fill); color: var(--tint-text); }
 .cs-view .cs-sb-btn.is-on { color: var(--tint-text); background: var(--tint-soft); }
 .cs-view .cs-sb-btn:focus-visible { outline: 2px solid var(--tint-text); outline-offset: 2px; }
+@media (hover: none) {
+  .cs-view .cs-sb-btn { width: auto; height: auto; min-width: 44px; min-height: 44px; gap: 2px; padding: 4px 6px; }
+  .cs-view .cs-sb-btn::after { content: attr(title); font-size: 10px; line-height: 12px; font-weight: 500; max-width: 72px; text-align: center; }
+}
 .cs-card[hidden] { display: none; }
 .cs-view .cs-card-main {
   display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 12px 8px 12px 16px;

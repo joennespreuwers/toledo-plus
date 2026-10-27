@@ -1,16 +1,12 @@
 /* Toledo+ — KU Loket hub. */
-.kl-note { display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px; font-size: var(--fs-subhead); line-height: var(--lh-subhead); }
+/* compact empty/notice line inside a card: same size, colour and padding as Overzicht › Rooster "Geen lessen" */
+.kl-note { display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px; color: var(--label-2); font-size: var(--fs-subhead); line-height: var(--lh-subhead); }
 .kl-note > svg { flex: none; margin-top: 1px; color: var(--label-2); }
 .kl-note p { margin: 0; }
 .kl-note a { color: var(--tint-text); font-weight: 500; }
-.kl-tile { display: grid; place-items: center; width: 28px; height: 28px; border-radius: var(--r-tile, 8px); color: #fff; background: var(--kl, #8E8E93); }
-.kl-g-study { --kl: #007AFF; }
-.kl-g-enrol { --kl: #5856D6; }
-.kl-g-agenda { --kl: #FF3B30; }
-.kl-g-survey { --kl: #FF9500; }
-.kl-g-safety { --kl: #34C759; }
-.kl-g-support { --kl: #8E8E93; }
-.kl-g-survey, .kl-g-safety { color: #000; }
+/* the same tint tile as every other icon tile (the group is named by its section header); red/amber/green only mean status */
+.kl-tile { display: grid; place-items: center; width: 28px; height: 28px; border-radius: var(--r-tile, 8px); color: var(--tint-text); background: var(--tint-tile); }
+.kl-tile > .tp-ic { width: 16px; height: 16px; }
 .kl-app .tp-row-sub { white-space: normal; }
 /* KU Loket unreachable (TP-137): an error with "Opnieuw" instead of "no exams" / "no classes" */
 .kl-error > svg { color: var(--red); }
