@@ -48,7 +48,7 @@ async function until(page, pred, what, timeout = 8000) {
 async function waitIndexed(page, min = 10) {
   await page.waitForFunction((min) => {
     const sr = document.querySelector('#tplus-root').shadowRoot;
-    const m = /(\d+) documenten/.exec(sr.querySelector('dialog.tp-palette .tp-pal-status')?.textContent || '');
+    const m = /(\d+) bestanden/.exec(sr.querySelector('dialog.tp-palette .tp-pal-status')?.textContent || '');
     return m && Number(m[1]) >= min && !/wordt bijgewerkt/.test(sr.querySelector('dialog.tp-palette .tp-pal-status').textContent);
   }, min, { timeout: 20000, polling: 200 });
 }
@@ -100,7 +100,7 @@ describe('⌘K palette on the portal', () => {
     await openPalette(page);
     await waitIndexed(page);
     const st = await palState(page);
-    assert.match(st.status, /^Doorzoekt \d+ documenten in 12 vakken · bijgewerkt \d\d:\d\d$/);
+    assert.match(st.status, /^Doorzoekt \d+ bestanden in 12 vakken · bijgewerkt \d\d:\d\d$/);
     await type(page, 'ooievaar');
     const s = await palState(page);
     assert.ok(s.groups.includes(nl['palette.group.docs']), `documents group: ${s.groups}`);
@@ -177,12 +177,12 @@ describe('⌘K palette on the portal', () => {
     await page.waitForFunction(() => /Doorzoekt/.test(document.querySelector('#tplus-root').shadowRoot.querySelector('[data-index-status]')?.textContent || ''), null, { timeout: 5000 }).catch(() => {});
     const txt = await sec.innerText();
     assert.ok(txt.includes(nl['settings.search.index']), 'switch label');
-    assert.match(txt, /Doorzoekt \d+ documenten in 12 vakken/);
+    assert.match(txt, /Doorzoekt \d+ bestanden in 12 vakken/);
     assert.equal(await sec.locator('input[name="s:search.indexAll"][role="switch"]').isChecked(), true, 'on by default');
     h.rec.reset();
     await sec.locator('[data-action="reindex"]').click();
     await waitFor(() => h.rec.find((r) => /\/contents\?limit=200/.test(r.url)).length >= 12, { timeout: 15000 });
-    await page.waitForFunction(() => /Doorzoekt \d+ documenten in 12 vakken · bijgewerkt/.test(document.querySelector('#tplus-root').shadowRoot.querySelector('[data-index-status]')?.textContent || ''), null, { timeout: 15000 });
+    await page.waitForFunction(() => /Doorzoekt \d+ bestanden in 12 vakken · bijgewerkt/.test(document.querySelector('#tplus-root').shadowRoot.querySelector('[data-index-status]')?.textContent || ''), null, { timeout: 15000 });
     await sec.locator('input[name="s:search.indexAll"]').click({ force: true });
     await waitFor(async () => (await h.getSettings())?.search?.indexAll === false);
     assert.equal((await h.getSettings()).search.indexAll, false);
