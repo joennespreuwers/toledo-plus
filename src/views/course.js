@@ -594,19 +594,22 @@
   // ---------- search ----------
   function applySearch(root, q) {
     const was = st.q;
-    st.q = q || '';
+    st.q = String(q || '').trim();
     const view = root.querySelector('.cv-view');
     if (!view) return;
-    if (!st.q) {
+    const rows = [...view.querySelectorAll('[data-lq]')];
+    const m = TP.index.matcher(st.q, rows.map((el) => el.dataset.lq).concat([...view.querySelectorAll('details.cv-folder')].map((f) => f.dataset.fq || '')));
+    if (m.empty) {
+      st.q = '';
       if (was) paint(); // restore the remembered open state
       return;
     }
-    view.querySelectorAll('[data-lq]').forEach((el) => { el.hidden = !el.dataset.lq.includes(st.q); });
+    rows.forEach((el) => { el.hidden = !m(el.dataset.lq); });
     const tree = view.querySelector('[data-tree]');
     if (tree) {
       const folders = [...tree.querySelectorAll('details.cv-folder')].reverse(); // children before parents
       for (const f of folders) {
-        const self = (f.dataset.fq || '').includes(st.q);
+        const self = m(f.dataset.fq || '');
         if (self) f.querySelectorAll('[data-lq], details.cv-folder').forEach((x) => { x.hidden = false; });
         const body = f.querySelector(':scope > .tp-disclosure-body');
         const anyKid = body ? [...body.children].some((k) => !k.hidden && !k.classList.contains('cv-empty-folder')) : false;
@@ -614,6 +617,12 @@
         f.open = !f.hidden;
       }
     }
+    // A page that matches only in its text: open it so the reason is visible (TP-088).
+    view.querySelectorAll('details.cv-doc:not([hidden])').forEach((d) => {
+      const name = d.querySelector('.cv-name');
+      if (name && !m(name.textContent) && m(d.dataset.lq)) d.open = true;
+    });
+    TP.index.highlight(view, m, '.cv-name, .tp-summary .tp-row-title, details.cv-doc[open] .cv-prose');
     let any = false;
     view.querySelectorAll('.cv-sec').forEach((s) => {
       const hit = !!s.querySelector('[data-lq]:not([hidden]), details.cv-folder:not([hidden])');

@@ -220,8 +220,8 @@
 
   const typeLabel = (it) => (it.type === 'exam' ? t('agenda.exam') : it.type === 'deadline' ? t('agenda.deadline') : t('agenda.lesson'));
   const kindLine = (it) => (it.type === 'lesson' && it.data.form ? it.data.form : typeLabel(it));
-  const qOf = (it) => [it.title, it.room, it.data.courseName, it.data.courseCode, ...(it.data.teachers || []), it.data.group, it.data.form,
-    typeLabel(it)].filter(Boolean).join(' ').toLowerCase();
+  const qOf = (it) => TP.index.hay([it.title, it.room, it.data.courseName, it.data.courseCode, ...(it.data.teachers || []), it.data.group, it.data.form,
+    typeLabel(it)], [it.start]);
   const timeRange = (it) => `${ftime(it.start)} – ${ftime(it.end)}`;
   function ariaFor(it) {
     const when = it.type === 'deadline' ? `${longDay(it.start)} ${ftime(it.start)}` : `${longDay(it.start)}, ${ftime(it.start)} ${t('agenda.until')} ${ftime(it.end)}`;
@@ -932,14 +932,17 @@ ${src ? `<p class="ag-pop-src">${esc(t('agenda.pop.source.' + src))}${l.source =
   function applySearch() {
     const root = S.ctx && S.ctx.root;
     if (!root) return;
-    const q = S.q;
+    const els = [...root.querySelectorAll('.ag-main [data-q]')];
+    const m = TP.index.matcher(S.q, els.map((el) => el.getAttribute('data-q') || ''));
+    const q = m.empty ? '' : S.q;
     let n = 0;
-    root.querySelectorAll('.ag-main [data-q]').forEach((el) => {
-      const hit = !q || (el.getAttribute('data-q') || '').includes(q);
+    els.forEach((el) => {
+      const hit = !q || m(el.getAttribute('data-q') || '');
       if (hit && q) n++;
       if (el.classList.contains('tp-row')) el.hidden = !hit; else el.classList.toggle('ag-dim', !hit);
     });
     root.querySelectorAll('.ag-lday').forEach((s) => { s.hidden = !!q && !s.querySelector('.tp-row:not([hidden])'); });
+    TP.index.highlight(root.querySelector('.ag-main') || root, q ? m : '', '.tp-row[data-q] .tp-row-title');
     const nr = root.querySelector('.ag-noresults');
     if (nr) { nr.hidden = !q || n > 0; nr.innerHTML = q && !n ? TP.ui.noResults(q) : ''; }
   }
@@ -979,7 +982,7 @@ ${src ? `<p class="ag-pop-src">${esc(t('agenda.pop.source.' + src))}${l.source =
       paint();
       if (fresh) load();
     },
-    onSearch(ctx, q) { S.q = (q || '').trim().toLowerCase(); applySearch(); },
+    onSearch(ctx, q) { S.q = (q || '').trim(); applySearch(); },
     /** Shell hook (optional): global shortcuts while focus is outside the view. */
     onKey(ctx, ev) { return S.ctx === ctx ? onKey(ev) : false; },
     destroy() {

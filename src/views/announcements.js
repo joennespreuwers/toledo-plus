@@ -349,9 +349,7 @@
     const id = String(e.id);
     S.events.set(id, e);
     const unread = !e.read;
-    const school = isSchool(e);
-    const src = school ? t('announcements.school') : TP.util.courseName(e.source || '');
-    const q = `${e.title} ${src} ${e.author || ''}`.toLowerCase();
+    const q = TP.index.hayOf.announcement(e); // the same fields as ⌘K: title, course/source, code, sender, date
     const p = VA().annParts(e, unread); // same row as the Overview card
     // Every row (course announcement or Ad Valvas) opens the announcement sheet; ⌘/Ctrl-click still opens the original page.
     return TP.ui.row({
@@ -462,7 +460,7 @@
     searchPlaceholder: () => t('announcements.search'),
     render,
     onSearch(ctx, q) {
-      S.q = (q || '').trim().toLowerCase();
+      S.q = (q || '').trim();
       VA().filter(ctx.root, S.q);
     },
     destroy() { S.q = ''; S.keepRead.clear(); S.ctx = null; },

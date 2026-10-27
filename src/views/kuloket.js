@@ -71,10 +71,13 @@
   function applySearch() {
     const root = S.ctx && S.ctx.root;
     if (!root) return;
-    const q = S.q;
+    const els = [...root.querySelectorAll('[data-q]')];
+    const m = TP.index.matcher(S.q, els.map((el) => el.getAttribute('data-q') || ''));
+    const q = m.empty ? '' : S.q;
     let n = 0;
-    root.querySelectorAll('[data-q]').forEach((el) => { const hit = !q || (el.getAttribute('data-q') || '').includes(q); el.hidden = !hit; if (hit && q) n++; });
+    els.forEach((el) => { const hit = !q || m(el.getAttribute('data-q') || ''); el.hidden = !hit; if (hit && q) n++; });
     root.querySelectorAll('section.tp-section').forEach((s) => { s.hidden = !!q && !s.querySelector('[data-q]:not([hidden])'); });
+    TP.index.highlight(root, q ? m : '', '[data-q] .tp-row-title');
     const nr = root.querySelector('.kl-noresults');
     if (nr) { nr.hidden = !q || n > 0; nr.innerHTML = q && !n ? TP.ui.noResults(q) : ''; }
   }
@@ -95,7 +98,7 @@
       Promise.all([TP.kuloket.exams(), TP.kuloket.lessons({ from, to: from + DAY })])
         .then(() => { if (seq === S.seq && S.ctx === ctx) paint(); }).catch(() => {});
     },
-    onSearch(ctx, q) { S.q = (q || '').trim().toLowerCase(); applySearch(); },
+    onSearch(ctx, q) { S.q = (q || '').trim(); applySearch(); },
     destroy() { S.ctx = null; S.q = ''; S.seq++; },
   });
 })();

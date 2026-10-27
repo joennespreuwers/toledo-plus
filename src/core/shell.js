@@ -887,8 +887,9 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     const els = [...root.querySelectorAll('[data-q]')];
     root.querySelectorAll('[data-tp-hidden]').forEach((el) => { el.hidden = false; el.removeAttribute('data-tp-hidden'); });
     root.querySelectorAll('details[data-tp-sopen]').forEach((d) => { d.open = false; d.removeAttribute('data-tp-sopen'); });
-    if (!q) return els.length;
-    const matched = new Set(els.filter((el) => (el.dataset.q || '').includes(q)));
+    const m = TP.index.matcher(q, els.map((el) => el.dataset.q || ''));
+    if (!q || m.empty) { TP.index.unmark(root); return els.length; }
+    const matched = new Set(els.filter((el) => m(el.dataset.q || '')));
     const keep = new Set();
     for (const m of matched) {
       keep.add(m);
@@ -908,12 +909,13 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
       const rows = box.querySelectorAll('[data-q]');
       if (rows.length && ![...rows].some((r) => !r.hidden && !r.closest('[data-tp-hidden]'))) { box.hidden = true; box.setAttribute('data-tp-hidden', ''); }
     });
+    TP.index.highlight(root, m, '[data-q] .tp-row-title');
     return matched.size;
   }
 
   const runSearch = TP.util.debounce(() => applySearch(), 90);
   function setSearch(q, immediate) {
-    searchQ = String(q || '').trim().toLowerCase();
+    searchQ = String(q || '').trim(); // as typed: views match with TP.index.matcher and echo it in "No results"
     updateSearchUi();
     if (immediate) applySearch(); else runSearch();
   }
@@ -1290,7 +1292,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
 
   // ⌘K palette (src/core/palette.js); falls back to the in-view search field.
   function openPalette(opener) {
-    if (TP.palette?.open) { closeMenu(false); TP.palette.open({ opener: opener || shadow?.activeElement || null }); }
+    if (TP.palette?.open) { closeMenu(false); TP.palette.open({ opener: opener || shadow?.activeElement || null, q: searchQ }); } // starts with the toolbar's text (TP-174)
     else focusSearch();
   }
 
