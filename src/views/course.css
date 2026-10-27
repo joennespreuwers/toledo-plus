@@ -19,7 +19,7 @@
 /* ---------- rows ---------- */
 .cv-group { overflow: hidden; }
 .cv-row {
-  --pad: calc(12px + var(--depth, 0) * 20px);
+  --pad: calc(12px + var(--depth, 0) * var(--cv-step, 20px));
   position: relative; display: flex; align-items: center; gap: 10px; min-height: var(--row-min, 44px); box-sizing: border-box;
   padding: 8px 12px 8px var(--pad); color: var(--label); text-decoration: none; min-width: 0;
 }
@@ -61,12 +61,12 @@ details[open] > summary .cv-chev svg { transform: rotate(90deg); }
 .cv-view .cv-mini:disabled { cursor: progress; }
 
 /* folders (TP.ui.disclosure) */
-.cv-view .cv-folder > summary { --pad: calc(12px + var(--depth, 0) * 20px); position: relative; padding-left: var(--pad); }
+.cv-view .cv-folder > summary { --pad: calc(12px + var(--depth, 0) * var(--cv-step, 20px)); position: relative; padding-left: var(--pad); }
 .cv-view .cv-folder > summary .tp-row-lead { display: inline-flex; align-items: center; gap: 10px; }
-.cv-empty-folder { margin: 0; padding: 10px 12px 10px calc(12px + (var(--depth, 0) + 1) * 20px + 46px); color: var(--label-2); font-size: var(--fs-subhead, .8125rem); }
+.cv-empty-folder { margin: 0; padding: 10px 12px 10px calc(12px + (var(--depth, 0) + 1) * var(--cv-step, 20px) + 46px); color: var(--label-2); font-size: var(--fs-subhead, .8125rem); }
 
 /* documents / announcements expanded inline */
-.cv-doc-body { padding: 4px 16px 14px calc(12px + var(--depth, 0) * 20px + 46px); }
+.cv-doc-body { padding: 4px 16px 14px calc(12px + var(--depth, 0) * var(--cv-step, 20px) + 46px); }
 button.cv-row.cv-ann { width: 100%; border: 0; background: none; font: inherit; text-align: left; color: var(--label); cursor: pointer; }
 button.cv-row.cv-ann:hover { background: var(--fill); }
 .cv-prose { color: var(--label); font-size: var(--fs-body, .9375rem); line-height: 1.5; overflow-wrap: anywhere; }
@@ -136,7 +136,7 @@ button.cv-row.cv-ann:hover { background: var(--fill); }
   .cv-meta { white-space: normal; overflow-wrap: anywhere; }
   .cv-name { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 }
-.cv-folder-err { padding-left: calc(12px + (var(--depth, 0) + 1) * 20px + 34px); }
+.cv-folder-err { padding-left: calc(12px + (var(--depth, 0) + 1) * var(--cv-step, 20px) + 34px); }
 
 /* full-text: "Doorzoek alle bestanden" line under the course header (Agent J's block in course.js) */
 .cv-ft { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 8px; font-size: var(--fs-subhead); line-height: var(--lh-subhead); color: var(--label-2); }
@@ -144,3 +144,22 @@ button.cv-row.cv-ann:hover { background: var(--fill); }
 .cv-ft-text .tp-ic { color: var(--tint-text); }
 .cv-ft-btns { display: inline-flex; flex-wrap: wrap; gap: 8px; }
 @media (max-width: 699px) { .tp-head-actions [data-id="sidebar"] { display: none; } } /* phones have no sidebar */
+
+/* sanitized pages/announcements share .tp-prose (lists, nested lists, tables, <pre>: ui.css); links in the course tint */
+.cv-prose.tp-prose a { color: var(--tint-text, var(--tint)); }
+/* deep folders on a phone: a smaller indent step, so names keep their width (TP-100) */
+@media (max-width: 479px) { .cv-view { --cv-step: 8px; } }
+/* phones: jump chips under the title (TP-012); wider screens show the sections side by side */
+.cv-jump { display: none; }
+@media (max-width: 699px) {
+  .cv-jump { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 2px; }
+  .cv-jump-chip {
+    min-height: 32px; padding: 4px 12px; border: 0; border-radius: var(--r-pill); cursor: pointer;
+    background: var(--fill); color: var(--label); font-size: var(--fs-subhead);
+  }
+}
+/* a 100-character course name: two lines, the full name in the tooltip (TP-118) */
+.tp-main:has(.tp-view[data-route="course"]) .tp-large-title {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
+}
+.cv-more .cv-name { color: var(--tint-text, var(--tint)); }

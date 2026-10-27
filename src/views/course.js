@@ -60,16 +60,44 @@
     return (u.match(/content_?[iI]d=(_\d+_\d+)/) || u.match(/contents?\/(_\d+_\d+)/) || u.match(/outline\/[a-z]+\/(_\d+_\d+)/) || [])[1] || null;
   }
   const isNew = (n) => (!!st.prevVisit && ms(n.created) > st.prevVisit) || feedNew.ids.has(n.id) || (!!n.title && feedNew.titles.has(normT(n.title)));
+  /** "4 nieuw" = exactly the rows with a dot on this page: new files/pages in the tree + unread announcements (TP-086).
+   *  Unread Toledo notifications of this course without a row here (e.g. "Opdracht 2 beschikbaar") are counted apart
+   *  ("+2 meldingen", they are in Overzicht › Nieuw), so no number points at something the page can't show. */
   function newCount(leaves) {
+    return newParts(leaves).dots;
+  }
+  function newParts(leaves) {
     const fresh = leaves.filter((x) => isNew(x.node));
-    const matchedIds = new Set(fresh.map((x) => x.node.id));
-    const matchedTitles = new Set(fresh.map((x) => normT(x.node.title)));
+    const ann = annShown().filter((x) => x.unread);
+    const ids = new Set(fresh.map((x) => x.node.id));
+    const titles = new Set(fresh.map((x) => normT(x.node.title)));
+    const annIds = new Set(ann.map((x) => x.item && x.item.event && String(x.item.event.id)).filter(Boolean));
     const extra = feedNew.events.filter((e) => {
       const id = itemIdOf(e.url);
-      return !(id && matchedIds.has(id)) && !matchedTitles.has(normT(e.title));
+      return !(id && ids.has(id)) && !titles.has(normT(e.title)) && !annIds.has(String(e.id));
     }).length;
-    return fresh.length + extra;
+    return { dots: fresh.length + ann.length, extra };
   }
+
+  // ---------- announcements: read state from the matching portal event (TP-089) ----------
+  function annMeta() {
+    const c = st.luId && TP.data.course ? TP.data.course(st.luId) : null;
+    return { cid: st.cid, luId: st.luId || (st.data && st.data.course && st.data.course.courseId) || null, name: (c && c.name) || TP.util.courseName((st.data && st.data.course && st.data.course.name) || ''), color: c ? c.color : null };
+  }
+  const ANN_MAX = 8;
+  /** Non-draft announcements, newest first, each with its sheet item and `unread` (portal read state; without a matching
+   *  portal event: created after the previous visit). → [{a, item, unread}] (all of them; the page shows ANN_MAX). */
+  function annAll() {
+    const list = ((st.data && st.data.announcements) || []).filter((a) => !a.draft).slice().sort((a, b) => ms(b.created) - ms(a.created));
+    const meta = annMeta();
+    return list.map((a) => {
+      let item = null;
+      try { item = TP.annSheet ? TP.annSheet.fromUltra(a, meta) : null; } catch { item = null; }
+      const unread = item && item.event ? !item.event.read : (!!st.prevVisit && ms(a.created) > st.prevVisit);
+      return { a, item, unread };
+    });
+  }
+  const annShown = () => annAll().slice(0, ANN_MAX);
   function flatten(nodes, path = [], out = []) {
     for (const n of nodes || []) {
       if (isFolder(n)) flatten(n.kids, path.concat(n.title || ''), out);
@@ -196,15 +224,21 @@
       if (st.partial) sub = `${spinner()}<span>${esc(t('course.loading'))}</span>`;
       else {
         const leaves = flatten(st.data.roots);
-        const fresh = newCount(leaves);
-        sub = `<span>${esc(t('course.items', { n: leaves.length }))}${fresh ? ` · <span class="cv-sub-new" title="${esc(t('course.newSince', { n: fresh }))}">${esc(t('course.newCount', { n: fresh }))}</span>` : ''}</span>`;
+        const { dots: fresh, extra } = newParts(leaves);
+        sub = `<span>${esc(t('course.items', { n: leaves.length }))}${fresh ? ` · <span class="cv-sub-new" title="${esc(t('course.newDots', { n: fresh }))}">${esc(t('course.newCount', { n: fresh }))}</span>` : ''}`
+          + `${extra ? ` · <span class="cv-sub-extra" title="${esc(t('course.extraHint'))}">${esc(t('course.extraCount', { n: extra }))}</span>` : ''}</span>`;
       }
     }
+    // Phones: the page is long; chips jump to its sections (TP-012). Buttons, not #anchors (the portal router owns the hash).
+    const jumps = st.data && !st.error && !st.partial
+      ? `<nav class="cv-jump" aria-label="${esc(t('course.jump'))}">${[['content', 'course.content'], ['deadlines', 'course.deadlines'], ['announcements', 'course.announcements'], ['teachers', 'course.teachers']]
+        .map(([id, k]) => `<button type="button" class="cv-jump-chip" data-action="jump" data-jump="${id}" data-fk="jump:${id}">${esc(t(k))}</button>`).join('')}</nav>`
+      : '';
     const lu = st.luId || (st.data && st.data.course && st.data.course.courseId) || null;
     const inSb = !!(lu && TP.shell.inSidebar && TP.shell.inSidebar(lu));
     // Page actions live where every view has them: right of the large title (TP.shell head actions).
     const acts = [];
-    if (lu && TP.shell.setInSidebar) acts.push({ id: 'sidebar', label: t(inSb ? 'shell.sbRemove' : 'shell.sbAdd'), icon: inSb ? 'sidebarRemove' : 'sidebarAdd', onClick: () => TP.shell.setInSidebar(lu) });
+    if (lu && TP.shell.setInSidebar) acts.push({ id: 'sidebar', label: t(inSb ? 'shell.sbRemove' : 'shell.sbAdd'), icon: inSb ? 'sidebarRemove' : 'sidebarAdd', onClick: () => onSidebar(lu) });
     acts.push({ id: 'classic', label: t('course.classic'), icon: 'classic', onClick: () => onClassic() });
     try { cur && cur.setActions && cur.setActions(acts); } catch { /* ignore */ }
     return `
@@ -212,6 +246,7 @@
         <div class="cv-head-main">
           <p class="cv-sub">${sub || (st.error ? '' : `${spinner()}<span>${esc(t('course.loading'))}</span>`)}</p>
           ${teachers}
+          ${jumps}
           ${TP.fulltext && st.cid && !st.error ? TP.fulltext.courseBox(st.cid) /* full-text: "Doorzoek alle bestanden" (src/core/fulltext.js) */ : ''}
         </div>
       </header>`;
@@ -235,9 +270,11 @@
 
     if (h === 'resource/x-bb-file' || ((k === 'file' || k === 'video' || k === 'image') && !/link/.test(h))) {
       const busy = st.busy.has(n.id);
+      // One clean accessible name: "Slides_les4.pdf, PDF, gisteren, Les 4, nieuw" (no "·"/"—" separators or a stray ", open", TP-013).
+      const name = [n.title, label, date ? TP.fmt.ago(date) : '', opts.showPath ? pathTxt : '', fresh ? t('course.new').toLowerCase() : ''].filter(Boolean).join(', ');
       return `
         <div class="cv-row cv-leaf" data-lq="${lq}" style="--depth:${depth}">
-          <button type="button" class="cv-row-main" data-action="open" data-id="${esc(n.id)}" data-fk="o${fk}">${dot}${ico}${main}<span class="cv-sr">, ${esc(t('course.openSuffix'))}</span></button>
+          <button type="button" class="cv-row-main" data-action="open" data-id="${esc(n.id)}" data-fk="o${fk}" aria-label="${esc(name)}">${dot}${ico}${main}</button>
           <button type="button" class="cv-mini" data-action="download" data-id="${esc(n.id)}" data-fk="d${fk}" aria-label="${esc(t('course.download', { title: n.title }))}" ${busy ? 'aria-busy="true" disabled' : ''}>${busy ? spinner() : TP.ui.icon('download', { size: 17 })}</button>
         </div>`;
     }
@@ -246,8 +283,8 @@
         <details class="cv-doc" data-keep="${esc(fk)}" data-lq="${esc([n.title, label, pathTxt, TP.util.plain(n.body)].join(' ').toLowerCase())}">
           <summary class="cv-row cv-row-main" style="--depth:${depth}" data-fk="s${fk}">${dot}${ico}${main}<span class="cv-chev">${TP.ui.icon('chevronRight', { size: 14 })}</span></summary>
           <div class="cv-doc-body" style="--depth:${depth}">
-            <div class="cv-prose">${TP.util.sanitize(n.body)}</div>
-            <a class="cv-doc-link" href="${esc(itemLink(n))}" data-recent="${esc(n.id)}">${esc(t('course.classic'))}</a>
+            <div class="cv-prose tp-prose">${TP.util.sanitize(n.body, { base: ULTRA + '/' })}</div>
+            <a class="cv-doc-link" href="${esc(itemLink(n))}" data-recent="${esc(n.id)}">${esc(t('course.openToledo'))}</a>
           </div>
         </details>`;
     }
@@ -317,6 +354,7 @@
     const newToggle = !st.partial && all.length
       ? [{ action: 'only-new', label: t('course.onlyNew'), icon: st.onlyNew ? 'checkCircle' : 'circle', attrs: { 'data-fk': 'only-new', 'aria-pressed': st.onlyNew ? 'true' : 'false' } }]
       : [];
+    if (!st.partial && newCount(flatten(all)) > 0) newToggle.push({ action: 'read-new', label: t('course.readNew'), icon: 'check', attrs: { 'data-fk': 'read-new' } });
     // B1: a failed top level is an error, not "Nog geen inhoud".
     if (!st.partial && st.data.contentsError && !all.length) {
       const auth = st.data.contentsError.auth;
@@ -414,10 +452,11 @@
   }
 
   function announcementsHtml() {
-    const items = ((st.data && st.data.announcements) || []).filter((a) => !a.draft).slice().sort((a, b) => ms(b.created) - ms(a.created)).slice(0, 8);
-    const rows = items.map((a) => {
+    const all = annAll();
+    const items = all.slice(0, ANN_MAX);
+    const rows = items.map(({ a, unread }) => {
       const when = ms(a.created);
-      const fresh = !!st.prevVisit && when > st.prevVisit;
+      const fresh = unread;
       // The row opens the announcement sheet (TP.annSheet: full text, up/down through this list).
       return `
         <button type="button" class="cv-row cv-row-main cv-ann" data-action="ann" data-id="${esc(a.id)}" data-fk="an:${esc(a.id)}" aria-haspopup="dialog" data-lq="${esc((String(a.title || '') + ' ' + TP.util.plain(a.body || '')).toLowerCase())}">
@@ -426,15 +465,19 @@
             <span class="cv-chev">${TP.ui.icon('chevronRight', { size: 14 })}</span>
         </button>`;
     }).join('');
-    return sec('announcements', t('course.announcements'), TP.ui.group(rows || TP.ui.empty(t('course.noAnnouncements')), { cls: 'cv-group' }));
+    // More than ANN_MAX: say how many and link to Mededelingen filtered on this course (TP-094).
+    const lu = st.luId || (st.data && st.data.course && st.data.course.courseId) || '';
+    const more = all.length > items.length && lu
+      ? `<a class="cv-row cv-row-main cv-more" href="${esc(TP.shell.href('announcements', { id: lu }))}" data-lq=""><span class="cv-main"><span class="cv-name">${esc(t('course.annAll', { n: all.length }))}</span></span><span class="cv-chev">${TP.ui.icon('chevronRight', { size: 14 })}</span></a>`
+      : '';
+    return sec('announcements', t('course.announcements'), TP.ui.group((rows + more) || TP.ui.empty(t('course.noAnnouncements')), { cls: 'cv-group' }), { count: all.length > items.length ? all.length : undefined });
   }
 
   /** Announcement sheet for a row of the course's announcements section (prev/next through the visible rows). */
   function openAnnouncement(el) {
     if (!TP.annSheet || !st.data) return;
     const all = ((st.data && st.data.announcements) || []).filter((x) => !x.draft);
-    const c = st.luId ? TP.data.course(st.luId) : null;
-    const meta = { cid: st.cid, luId: st.luId || (st.data.course && st.data.course.courseId) || null, name: (c && c.name) || TP.util.courseName((st.data.course && st.data.course.name) || ''), color: c ? c.color : null };
+    const meta = annMeta();
     const sec = el.closest('section') || el.parentElement;
     const ids = [...sec.querySelectorAll('[data-action="ann"][data-id]')].filter((r) => !r.hidden && !r.closest('[hidden]')).map((r) => r.dataset.id);
     const items = ids.map((id) => all.find((x) => x.id === id)).filter(Boolean).map((x) => TP.annSheet.fromUltra(x, meta));
@@ -443,6 +486,7 @@
     TP.annSheet.open(target, {
       list: items,
       opener: el,
+      onRead: () => setTimeout(() => paint(), 0), // the dot and the header count follow the read state
       rowFor: (it) => { try { return cur && cur.root.querySelector(`[data-action="ann"][data-id="${cssEsc(it.aid)}"]`); } catch { return null; } },
     });
   }
@@ -516,6 +560,8 @@
     const ctx = cur;
     if (!ctx) return;
     try { const n = courseName(); if (n && ctx.setTitle) ctx.setTitle(n); } catch { /* ignore */ }
+    // course.css clamps a very long name to two lines; the full name stays in the tooltip (TP-118)
+    try { const h1 = ctx.root.closest('main') && ctx.root.closest('main').querySelector('.tp-large-title'); if (h1) h1.title = courseName(); } catch { /* ignore */ }
     try { if (ctx.setSubtitle) ctx.setSubtitle(esc(eyebrowText())); } catch { /* ignore */ }
   }
 
@@ -599,6 +645,8 @@
       return;
     }
     rows.forEach((el) => { el.hidden = !m(el.dataset.lq); });
+    // The tree lists every file already: "Recent toegevoegd" would show the same rows twice while searching (TP-087).
+    view.querySelectorAll('.cv-sec[data-sec="recent"] [data-lq]').forEach((el) => { el.hidden = true; });
     const tree = view.querySelector('[data-tree]');
     if (tree) {
       const folders = [...tree.querySelectorAll('details.cv-folder')].reverse(); // children before parents
@@ -624,7 +672,14 @@
       if (hit) any = true;
     });
     const nr = view.querySelector('.cv-noresults');
-    if (nr) { nr.hidden = any; nr.innerHTML = any ? '' : TP.ui.noResults(st.q); }
+    if (nr) { nr.hidden = any; nr.innerHTML = any ? '' : TP.ui.noResults(typedQuery(root, st.q)); }
+  }
+  /** The query as the student typed it (the shell hands views a lowercased copy), for the "no results for …" line (TP-096). */
+  function typedQuery(root, q) {
+    try {
+      const v = String(root.getRootNode().querySelector('[data-shell="search"]').value || '').trim();
+      return v.toLowerCase() === q ? v : q;
+    } catch { return q; }
   }
 
   // ---------- interactions ----------
@@ -663,9 +718,10 @@
     addRecent(f.node);
     const fileName = (f.node.contentHandler && f.node.contentHandler.file && f.node.contentHandler.file.fileName) || f.node.title || 'download';
     try {
-      const ok = await TP.data.ultraDownload(st.cid, id, fileName);
-      // false = TP.data fell back to opening the file/item in a new tab.
-      if (ok) TP.shell.announce?.(t('course.downloaded'));
+      // true = saved, 'opened' = no download possible here (portal): opened in a new tab, false = failed (TP-085)
+      const r = await TP.data.ultraDownload(st.cid, id, fileName);
+      if (r === true) TP.shell.announce?.(t('course.downloaded'));
+      else if (r === false) TP.shell.toast?.(t('course.downloadFailed'));
     } catch {
       TP.shell.toast?.(t('course.downloadFailed'));
     } finally {
@@ -677,6 +733,37 @@
         b.innerHTML = b === btn ? old : TP.ui.icon('download', { size: 17 });
       });
     }
+  }
+
+  /** "Zet in zijbalk": say it happened (the sidebar is not visible on a phone, TP-097). */
+  function onSidebar(lu) {
+    const on = TP.shell.setInSidebar(lu);
+    const phone = !!(window.matchMedia && window.matchMedia('(max-width: 699px)').matches);
+    const name = courseName();
+    TP.shell.toast?.(phone && on ? t('course.sbPhone', { name }) : t(on ? 'shell.sbAdded' : 'shell.sbRemoved', { name }));
+  }
+
+  /** "Markeer nieuw als gelezen": the unread feed items + announcements of this course; the dots go, Undo brings them back. */
+  async function onReadNew() {
+    const events = feedNew.events.slice();
+    for (const x of annShown()) if (x.unread && x.item && x.item.event) events.push(x.item.event);
+    const prev = st.prevVisit;
+    st.prevVisit = Date.now(); // "new since your last visit" dots count as seen too
+    const r = await TP.data.markAllRead({ events });
+    computeFeedNew();
+    paint();
+    cur?.root.querySelector('[data-sec="content"] .tp-sec-title')?.focus?.({ preventScroll: true });
+    TP.ui.undoToast(t('course.readNewDone', { n: Math.max(r.unread, 1) }), async () => { await r.undo(); st.prevVisit = prev; computeFeedNew(); paint(); });
+    r.synced.then((ok) => { if (!ok) TP.shell.toast?.(t('announcements.syncPending')); });
+  }
+
+  function jumpTo(id) {
+    const sec = cur && cur.root.querySelector(`.cv-sec[data-sec="${cssEsc(id)}"]`);
+    if (!sec) return;
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    sec.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' });
+    const h = sec.querySelector('.tp-sec-title');
+    if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); }
   }
 
   async function onClassic() {
@@ -735,6 +822,8 @@
           return;
         }
         if (act === 'focus-item') { ev.preventDefault(); focusOn(a.dataset.id); return; }
+        if (act === 'read-new') { ev.preventDefault(); onReadNew(); return; }
+        if (act === 'jump') { ev.preventDefault(); jumpTo(a.dataset.jump); return; }
         if (act === 'ann') { ev.preventDefault(); openAnnouncement(a); return; }
         if (act.startsWith('ft-') && TP.fulltext) { // full-text: run / confirm / stop (src/core/fulltext.js)
           ev.preventDefault();
@@ -771,6 +860,9 @@
     searchPlaceholder: () => t('course.search'),
     render,
     onSearch(ctx, q) { cur = ctx; applySearch(ctx.root, q); },
-    destroy() { st.q = ''; },
+    destroy(ctx) {
+      st.q = '';
+      try { ctx.root.closest('main')?.querySelector('.tp-large-title')?.removeAttribute('title'); } catch { /* ignore */ }
+    },
   });
 })();

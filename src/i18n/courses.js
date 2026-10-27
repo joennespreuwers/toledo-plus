@@ -17,7 +17,7 @@
       'courses.sort.manual': 'Eigen volgorde',
       'courses.edit': 'Bewerk',
       'courses.done': 'Klaar',
-      'courses.editHint': 'Pas per vak de bijnaam, kleur, zijbalk en zichtbaarheid aan. Sleep aan het handvat of gebruik ↑ en ↓ voor je eigen volgorde. Wijzigingen worden meteen bewaard.',
+      'courses.editHint': 'Pas per vak de bijnaam, kleur, zijbalk en zichtbaarheid aan. Sleep aan het handvat of gebruik ↑ en ↓ voor je eigen volgorde (de sortering wordt dan Eigen volgorde). Wijzigingen worden meteen bewaard.',
       'courses.unavailable': 'Nog niet beschikbaar',
       'courses.unread': '{n} nieuw',
       'courses.unread.one': '1 nieuw',
@@ -62,7 +62,7 @@
       'courses.sort.manual': 'Custom order',
       'courses.edit': 'Edit',
       'courses.done': 'Done',
-      'courses.editHint': 'Change each course’s nickname, colour, sidebar and visibility. Drag the handle or use ↑ and ↓ for your own order. Changes are saved right away.',
+      'courses.editHint': 'Change each course’s nickname, colour, sidebar and visibility. Drag the handle or use ↑ and ↓ for your own order (sorting then switches to Custom order). Changes are saved right away.',
       'courses.unavailable': 'Not available yet',
       'courses.unread': '{n} new',
       'courses.unread.one': '1 new',
@@ -107,7 +107,7 @@
       'courses.sort.manual': 'Ordre personnalisé',
       'courses.edit': 'Modifier',
       'courses.done': 'OK',
-      'courses.editHint': 'Modifie le surnom, la couleur, la barre latérale et la visibilité de chaque cours. Fais glisser la poignée ou utilise ↑ et ↓ pour ton propre ordre. Les changements sont enregistrés tout de suite.',
+      'courses.editHint': 'Modifie le surnom, la couleur, la barre latérale et la visibilité de chaque cours. Fais glisser la poignée ou utilise ↑ et ↓ pour ton propre ordre (le tri passe alors à Ordre personnalisé). Les changements sont enregistrés tout de suite.',
       'courses.unavailable': 'Pas encore disponible',
       'courses.unread': '{n} nouveaux',
       'courses.unread.one': '1 nouveau',
@@ -190,6 +190,33 @@
       'courses.sortManualOn': 'Tri : ordre perso',
       'courses.movedTo': '{name} est maintenant en position {n} sur {total}',
       'courses.error': 'Impossible de charger tes cours',
+    },
+  });
+  // bug bash 2026-10: mark-as-read scope + undo, failure states, course page, courses edit
+  TP.i18n.add({
+    nl: {
+      'courses.colorUsed': "in gebruik",
+      'courses.sbIn': "In zijbalk",
+      'courses.sbOut': "Zet in zijbalk",
+      'courses.allHidden': "Alle vakken zijn verborgen.",
+      'courses.showAll': "Toon alle vakken",
+      'courses.hideHint': "Verbergen haalt een vak uit Vakken, Nieuw en Mededelingen; zijn deadlines, examens en lessen blijven zichtbaar.",
+    },
+    en: {
+      'courses.colorUsed': "in use",
+      'courses.sbIn': "In sidebar",
+      'courses.sbOut': "Add to sidebar",
+      'courses.allHidden': "All courses are hidden.",
+      'courses.showAll': "Show all courses",
+      'courses.hideHint': "Hiding a course removes it from Courses, New and Announcements; its deadlines, exams and classes stay visible.",
+    },
+    fr: {
+      'courses.colorUsed': "déjà utilisée",
+      'courses.sbIn': "Dans la barre",
+      'courses.sbOut': "Ajouter à la barre",
+      'courses.allHidden': "Tous les cours sont masqués.",
+      'courses.showAll': "Afficher tous les cours",
+      'courses.hideHint': "Masquer un cours le retire de Cours, Nouveautés et Annonces ; ses échéances, examens et cours restent visibles.",
     },
   });
 })();

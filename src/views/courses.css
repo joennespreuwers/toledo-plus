@@ -136,3 +136,21 @@ a.cs-card-main:focus-visible { outline: 2px solid var(--tint-text, var(--tint));
 }
 @media (prefers-reduced-motion: reduce) { .cs-hidden-sum svg { transition: none; } }
 @media (prefers-contrast: more) { .cs-card, .cs-hidden, .cs-edit-list { outline: 1px solid var(--separator); } }
+
+/* ---------- bug-bash fixes ---------- */
+/* edit list uses the page width like the grid (TP-009); controls line up with the nickname field, not with field + meta */
+.cs-edit-list { max-width: none; }
+.cs-erow { align-items: flex-start; }
+.cs-erow > .cs-grip, .cs-erow > .cs-color, .cs-erow > .cs-hide, .cs-erow > .cs-move { min-height: 34px; display: flex; align-items: center; }
+.cs-erow .cs-color-btn { width: 34px; height: 34px; }
+/* colours other courses already use: dimmed, named "in gebruik" (TP-114) */
+.tp-swatch.tp-swatch-used .tp-swatch-c { opacity: .4; }
+.tp-swatch.tp-swatch-used input:checked + .tp-swatch-c { opacity: 1; }
+/* sidebar toggle on a card: a caption on touch screens, where there is no hover tooltip (TP-190) */
+.cs-sb-cap { display: none; }
+@media (hover: none) {
+  .cs-view .cs-sb-btn { width: auto; min-width: 32px; padding: 0 8px; grid-auto-flow: column; gap: 4px; }
+  .cs-sb-cap { display: inline; font-size: var(--fs-footnote, .75rem); font-weight: 500; }
+}
+/* every course hidden: an empty state with "Toon alle" (TP-011) */
+.cs-empty-act { display: flex; justify-content: center; margin: -8px 0 18px !important; }
