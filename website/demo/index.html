@@ -6,6 +6,23 @@
 <title>Toledo+ demo</title>
 <meta name="description" content="Probeer Toledo+ in je browser, met nepdata. Geen installatie nodig.">
 <link rel="canonical" href="https://toledoplus.be/demo/">
+<!-- Link previews (crawlers do not run JS, so these stay Dutch; demo.js localises the title and description per ?lang) -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Toledo+">
+<meta property="og:url" content="https://toledoplus.be/demo/">
+<meta property="og:title" content="Toledo+ demo">
+<meta property="og:description" content="Probeer Toledo+ in je browser, met nepdata. Geen installatie nodig.">
+<meta property="og:image" content="https://toledoplus.be/assets/img/og-nl.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Toledo+: het overzicht met deadlines, rooster en nieuwe items per vak, in een browservenster.">
+<meta property="og:locale" content="nl_BE">
+<meta property="og:locale:alternate" content="en_GB">
+<meta property="og:locale:alternate" content="fr_BE">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Toledo+ demo">
+<meta name="twitter:description" content="Probeer Toledo+ in je browser, met nepdata. Geen installatie nodig.">
+<meta name="twitter:image" content="https://toledoplus.be/assets/img/og-nl.png">
 <meta name="color-scheme" content="light dark">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <link rel="icon" href="../favicon.ico" sizes="32x32">
@@ -18,13 +35,27 @@
   @font-face { font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap; src: url("../assets/fonts/inter-latin-wght-normal.woff2") format("woff2");
     unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
   :root { color-scheme: light dark;
-    --d-bg: #F5F4F2; --d-bar: #1F2430; --d-text: #F4F5F7; --d-muted: rgba(244, 245, 247, .66); --d-link: #F5A35F;
+    --d-bg: #F5F4F2; --d-fg: #1F2430; --d-fg-2: #5A5F6B; --d-bar: #1F2430; --d-text: #F4F5F7; --d-muted: rgba(244, 245, 247, .66); --d-link: #F5A35F;
     --d-seg: rgba(255, 255, 255, .10); --d-seg-on: #F4F5F7; --d-seg-on-text: #1F2430; --d-btn: rgba(244, 245, 247, .82); }
-  :root[data-theme="dark"] { color-scheme: dark; --d-bg: #12151C; --d-bar: #0C0E13; }
+  :root[data-theme="dark"] { color-scheme: dark; --d-bg: #12151C; --d-fg: #F4F5F7; --d-fg-2: #A9AFBC; --d-bar: #0C0E13; }
   :root[data-theme="light"] { color-scheme: light; }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --d-bg: #12151C; --d-bar: #0C0E13; } }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --d-bg: #12151C; --d-fg: #F4F5F7; --d-fg-2: #A9AFBC; --d-bar: #0C0E13; } }
   html { background: var(--d-bg); }
-  body { margin: 0; font: 15px/1.4 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #1F2430; }
+  body { margin: 0; font: 15px/1.4 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--d-fg); }
+  /* The demo bar lives in <body> (first); page.css hides every other body child while Toledo+ is on. */
+  html.tplus-on body > #demo-bar#demo-bar { display: flex !important; }
+  /* Loading (until the app is on) and the "classic Toledo" stand-in (demo.js) */
+  #demo-loading { display: none; place-items: center; align-content: center; gap: 14px; min-height: 60vh; color: var(--d-fg-2); font-size: 15px; }
+  html:not(.tplus-on):not(.demo-classic):not(.demo-failed) #demo-loading { display: grid; }
+  #demo-loading .spin { width: 28px; height: 28px; border-radius: 50%; border: 3px solid color-mix(in srgb, var(--d-fg-2) 25%, transparent); border-top-color: #EE8B35; animation: demo-spin 900ms linear infinite; }
+  @keyframes demo-spin { to { transform: rotate(360deg); } }
+  #demo-classic { max-width: 34em; margin: 16vh auto; padding: 0 16px; text-align: center; }
+  #demo-classic h1 { font-size: 26px; line-height: 1.2; letter-spacing: -.02em; margin: 0 0 12px; }
+  #demo-classic p { color: var(--d-fg-2); margin: 0 0 20px; }
+  #demo-classic button { appearance: none; border: 0; border-radius: 999px; min-height: 44px; padding: 10px 22px; font: 650 16px/1.2 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: #EE8B35; color: #1F2430; cursor: pointer; }
+  #demo-classic button:focus-visible { outline: 2px solid #C2410C; outline-offset: 2px; }
+  #demo-bar .demo-skip { position: absolute; left: 8px; top: -100px; z-index: 3; padding: 8px 14px; border-radius: 10px; background: #EE8B35; color: #1F2430 !important; }
+  #demo-bar .demo-skip:focus { top: 6px; text-decoration: none; }
   /* demo bar: the brand ink strip — back to the site · what this is · install · language · theme */
   #demo-bar {
     display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px 10px;
@@ -60,7 +91,7 @@
     #demo-bar .demo-mid .demo-tag, #demo-bar .demo-mid .demo-sep { display: none; }
   }
   @media (max-width: 360px) { #demo-bar { gap: 4px 6px; padding-inline: 8px; } #demo-bar button { min-width: 30px; padding: 0 6px; } }
-  @media (prefers-reduced-motion: reduce) { #demo-bar button { transition: none; } }
+  @media (prefers-reduced-motion: reduce) { #demo-bar button { transition: none; } #demo-loading .spin { animation-duration: 3s; } }
   @media print { #demo-bar { display: none; } }
 </style>
 <script src="mock.js" defer></script>
@@ -69,5 +100,7 @@
 <body>
 <noscript><p id="demo-noscript" style="max-width:32em;margin:20vh auto;padding:0 16px;text-align:center">De demo heeft JavaScript nodig. · The demo needs JavaScript. · La démo nécessite JavaScript. <a href="../">toledoplus.be</a></p></noscript>
 <p id="demo-fallback" role="alert" hidden></p>
+<div id="demo-loading" role="status"><span class="spin" aria-hidden="true"></span><span class="txt">De demo wordt geladen…</span></div>
+<div id="demo-classic" hidden><h1></h1><p></p><button type="button"></button></div>
 </body>
 </html>
