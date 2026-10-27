@@ -16,6 +16,7 @@ Het formaat volgt [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) en he
 - Course announcements from the portal now find their text also when the event links to a generic Ultra page (by id from the event, else by title in the course's announcements).
 
 ### Fixed
+- The first-start splash now always removes itself shortly after its planned end, even if its fade-out animation never reports back.
 - Keyboard hints follow your OS: ⌘ on macOS, Ctrl+ on Windows/Linux. On a Mac Toledo+ showed "Ctrl K" because Chromium reports the platform as "macOS" (lowercase "mac"); every "⌘" in texts (⌘K, ⌘↵, ⌘\) now adapts.
 
 ## [1.6.0] - 2026-10-27
