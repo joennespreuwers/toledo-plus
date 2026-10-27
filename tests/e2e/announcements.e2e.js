@@ -260,7 +260,9 @@ describe('announcement sheet', () => {
   });
 
   it('⌘K: an announcement result opens the sheet instead of leaving the page', async () => {
-    const url = page.url();
+    // the previous test's sheet leaves its history entry asynchronously (history.back after close)
+    await page.waitForFunction(() => !/&sheet=/.test(location.hash), null, { timeout: 3000 }).catch(() => {});
+    const url = page.url().replace(/&sheet=[^&]*/, '');
     await page.keyboard.press('Control+k');
     await page.locator('#tplus-root dialog.tp-palette').waitFor({ state: 'visible' });
     await page.locator('#tplus-root dialog.tp-palette input.tp-pal-input').fill('oefensessie');
