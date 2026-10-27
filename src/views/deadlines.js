@@ -87,7 +87,7 @@
       title: esc(name),
       subtitle: `${TP.ui.dot((c && c.color) || 'var(--label-3)')} <span>${esc([when, loc, e.text].filter(Boolean).join(' · '))}</span>`,
       trailing: `<span class="va-urg${days <= 3 ? ' is-urgent' : ''}">${esc(TP.fmt.rel(e.start))}</span>`,
-      q: `${name} ${e.courseCode || ''} ${loc}`.toLowerCase(),
+      q: TP.index.hay([name, e.courseCode || (c && c.code), loc, e.text], [e.start]),
       cls: 'va-exam has-lead' + (days <= 3 ? ' tone-urgent' : ''),
     });
   }
@@ -307,7 +307,7 @@
     searchPlaceholder: () => t('deadlines.search'),
     render,
     onSearch(ctx, q) {
-      S.q = (q || '').trim().toLowerCase();
+      S.q = (q || '').trim();
       VA().filter(ctx.root, S.q);
     },
     destroy() {

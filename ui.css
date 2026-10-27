@@ -597,9 +597,9 @@ a.tp-mail { color: var(--tint-text); text-decoration: none; }
 .tp-pal-field:focus-within { box-shadow: inset 0 -2px 0 var(--tint-text); }
 .tp-theme .tp-palette input.tp-pal-input {
   flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; background: none; color: var(--label);
-  font-size: 1.0625rem; -webkit-appearance: none; appearance: none;
+  font-size: 1.0625rem; -webkit-appearance: none; appearance: none; text-overflow: ellipsis; /* TP-083: no hard cut at 320 px */
 }
-.tp-theme .tp-palette input.tp-pal-input::placeholder { color: var(--label-2); }
+.tp-theme .tp-palette input.tp-pal-input::placeholder { color: var(--label-2); text-overflow: ellipsis; }
 .tp-theme .tp-palette input.tp-pal-input:focus, .tp-theme .tp-palette input.tp-pal-input:focus-visible { outline: none; box-shadow: none; border: 0; }
 .tp-pal-close {
   flex: none; display: grid; place-items: center; min-width: 36px; height: 32px; padding: 0 6px;
@@ -630,9 +630,14 @@ a.tp-mail { color: var(--tint-text); text-decoration: none; }
 .tp-pal-sub { color: var(--label-2); font-size: var(--fs-subhead); line-height: var(--lh-subhead); }
 .tp-pal-enter { flex: none; display: inline-flex; align-items: center; gap: 4px; color: var(--label-2); visibility: hidden; }
 .tp-pal-opt[aria-selected="true"] .tp-pal-enter { visibility: visible; }
-.tp-pal-empty .tp-noresults-state { padding: 32px 16px; }
+.tp-pal-empty .tp-noresults-state { padding: 32px 16px 8px; }
+.tp-pal-hint { margin: 0 auto; padding: 0 16px 12px; max-width: 46ch; text-align: center; color: var(--label-2); font-size: var(--fs-subhead); line-height: var(--lh-subhead); }
+.tp-pal-note { margin: 0; padding: 10px 10px 2px; color: var(--label-2); font-size: var(--fs-subhead); line-height: var(--lh-subhead); }
 /* full-text results (TP.fulltext, Agent J): two-line snippet with the match marked in the brand tint */
 .tp-pal-snip { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+/* search highlights (TP.index.highlight): the words that matched, in every search surface */
+mark.tp-hl { background: color-mix(in srgb, var(--tint) 22%, transparent); color: inherit; border-radius: 3px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+@media (forced-colors: active) { mark.tp-hl { forced-color-adjust: none; background: Mark; color: MarkText; } }
 .tp-pal-snip mark {
   background: color-mix(in srgb, var(--tint) 24%, transparent); color: inherit; border-radius: 3px; padding: 0 2px;
   font-weight: 600; box-decoration-break: clone; -webkit-box-decoration-break: clone;

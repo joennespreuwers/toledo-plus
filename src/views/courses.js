@@ -245,13 +245,16 @@
   }
 
   function applySearch(root, q) {
-    ui.q = q || '';
+    ui.q = String(q || '').trim();
+    const els = [...root.querySelectorAll('.cs-card[data-q], .cs-hidden-row[data-q], .cs-erow[data-q]')];
+    const m = TP.index.matcher(ui.q, els.map((el) => el.dataset.q));
     let shown = 0;
-    root.querySelectorAll('.cs-card[data-q], .cs-hidden-row[data-q], .cs-erow[data-q]').forEach((el) => {
-      const hit = !ui.q || el.dataset.q.includes(ui.q);
+    els.forEach((el) => {
+      const hit = m.empty || m(el.dataset.q);
       el.hidden = !hit;
       if (hit) shown++;
     });
+    TP.index.highlight(root, m, '.cs-name, .cs-hidden-name');
     const hg = root.querySelector('[data-hidden-group]');
     if (hg) {
       const any = hg.querySelector('.cs-hidden-row:not([hidden])');

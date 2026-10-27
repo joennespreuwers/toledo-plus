@@ -282,7 +282,7 @@ search field (`data-shell="palette"`), and "Zoek overal" in the phone More sheet
 `<dialog class="tp-palette tp-glass">` appended to the shell app (showModal → top layer, inert background): combobox input
 (`aria-controls`/`aria-activedescendant`) + `role=listbox` with `role=group` per result group; ↑/↓/PageUp/PageDown move, ↵ opens,
 ⌘↵/Ctrl+↵ downloads a file result, Esc/backdrop/close button close and return focus to the opener; Tab is trapped.
-Groups (≤ 8 each): Navigatie (views incl. settings) · Vakken · Documenten (TP.index) · Deadlines · Mededelingen; empty query: Recent + Navigatie.
+Groups (8 rows each, then "Nog n resultaten tonen"): Navigatie (views incl. settings) · Vakken · Documenten (TP.index) · In bestanden · Deadlines · Mededelingen · KU Loket · Instellingen (per section); empty query: Recent + Navigatie. Matching: see the addendum "One search matcher".
 Open: files → `TP.data.ultraOpen(cid,id)` (⌘↵ → `ultraDownload`); folders/pages/assignments/links → `state.focus` + navigate to
 `TP.shell.href('course', {cid})` (or rerender when that course is already shown); every document open → `TP.data.addRecent`.
 Footer: `TP.index.statusText()`; opening the palette triggers `TP.index.crawlIfStale()`. Full-screen sheet below 700 px.
@@ -330,7 +330,7 @@ TP.shell.register('overview', {
   searchPlaceholder: () => TP.t('overview.search'),   // optional; if absent search hidden
   showUpdated: false,                     // optional; hides the shell's "Bijgewerkt hh:mm" line (load errors still show)
   render(ctx) { … },                      // may be async; must be idempotent (called again on data/settings change)
-  onSearch(ctx, q) { … },                 // optional; q lowercase trimmed; default behaviour: hide [data-q] not matching and empty sections,
+  onSearch(ctx, q) { … },                 // optional; q trimmed, as typed (match with TP.index.matcher); default behaviour: hide [data-q] not matching and empty sections,
                                           // then show TP.ui.noResults(q) once; custom handlers render TP.ui.noResults(q) in their own single slot
   onKey(ctx, ev) { … },                   // optional (v1.5): view shortcuts — the shell forwards window keydowns that are not typing, have no
                                           // ⌘/Ctrl/Alt, weren't handled (defaultPrevented) and with no detail sheet open (agenda: t/d/w/m/a/j/k/g/?…)
@@ -579,3 +579,40 @@ Item = { key, kind:'course'|'school', title, source, color, author, date, url (a
 - Tests: `tests/unit/advalvas.test.js` (ids, cache, needs-login, announcementBody, markUnread), `tests/unit/background.test.js` (relay rule),
   `tests/e2e/announcements.e2e.js` (parser on `tests/fixtures/advalvas-message.html` in Chromium + all flows); the mock serves the valvas host
   (`rec.valvas.mode = 'ok'|'login'`; "login" returns an IdP-like SAML page with 200 because Playwright cannot route a mocked 3xx's follow-up).
+
+## Addendum (unreleased) — One search matcher (bug bash: Search & ⌘K)
+
+Every search surface matches through `TP.index` (still loaded before `ui.js`, `shell.js`, the palette and the views):
+```
+TP.index.fold(s) / norm(s)            // lowercase, no diacritics (norm also collapses spaces)
+TP.index.words(q) → [word]            // split on anything that is not a letter/digit: "[" → [], "café-verslag" → ["cafe","verslag"]
+TP.index.query(q) → Q {words, date}   // parsed once; date = {keys:[YYYYMMDD], rest:[words]} | null
+TP.index.matcher(q, hays?) → m(hay) → bool ; m.empty (no words: everything matches), m.words, m.query, m.fuzzy
+TP.index.hay(parts[], dates[ms]) → string           // normalised text + " ‖ dYYYYMMDD …" day markers (never matched as text)
+TP.index.hayOf.{course(c), deadline(d), announcement(e), lesson(l, extra[])} → hay   // the same fields on every surface
+TP.index.score(q|Q, title, extra[], {fuzzy}) → -1 | 0..3          // as before; extra may hold a hay (dates)
+TP.index.search(q|Q, {limit, fuzzy, total:{}}) → hits             // total.n = all hits; course-name-only documents are skipped
+TP.index.highlight(root, q|m, selector) → n ; TP.index.unmark(root)   // <mark class="tp-hl"> in matching text nodes
+```
+- **Rules:** every query word must occur (any order) in the haystack; one-letter words only at a word start (also a letter↔digit change:
+  "1" matches "les1", not "21"); a word with a digit also matches with the spaces/punctuation of the haystack removed ("zx1003" ~ "ZX 1003").
+- **Dates:** a query that reads as a date matches items whose hay carries that day, *or* the plain text (either reading may match):
+  relative words of the UI language + English ("vandaag/morgen/overmorgen/gisteren", "today/tomorrow/yesterday", "aujourd'hui/demain/
+  après-demain/hier"), day + month name (nl/en/fr, ≥ 3 letters, either order, optional year and weekday: "vr 30 okt", "Fri 30 Oct"), "30/10"
+  (day first) and a weekday name alone (≥ 3 letters: the next one, today included). A month or a number alone is not a date.
+- **Typos:** `matcher(q, hays)` returns a typo-tolerant predicate (edit distance 1 incl. an adjacent swap, against a word or the start of a
+  word, for query words of 5+ letters) **only when no hay matches exactly**; the palette retries all groups the same way and shows
+  `palette.approx` above them. Nothing is highlighted for a near match.
+- **Views:** `onSearch(ctx, q)` now receives the query **as typed** (trimmed, not lowercased) so empty states echo it unchanged;
+  `data-q` / `data-lq` may be any text (they are folded when matched). Overview (`VA.filter`, also Deadlines and Mededelingen), Courses, the
+  course page, Agenda, KU Loket and the shell's default filter all use `matcher` + `highlight`. `VA.filter` re-evaluates the day blocks and
+  sections an earlier query hid (`data-va-qhidden`). The course page opens a `details.cv-doc` that matches only in its text.
+- **Palette:** groups Navigatie (view names in all three languages + `palette.settingsWords`), Vakken (name, code, title, teachers from the
+  KU Loket lessons of −7…+14 days), Documenten, In bestanden, Deadlines, Mededelingen (also sender + date), **KU Loket** (`TP.kuloket.links()`,
+  titles/descriptions in all languages; opens in a new tab and calls `openedKuloket()`), **Instellingen** (one row per settings section, by
+  the labels inside it + `palette.set.<id>` keywords; opens `TP.shell.navigate('settings', {id})`, and the settings view scrolls to
+  `[data-section="st-<id>"]` and focuses its heading). Each group shows 8 rows, then a `type:'more'` row "Nog n resultaten tonen" that
+  shows up to 50. `TP.palette.open({q})` is called with the toolbar's text; `hashchange`/`popstate` close it; the input has `maxlength=200`
+  and `TP.ui.noResults` clips the echoed query to 60 characters; the empty state adds `palette.empty.hint` (and `palette.empty.indexing`
+  while the index crawls).
+- Tests: `tests/unit/index.test.js` (matcher, dates, typos, hayOf, ranges), `tests/e2e/search.e2e.js`.

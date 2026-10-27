@@ -190,31 +190,36 @@
      * Returns number of visible rows.
      */
     filter(root, q) {
-      q = (q || '').trim().toLowerCase();
+      q = (q || '').trim();
+      const rows = [...root.querySelectorAll('[data-q]')].filter((el) => !el.closest('[data-va-nofilter]'));
+      const m = TP.index.matcher(q, rows.map((el) => el.getAttribute('data-q')));
+      const on = !!q && !m.empty;
+      // Day blocks and sections an earlier query hid are evaluated afresh (TP-168: they used to stay hidden).
+      root.querySelectorAll('[data-va-qhidden]').forEach((el) => { el.hidden = false; el.removeAttribute('data-va-qhidden'); });
+      const qhide = (el, hide) => { if (hide) { el.hidden = true; el.setAttribute('data-va-qhidden', ''); } else el.hidden = false; };
       let visible = 0;
-      root.querySelectorAll('[data-q]').forEach((el) => {
-        if (el.closest('[data-va-nofilter]')) return;
-        const hit = !q || String(el.getAttribute('data-q')).includes(q);
+      rows.forEach((el) => {
+        const hit = !on || m(el.getAttribute('data-q'));
         el.hidden = !hit;
         if (hit) visible++;
       });
       // Disclosures that only hold matches inside: open them while searching.
-      if (q) root.querySelectorAll('details[data-va-collapse]').forEach((d) => { if (d.querySelector('[data-q]:not([hidden])')) d.open = true; });
+      if (on) root.querySelectorAll('details[data-va-collapse]').forEach((d) => { if (d.querySelector('[data-q]:not([hidden])')) d.open = true; });
       const vis = (box) => [...box.querySelectorAll('[data-q]')].filter((r) => !r.hidden && !r.closest('[data-va-nofilter]') && !r.parentElement.closest('[hidden]'));
-      root.querySelectorAll('[data-va-day]').forEach((day) => { day.hidden = !!q && vis(day).length === 0; });
+      root.querySelectorAll('[data-va-day]').forEach((day) => qhide(day, on && vis(day).length === 0));
       root.querySelectorAll('[data-va-sec]').forEach((sec) => {
         const cnt = sec.querySelector('.tp-sec-title .tp-count');
         if (cnt) {
           if (!cnt.hasAttribute('data-n')) cnt.setAttribute('data-n', cnt.textContent);
-          cnt.textContent = q ? String(vis(sec).length) : cnt.getAttribute('data-n');
+          cnt.textContent = on ? String(vis(sec).length) : cnt.getAttribute('data-n');
         }
-        if (!q) { sec.hidden = false; return; }
-        sec.hidden = vis(sec).length === 0;
+        qhide(sec, on && vis(sec).length === 0);
       });
+      TP.index.highlight(root, on ? m : '', '[data-q] .tp-row-title, [data-q] .va-cname');
       const nr = root.querySelector('.va-noresults');
       if (nr) {
-        nr.hidden = !q || visible > 0;
-        nr.innerHTML = q && !visible ? TP.ui.noResults(q) : '';
+        nr.hidden = !on || visible > 0;
+        nr.innerHTML = on && !visible ? TP.ui.noResults(q) : '';
       }
       return visible;
     },
@@ -259,7 +264,7 @@
       }
       const main = `<button type="button" class="va-dl-open" data-action="va-dl-open" data-key="${esc(d.key)}" aria-haspopup="dialog">`
         + `<span class="tp-row-title">${esc(d.title)}</span><span class="tp-row-sub">${sub}</span><span class="va-urg-under">${urg}</span></button>`;
-      return `<div class="tp-row has-lead va-dl tone-${tone}${d.done ? ' is-done' : ''}" data-key="${esc(d.key)}" data-q="${esc(`${d.title} ${course}`.toLowerCase())}">`
+      return `<div class="tp-row has-lead va-dl tone-${tone}${d.done ? ' is-done' : ''}" data-key="${esc(d.key)}" data-q="${esc(TP.index.hayOf.deadline(d))}">`
         + `<span class="tp-row-lead">${check}${TP.ui.dateTile(d.due, { tone })}</span><span class="tp-row-main">${main}</span><span class="tp-row-trail">${trailing}</span></div>`;
     },
     dls: new Map(), // deadline key → deadline (for the sheet)
@@ -647,7 +652,7 @@
     else {
       body = `<ul class="va-cgrid" role="list">${list.map((c) => {
         const badge = c.unread ? TP.ui.badge(c.unread, { tone: 'tint', label: t('overview.new.badge', { n: c.unread }) }) : '';
-        return `<li data-q="${esc(`${c.name} ${c.code || ''} ${c.title || ''}`.toLowerCase())}">
+        return `<li data-q="${esc(TP.index.hayOf.course(c))}">
           <a class="va-ccard${c.available === false ? ' is-dim' : ''}" href="${esc(TP.shell.href('course', { luId: c.luId }))}" title="${esc(c.title || c.name)}">
             <span class="va-swatch" style="--c:${esc(c.color || 'var(--tint)')}" aria-hidden="true"></span>
             <span class="va-cname">${esc(c.name)}</span>
@@ -686,7 +691,7 @@
       leading: `<span class="va-time"><span>${esc(TP.fmt.time(s.start))}</span><span>${esc(TP.fmt.time(s.end))}</span></span><span class="va-bar" style="--c:${esc(color)}" aria-hidden="true"></span>`,
       title: esc(name) + (kul && s.kind === 'examen' ? ` <span class="va-tag">${esc(t('overview.schedule.exam'))}</span>` : ''),
       subtitle: esc(sub),
-      q: `${prefixQ}${name} ${loc} ${teachers}`.toLowerCase(),
+      q: TP.index.hayOf.lesson({ ...s, title: name, teachers: kul ? s.teachers : [] }, [prefixQ, loc]),
       cls: 'va-lesson',
     });
   }
@@ -751,7 +756,7 @@
       trailing: p.trailing,
       chevron: true,
       strong: !e.read,
-      q: `${e.title} ${p.src}`.toLowerCase(),
+      q: TP.index.hayOf.announcement(e),
       cls: 'va-ann va-ann-row' + (e.read ? ' is-read' : ''),
     });
   }
@@ -791,24 +796,26 @@
 
   /* ---------- Search ---------- */
   function applySearch(root, q) {
-    q = (q || '').trim().toLowerCase();
     const feed = root.querySelector('.va-feed');
     // Feed: work on all groups (incl. ones beyond maxCourses) and all items (incl. beyond 3).
     if (feed) feed.setAttribute('data-va-nofilter', '');
     VA.filter(root, q);
+    const m = TP.index.matcher(q, feed ? [...feed.querySelectorAll('details[data-lu], .va-feed-item')].map((el) => el.getAttribute('data-name') || el.getAttribute('data-q')) : []);
+    q = m.empty ? '' : q;
     let feedHits = 0;
     let itemHits = 0;
     if (feed) {
       feed.querySelectorAll('details[data-lu]').forEach((d) => {
-        const groupHit = !!q && String(d.getAttribute('data-name') || '').includes(q);
+        const groupHit = !!q && m(d.getAttribute('data-name') || '');
         let itemHit = false;
         d.querySelectorAll('.va-feed-item').forEach((r) => {
-          const hit = !q ? !r.classList.contains('va-extra') : (groupHit || String(r.getAttribute('data-q')).includes(q));
+          const own = !!q && m(r.getAttribute('data-q') || '');
+          const hit = !q ? !r.classList.contains('va-extra') : (groupHit || own);
           r.hidden = !hit;
           if (q && hit && !r.classList.contains('is-read')) itemHits++;
-          if (q && String(r.getAttribute('data-q')).includes(q)) itemHit = true;
+          if (own) itemHit = true;
         });
-        d.querySelectorAll('.va-feed-more').forEach((m) => { m.hidden = !!q; });
+        d.querySelectorAll('.va-feed-more').forEach((x) => { x.hidden = !!q; });
         if (q) {
           d.hidden = !(groupHit || itemHit);
           if (itemHit) d.open = true;
@@ -950,7 +957,7 @@
     searchPlaceholder: () => t('overview.search'),
     render,
     onSearch(ctx, q) {
-      S.q = (q || '').trim().toLowerCase();
+      S.q = (q || '').trim();
       render(ctx);
     },
     destroy() {

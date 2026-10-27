@@ -185,10 +185,12 @@
   }
 
   /** Search empty state (Apple style): centered magnifier, "Geen resultaten", "voor “x”". One per view. */
+  // a pasted essay is not echoed back in full (TP-082)
+  const clip = (q) => { const s = String(q ?? ''); return s.length > 60 ? s.slice(0, 59).trimEnd() + '…' : s; };
   function noResults(q) {
     return `<div class="tp-noresults-state" role="status">${icon('search', { size: 32 })}`
       + `<p class="tp-nr-title">${esc(t('common.noResults.title'))}</p>`
-      + `<p class="tp-nr-sub">${esc(t('common.noResults.for', { q }))}</p></div>`;
+      + `<p class="tp-nr-sub">${esc(t('common.noResults.for', { q: clip(q) }))}</p></div>`;
   }
 
   /** Loading placeholder with real row geometry, inside an inset group (B1). opts.lead: 'tile'|'date'|'dot'|'none'. */
