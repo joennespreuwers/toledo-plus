@@ -146,11 +146,13 @@ describe('⌘K palette on the portal', () => {
     await page.waitForFunction(() => {
       const sr = document.querySelector('#tplus-root').shadowRoot;
       const el = sr.querySelector('[data-tree] [data-fk="at:_6012_1"]');
+      // the highlight fades after 2.4 s: note it while waiting (a slow CI runner may focus the row later than that)
+      if (el && el.classList.contains('cv-focus')) window.__tpSawHl = true;
       return el && sr.activeElement === el;
-    }, null, { timeout: 15000 });
+    }, null, { timeout: 15000, polling: 'raf' });
     const r = await inShadow(page, (sr) => ({
       open: ['_6010_1', '_6011_1'].map((id) => sr.querySelector(`details.cv-folder[data-id="${id}"]`).open),
-      hl: sr.querySelector('[data-tree] [data-fk="at:_6012_1"]').classList.contains('cv-focus'),
+      hl: !!window.__tpSawHl || sr.querySelector('[data-tree] [data-fk="at:_6012_1"]').classList.contains('cv-focus'),
       inView: (() => { const b = sr.querySelector('[data-tree] [data-fk="at:_6012_1"]').getBoundingClientRect(); return b.top >= 0 && b.bottom <= innerHeight; })(),
     }));
     assert.deepEqual(r.open, [true, true], 'containing folders opened');
