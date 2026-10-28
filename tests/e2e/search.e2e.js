@@ -176,6 +176,7 @@ describe('⌘K palette: KU Loket apps, settings sections, "+N more", typos, long
   });
 
   it('typos: near matches with a note (TP-175); a pasted essay is clipped (TP-082)', async () => {
+    if (!(await page.locator(PAL).isVisible())) await openPalette(page); // don't depend on the previous test's palette
     await type(page, 'regienoat');
     let st = await palState(page);
     assert.ok(st.options.includes('Regienota Ooievaar'), `near match: ${st.options}`);
