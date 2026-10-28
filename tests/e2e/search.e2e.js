@@ -156,7 +156,7 @@ describe('⌘K palette: KU Loket apps, settings sections, "+N more", typos, long
 
   it('a group with more than 8 hits ends in "+N more" that shows the rest (TP-112); a course name alone does not list its files (TP-113)', async () => {
     await openPalette(page);
-    await page.waitForFunction(() => /\d+ documenten/.test(document.querySelector('#tplus-root').shadowRoot.querySelector('dialog.tp-palette .tp-pal-status')?.textContent || '')
+    await page.waitForFunction(() => /\d+ bestanden/.test(document.querySelector('#tplus-root').shadowRoot.querySelector('dialog.tp-palette .tp-pal-status')?.textContent || '')
       && !/wordt bijgewerkt/.test(document.querySelector('#tplus-root').shadowRoot.querySelector('dialog.tp-palette .tp-pal-status').textContent), null, { timeout: 20000, polling: 200 });
     await type(page, 'syllabus');
     const st = await until(page, (s) => s.options.some((o) => /^Nog \d+ resultaten tonen$/.test(o)), '"+N more" row');
