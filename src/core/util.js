@@ -220,7 +220,7 @@
   const locale = () => TP.i18n?.locale?.() || 'nl-BE';
   const t = (k, v) => (TP.t ? TP.t(k, v) : k);
   const midnight = (ms) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };
-  const daysUntil = (ms) => Math.round((midnight(ms) - midnight(Date.now())) / DAY);
+  const daysUntil = (ms) => Math.round((midnight(ms) - midnight(Date.now())) / DAY); // calendar days (DST: round)
   const valid = (ms) => ms != null && ms !== '' && !Number.isNaN(new Date(ms).getTime());
 
   const cache = new Map();
@@ -262,5 +262,66 @@
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   };
 
-  TP.fmt = { date, time, rel, ago, dayKey, daysUntil };
+  // ---- calendar-day arithmetic (DST-safe: wall-clock days, never "+ 24 h") ----
+  /** Local midnight of the day `ms` falls on. */
+  const sod = midnight;
+  /** Same wall-clock time `n` calendar days later (23 h or 25 h on the DST days). */
+  const addDays = (ms, n) => { const d = new Date(ms); d.setDate(d.getDate() + n); return d.getTime(); };
+  /** Hours since local midnight on the wall clock (09:00 → 9, also on the DST days). */
+  const wallHours = (ms) => { const d = new Date(ms); return d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600; };
+
+  // ---- time zone: lessons, exams and Toledo deadlines happen on Belgian time ----
+  const BXL = 'Europe/Brussels';
+  const deviceZone = () => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (_) { return ''; } };
+  let bxlDtf = null;
+  /** Europe/Brussels offset from UTC in minutes at `ms` (+60 / +120). */
+  function bxlOffset(ms) {
+    try {
+      bxlDtf ||= new Intl.DateTimeFormat('en-US', { timeZone: BXL, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' });
+      const p = Object.fromEntries(bxlDtf.formatToParts(new Date(ms)).map((x) => [x.type, x.value]));
+      const wall = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute);
+      return Math.round((wall - Math.floor(ms / 60e3) * 60e3) / 60e3);
+    } catch (_) { return null; }
+  }
+  /** '' when this device shows Belgian time at `ms` (Brussels, or a zone with the same clock then); else a short
+   *  zone label for the device clock ("GMT+9"), so a student abroad can tell which clock a time is on. */
+  function zone(ms = Date.now()) {
+    if (!valid(ms)) return '';
+    const z = deviceZone();
+    if (!z || z === BXL) return '';
+    const dev = -new Date(ms).getTimezoneOffset();
+    const b = bxlOffset(ms);
+    if (b == null || dev === b) return '';
+    try {
+      const part = dtf({ timeZoneName: 'short' }).formatToParts(new Date(ms)).find((x) => x.type === 'timeZoneName');
+      if (part && part.value) return part.value;
+    } catch (_) { /* fall through */ }
+    const h = dev / 60;
+    return `GMT${h >= 0 ? '+' : '−'}${Math.abs(h)}`;
+  }
+
+  const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+  /**
+   * One way to write a moment (TP-230). style:
+   *  'short' (default) → "wo 28 okt 23:59" (rows) · 'long' → "Woensdag 28 oktober · 23:59" (sheets) · 'day' → "wo 28 okt".
+   * The year is added when it is not this year. opts.zone → " (GMT+9)" when the device is not on Belgian time.
+   */
+  function when(ms, style = 'short', opts = {}) {
+    if (!valid(ms)) return '';
+    const other = new Date(ms).getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {};
+    const z = opts.zone ? zone(ms) : '';
+    const zs = z ? ` (${z})` : '';
+    if (style === 'long') return `${cap(date(ms, { weekday: 'long', day: 'numeric', month: 'long', ...other }))} · ${time(ms)}${zs}`;
+    const d = date(ms, { weekday: 'short', day: 'numeric', month: 'short', ...other });
+    return style === 'day' ? d : `${d} ${time(ms)}${zs}`;
+  }
+  /** "09:00–11:00"; "22:00–00:00 (+1)" when the end falls on a later calendar day (TP-222). */
+  function timeRange(start, end) {
+    if (!valid(start)) return '';
+    if (!valid(end) || end <= start) return time(start);
+    const n = Math.round((sod(end - 1) - sod(start)) / DAY);
+    return `${time(start)}–${time(end)}${n > 0 ? ` (+${n})` : ''}`;
+  }
+
+  TP.fmt = { date, time, rel, ago, dayKey, daysUntil, sod, addDays, wallHours, when, timeRange, zone, BXL };
 })();

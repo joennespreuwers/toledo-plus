@@ -236,3 +236,9 @@
 @media (prefers-reduced-motion: reduce) {
   .va-delay { animation-duration: 1ms; }
 }
+
+/* ---------- time zone + next-day cues (TP-217, TP-222) ---------- */
+.va-zone-note { display: flex; align-items: center; gap: 6px; margin: 0 2px 14px; color: var(--label-2); font-size: var(--fs-footnote); line-height: var(--lh-footnote); }
+.va-zone-note > svg { flex: none; }
+.va-zone { color: var(--label-2); font-size: var(--fs-footnote); white-space: nowrap; }
+.va-plus { margin-left: 2px; font-size: 10px; font-weight: 600; color: var(--label-2); vertical-align: 1px; }

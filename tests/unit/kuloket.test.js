@@ -422,6 +422,7 @@ test('the iCal link is stored automatically and re-read after 7 days, never logg
 function agendaHelpers() {
   const s = sandbox({ origin: 'https://toledo.kuleuven.be' });
   s.load('src/core/util.js'); s.load('src/core/i18n.js'); s.load('src/i18n/agenda.js');
+  s.load('src/core/settings.js'); s.load('src/core/data.js'); // icsFor writes through TP.data.icsEvents
   s.load('src/views/agenda.js'); // no TP.shell in the sandbox: only the pure helpers are set up
   return s.TP.agenda;
 }

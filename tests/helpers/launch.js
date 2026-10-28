@@ -33,6 +33,7 @@ const IGNORED_ERRORS = [
  * @param {{width,height}} [o.viewport]
  * @param {object} [o.settings]  settings patch written to chrome.storage.sync before the first page loads
  * @param {object} [o.mock]      options for mock.install
+ * @param {string} [o.timezoneId] browser time zone (default Europe/Brussels)
  * @param {boolean} [o.motion]   keep animations on (default: off via <html data-tp-motion="off">)
  * @param {'reduce'|'no-preference'} [o.reducedMotion]
  */
@@ -48,7 +49,7 @@ async function launch(o = {}) {
     colorScheme: o.colorScheme || 'light',
     reducedMotion: o.reducedMotion || 'no-preference',
     locale: o.locale || 'nl-BE',
-    timezoneId: 'Europe/Brussels',
+    timezoneId: o.timezoneId || 'Europe/Brussels',
     acceptDownloads: true,
     serviceWorkers: 'allow',
     ...(o.recordVideo ? { recordVideo: o.recordVideo } : {}),

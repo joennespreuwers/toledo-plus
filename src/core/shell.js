@@ -143,6 +143,28 @@
     location.assign(href(route, params));
   }
 
+  /** ctx.setParams(params, {replace}): a view puts its own state in the URL (e.g. the Agenda's date, TP-200) without
+   *  being re-rendered. Pushes a history entry (replace → replaces it), so Back returns to the previous state (that
+   *  switches the view to the older URL, which renders it from its params). Portal only. */
+  function setParams(params = {}, o = {}) {
+    if (origin !== 'portal' || !current) return;
+    const h = hashFor(current.route, params);
+    if (location.hash === h) return;
+    const url = location.pathname + location.search + h;
+    if (o.replace) {
+      history.replaceState(history.state, '', url);
+      if (hist.pos >= 0) hist.stack[hist.pos] = h;
+    } else {
+      history.pushState(history.state, '', url);
+      hist.stack = hist.stack.slice(0, hist.pos + 1);
+      hist.stack.push(h);
+      if (hist.stack.length > 50) hist.stack.shift();
+      hist.pos = hist.stack.length - 1;
+    }
+    current.params = { ...params };
+    current.key = current.route + JSON.stringify(current.params);
+  }
+
   // ---------------- registration ----------------
   function register(route, view) {
     if (!ROUTES.includes(route)) console.warn('[Toledo+] unknown route registered:', route);
@@ -761,24 +783,48 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
   // ---------------- toast + live region ----------------
   // Toasts stack (max 3, newest at the bottom); each slides up in and fades down out. The same text twice
   // just restarts its timer. Screen readers get the text via the live region.
-  const TOAST_MS = 3500, TOAST_MAX = 3;
-  function toast(text) {
+  // toast(text, { action: { label, onClick, hint } }) adds one button (e.g. "Ongedaan maken"): such a toast stays 8 s
+  // (and while hovered or focused), is never merged with another one, and its button is a real, focusable control.
+  // Plain toasts are aria-hidden one by one (the live region speaks them), so the container is not hidden itself.
+  const TOAST_MS = 3500, TOAST_MAX = 3, ACTION_MS = 8000;
+  function toast(text, o = {}) {
     text = String(text ?? '');
-    announce(text);
+    const act = o && o.action && typeof o.action.onClick === 'function' ? o.action : null;
+    announce(act && act.hint ? `${text}. ${act.hint}` : text);
     const box = (mode === 'shell' && $('.tp-toasts')) || deepShadow?.querySelector('.tp-toasts') || $('.tp-toasts');
-    if (!box || !text) return;
-    let el = [...box.children].find((x) => x.textContent === text && !motion('leaving', x));
+    if (!box || !text) return null;
+    box.removeAttribute('aria-hidden');
+    let el = act ? null : [...box.children].find((x) => !x.__tpAction && x.textContent === text && !motion('leaving', x));
     if (!el) {
       el = document.createElement('div');
       el.className = 'tp-toast show';
-      el.textContent = text;
+      if (act) {
+        el.__tpAction = true;
+        el.classList.add('has-action');
+        const msg = document.createElement('span');
+        msg.textContent = text;
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'tp-toast-btn';
+        b.textContent = String(act.label || '');
+        b.addEventListener('click', () => { dismissToast(el); safe(() => act.onClick()); });
+        el.append(msg, b);
+        const hold = () => clearTimeout(el.__tpT);
+        const resume = () => { clearTimeout(el.__tpT); el.__tpT = setTimeout(() => dismissToast(el), ACTION_MS / 2); };
+        el.addEventListener('pointerenter', hold); el.addEventListener('pointerleave', resume);
+        el.addEventListener('focusin', hold); el.addEventListener('focusout', resume);
+      } else {
+        el.textContent = text;
+        el.setAttribute('aria-hidden', 'true');
+      }
       box.appendChild(el);
       motion('enter', el, { from: 'up', duration: TP.motion?.DUR?.[3] });
       const live = [...box.children].filter((x) => !motion('leaving', x));
       while (live.length > TOAST_MAX) dismissToast(live.shift());
     }
     clearTimeout(el.__tpT);
-    el.__tpT = setTimeout(() => dismissToast(el), Math.min(9000, Math.max(TOAST_MS, text.length * 60))); // longer text stays longer
+    el.__tpT = setTimeout(() => dismissToast(el), act ? ACTION_MS : Math.min(9000, Math.max(TOAST_MS, text.length * 60))); // longer text stays longer
+    return el;
   }
   function dismissToast(el) {
     clearTimeout(el.__tpT);
@@ -935,6 +981,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
       setTitle(text) { if (current?.ctx === ctx) { current.title = text == null ? '' : String(text); updateHead(); } },
       setSubtitle(html) { if (current?.ctx === ctx) { current.subtitle = html == null ? '' : String(html); updateHead(); } },
       navigate: (r, p) => navigate(r, p),
+      setParams(p, o) { if (current?.ctx === ctx) setParams(p, o); },
       href: (r, p) => href(r, p),
       get query() { return searchQ; },
     };
@@ -1005,7 +1052,30 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
       return;
     }
     renderNav(); renderMenu(); renderBanners(); updateHead(); renderView();
+    armClock();
   }, 60);
+
+  // ---------------- clock (TP-216) ----------------
+  // Time-dependent wording ("vandaag", "Te laat", the date line, the greeting, the overdue badge) follows the clock while
+  // the tab stays open: one timer repaints at the next local midnight, the next open due time and the greeting's hours,
+  // re-armed after every repaint. Coming back to the tab on another day repaints at once.
+  let clockT = null;
+  let clockDay = '';
+  function nextTick(now = Date.now()) {
+    const at = [TP.fmt.addDays(TP.fmt.sod(now), 1)];
+    for (const h of [5, 12, 18]) { const d = new Date(now); d.setHours(h, 0, 0, 0); if (d.getTime() > now) at.push(d.getTime()); }
+    const next = safe(() => (TP.data?.deadlines?.() || []).find((d) => !d.done && d.due > now), null);
+    if (next) at.push(next.due + 1000);
+    return Math.min(...at);
+  }
+  function armClock() {
+    clearTimeout(clockT);
+    clockT = null;
+    if (mode !== 'shell') return;
+    clockDay = TP.fmt.dayKey(Date.now());
+    const delay = Math.min(Math.max(nextTick() - Date.now(), 1000), 6 * 3600e3);
+    clockT = setTimeout(() => { clockT = null; if (mode === 'shell') rerender(); }, delay);
+  }
 
   // Navigation direction (route slide) and scroll memory per route.
   //  deeper (e.g. a list → its detail, courses → course) = 'forward' (slides in from the right), shallower = 'back'
@@ -1078,6 +1148,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
       Promise.resolve(rendered).then(() => { if (current?.key === key) motion('stagger', rowsOf(root)); });
     }
     firstView = false;
+    armClock();
   }
 
   // ---------------- classic pill ----------------
@@ -1431,6 +1502,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     // Coming back to the tab: TP.data refreshes itself (maybeRefresh on visibilitychange); older data layers → our throttle.
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && mode === 'shell' && typeof TP.data?.maybeRefresh !== 'function') backgroundRefresh();
+      if (document.visibilityState === 'visible' && mode === 'shell' && clockDay && clockDay !== TP.fmt.dayKey(Date.now())) rerender();
     });
     // N7: red/pink are no longer accent colours → migrate a stored one to the default (brand).
     safe(() => { const a = settings().accent; if (a && TP.util.accentKey && TP.util.accentKey(a) !== a) TP.settings.set({ accent: TP.util.accentKey(a) }); });

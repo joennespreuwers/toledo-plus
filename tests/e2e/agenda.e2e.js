@@ -295,12 +295,14 @@ describe('agenda — views, keyboard, layout, filters (desktop 1440)', () => {
       const s = sr.querySelector('.ag-scroll'); const r = s.getBoundingClientRect();
       const inView = (el) => { if (!el) return false; const b = el.getBoundingClientRect(); return b.top >= r.top - 1 && b.top <= r.bottom; };
       const first = [...sr.querySelectorAll('.ag-col.is-today .ag-ev')].sort((a, b) => a.offsetTop - b.offsetTop)[0];
-      return { top: s.scrollTop, h: s.clientHeight, sh: s.scrollHeight, hh: sr.querySelector('.ag-hour').offsetHeight, first: inView(first), now: inView(sr.querySelector('.ag-now')) };
+      return { top: s.scrollTop, h: s.clientHeight, sh: s.scrollHeight, hh: sr.querySelector('.ag-hour').offsetHeight, first: inView(first), now: inView(sr.querySelector('.ag-now')), firstH: Math.min(...[...sr.querySelectorAll('.ag-col .ag-ev')].map((e) => e.offsetTop)) / sr.querySelector('.ag-hour').offsetHeight };
     });
     assert.ok(sc.sh > sc.h + 100, 'the grid scrolls inside its container');
-    assert.ok(Math.abs(sc.h - 11 * sc.hh) <= sc.hh, `about 11 hours visible (${sc.h}px)`);
+    assert.ok(sc.h >= 11 * sc.hh - 2 && sc.h <= 24 * sc.hh + 2, `at least 11 hours visible, more on a tall window (TP-021) (${sc.h}px)`);
     const nowH = new Date().getHours();
-    if (nowH >= 7 && nowH <= 18) assert.ok(Math.abs(sc.top / sc.hh - 8) < 0.1, `scrolled to 08:00, 1 h before the first lesson (${sc.top / sc.hh} h)`);
+    // 1 h before the week's earliest lesson (the demo data moves with today's date, so that is not always 09:00).
+    const want = Math.max(0, Math.floor(sc.firstH) - 1);
+    if (nowH >= want && nowH <= want + 10) assert.ok(Math.abs(sc.top / sc.hh - want) < 0.1, `scrolled to ${want}:00, 1 h before the week's first lesson (${sc.top / sc.hh} h)`);
     assert.ok(sc.now, 'the current time is in view');
     assert.ok(sc.first || nowH > 18, 'the first lesson is in view (unless it is evening)');
     const dl = await shadowCount(page, '.ag-allday .ag-chip-deadline');
@@ -430,7 +432,7 @@ describe('agenda — views, keyboard, layout, filters (desktop 1440)', () => {
     const pop = page.locator(`${ROOT} dialog.ag-pop-ev[open]`);
     await pop.waitFor();
     const txt = await pop.innerText();
-    for (const s of ['Hoorcollege', 'X10265', '09:00 – 11:00', 'Voorbeeldstraat 1', 'Leuven', 'Docent A', 'Groep A1']) assert.ok(txt.includes(s), `popover shows ${s}`);
+    for (const s of ['Hoorcollege', 'X10265', '09:00–11:00', 'Voorbeeldstraat 1', 'Leuven', 'Docent A', 'Groep A1']) assert.ok(txt.includes(s), `popover shows ${s}`);
     assert.equal(await pop.getAttribute('aria-labelledby'), 'ag-pop-title');
     const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 5000 }), pop.locator('[data-action="ag-ics-one"]').click()]);
     assert.match(dl.suggestedFilename(), /^filmtaal-1-\d{4}-\d\d-\d\d\.ics$/);
