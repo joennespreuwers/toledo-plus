@@ -60,7 +60,7 @@ async function pick(locator) {
 }
 
 /** Wait until settings in storage satisfy pred. */
-async function waitSettings(h, pred, timeout = 4000) {
+async function waitSettings(h, pred, timeout = 10000) {
   const t0 = Date.now(); let s;
   while (Date.now() - t0 < timeout) { s = await h.getSettings(); if (s && pred(s)) return s; await new Promise((r) => setTimeout(r, 50)); }
   return s;

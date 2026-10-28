@@ -307,6 +307,7 @@
   const update = TP.util.debounce(() => {
     if (!isOpen()) return;
     render(collect(q));
+    if (dlg) dlg.dataset.q = q; // which query is on screen (tests wait for it instead of a fixed delay)
     clearTimeout(announceTimer);
     if (q.trim()) announceTimer = setTimeout(() => TP.shell.announce(items.length ? t('shell.results', { n: items.length }) : t('common.noResults', { q: q.trim() })), 600);
   }, 60);

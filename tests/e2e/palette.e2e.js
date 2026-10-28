@@ -37,7 +37,12 @@ async function openPalette(page, how = 'Control+k') {
 }
 async function type(page, q) {
   await page.locator(INPUT).fill(q);
-  await page.waitForTimeout(250);
+  // wait until the palette has rendered this query (data-q), not a fixed delay: slow runners need longer
+  await page.waitForFunction(() => {
+    const d = document.querySelector('#tplus-root').shadowRoot.querySelector('dialog.tp-palette');
+    const i = d && d.querySelector('input.tp-pal-input');
+    return !d || !d.open || (i && d.dataset.q === i.value);
+  }, null, { timeout: 10000, polling: 50 });
 }
 /** Poll the palette until pred(state) holds (the index may still be filling in the background): no fixed sleeps. */
 async function until(page, pred, what, timeout = 8000) {
