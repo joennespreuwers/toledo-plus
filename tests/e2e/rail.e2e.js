@@ -73,14 +73,20 @@ describe('sidebar icon rail', () => {
     assert.ok(s.iconsCentered, 'icons centred');
     assert.equal(s.initials.length, IN_SB.length, `the sidebar courses as initials: ${s.initials}`);
     assert.ok(s.initials.every((x) => x.length === 2), 'two-letter initials');
-    // counts become a dot (number hidden, text for screen readers kept)
+    // counts keep their number as a small pill (TP-188), text for screen readers kept, inside the rail
     const dot = await inShadow(page, (sr) => {
       const c = sr.querySelector('nav.tp-sidebar a[data-route="announcements"] .tp-sb-count');
       if (!c) return null;
       const r = c.getBoundingClientRect();
-      return { w: Math.round(r.width), sr: c.querySelector('.tp-sr')?.textContent };
+      const nav = sr.querySelector('nav.tp-sidebar').getBoundingClientRect();
+      return { w: Math.round(r.width), h: Math.round(r.height), inside: r.right <= nav.right + 0.5, num: c.querySelector('[aria-hidden="true"]')?.getBoundingClientRect().width > 0, sr: c.querySelector('.tp-sr')?.textContent };
     });
-    if (dot) { assert.ok(dot.w <= 10, 'count shown as a dot'); assert.ok(dot.sr, 'count announced'); }
+    if (dot) {
+      assert.ok(dot.num, 'the number is visible');
+      assert.ok(dot.h <= 18 && dot.w <= 30, `small pill ${dot.w}×${dot.h}`);
+      assert.ok(dot.inside, 'inside the rail');
+      assert.ok(dot.sr, 'count announced');
+    }
     await screenshot(page, 'rail-light-desktop');
     const st = await waitFor(async () => (await h.getState())?.ui?.sidebarCollapsed === true);
     assert.ok(st, 'state.ui.sidebarCollapsed persisted');

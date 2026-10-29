@@ -123,6 +123,7 @@ describe('settings', () => {
     await sw.uncheck({ force: true });
     await waitSettings(h, (s) => s.overview.sections.find((x) => x.id === 'schedule')?.on === false);
     await openPortal(h, 'overview');
+    for (let i = 0; i < 50 && (await page.locator(S.section('schedule')).count()) > 0; i++) await page.waitForTimeout(100); // the overview may still be on its previous render
     assert.equal(await page.locator(S.section('schedule')).count(), 0, 'schedule section still shown');
     assert.equal(await page.locator(S.section('deadlines')).count(), 1);
   });

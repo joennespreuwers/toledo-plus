@@ -7,11 +7,17 @@
 .va-field > span { font-size: var(--fs-subhead, .8125rem); color: var(--label-2); font-weight: 600; }
 .va-field input, .va-field select {
   font: inherit; color: var(--label);
-  min-height: 36px; padding: 6px 10px; border-radius: 8px;
-  border: 1px solid var(--separator); background: var(--bg-3, var(--bg-2));
+  min-height: 36px; height: 36px; padding: 6px 10px; border-radius: 8px; box-sizing: border-box;
+  border: var(--hairline, 1px) solid var(--separator); background: var(--bg-3, var(--bg-2));
   width: 100%;
 }
-.va-field input:focus-visible, .va-field select:focus-visible { outline: 2px solid var(--tint); outline-offset: 2px; }
+/* the form's select: same chevron as TP.ui.select (.tp-select), no native arrow */
+.va-field select {
+  -webkit-appearance: none; appearance: none; padding-right: 30px; cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, var(--label-2) 50%), linear-gradient(135deg, var(--label-2) 50%, transparent 50%);
+  background-position: calc(100% - 16px) 52%, calc(100% - 11px) 52%; background-size: 5px 5px; background-repeat: no-repeat;
+}
+.va-field input:focus-visible, .va-field select:focus-visible { outline: 2px solid var(--tint-text, var(--tint)); outline-offset: 2px; }
 .va-field input[aria-invalid="true"] { border-color: var(--red); }
 .va-field-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 12px; }
 .va-form-error { margin: 0; color: var(--red); font-size: var(--fs-subhead, .8125rem); }
@@ -38,3 +44,6 @@
 .va-edit .va-form-actions { gap: 8px; }
 /* "Markeer deze n als klaar" under the old overdue pile (TP-159) */
 .va-bulk .tp-row-title { color: var(--tint-text, var(--tint)); font-weight: 500; }
+@media print {
+  .va-deadlines .va-dl-add, .va-deadlines .va-filters { display: none !important; }
+}

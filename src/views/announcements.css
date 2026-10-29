@@ -42,3 +42,11 @@
 .an-state-title .tp-ic { flex: none; color: var(--tint-text); }
 .an-state-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0 !important; }
 .an-loading .tp-skeleton { box-shadow: none; }
+
+/* filter list first in the DOM (TP-028), shown on the right ≥ 1100px like every other side column */
+@media (min-width: 1100px) {
+  .va-an-cols > .tp-col-main { grid-column: 1; grid-row: 1; }
+  .va-an-cols > .tp-col-side { grid-column: 2; grid-row: 1; }
+}
+.va-src-row[aria-pressed="true"] { background: color-mix(in srgb, var(--tint) 15%, transparent); }
+.va-src-row[aria-pressed="true"] .tp-row-title { font-weight: 600; }

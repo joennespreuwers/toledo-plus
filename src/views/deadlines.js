@@ -156,9 +156,9 @@
     const open = allDeadlines().filter((d) => !d.done);
     const late = open.filter((d) => V.isOverdue(d, now)).length;
     const state = V.state('events');
-    // "7 open · 1 te laat" — no count while nothing could be loaded (TP-147: "0 open" above the error)
+    // "7 open · 1 te laat" — no "0 open" while nothing could be loaded (TP-147)
     try {
-      ctx.setSubtitle && ctx.setSubtitle(state === 'error' && !open.length ? ''
+      ctx.setSubtitle && ctx.setSubtitle(state === 'error' || (state === 'loading' && !open.length) ? ''
         : esc(t('deadlines.count', { n: open.length }))
         + (late ? `<span aria-hidden="true"> · </span><strong class="va-late">${esc(t('deadlines.lateCount', { n: late }))}</strong>` : ''));
     } catch { /* ignore */ }

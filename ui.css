@@ -19,8 +19,9 @@
   --fs-subhead: .8125rem;    --lh-subhead: 1.125rem;
   --fs-footnote: .75rem;     --lh-footnote: 1rem;
   /* Inter tracking (rsms' dynamic metrics: -0.0223 + 0.185·e^(-0.1745·px) em), per size */
-  --ls-large-title: -.021em; --ls-title2: -.017em; --ls-headline: -.009em; --ls-body: -.009em;
-  --ls-subhead: -.003em; --ls-footnote: 0em; --ls-caps: .06em;
+  /* reading comfort (WCAG 1.4.12 reference, BDA): no negative tracking on text below 20 px; only titles stay tight */
+  --ls-large-title: -.021em; --ls-title2: -.017em; --ls-headline: 0em; --ls-body: 0em;
+  --ls-subhead: 0em; --ls-footnote: 0em; --ls-caps: .06em;
   --fw-title: 750;          /* Bold–ExtraBold (variable wght) for large titles; sections 700 */
   /* metrics */
   --row-min: 44px; --row-py: 11px; --row-px: 16px; --lead: 28px; --gap: 12px;
@@ -194,7 +195,8 @@
 .tp-theme [hidden] { display: none !important; }
 /* :where() keeps this at element specificity, so component classes (.va-ccard, .cv-row, …) win. */
 :where(.tp-theme) a { color: var(--tint-text); }
-.tp-theme button, .tp-theme input, .tp-theme select, .tp-theme textarea { font: inherit; color: inherit; letter-spacing: inherit; }
+:where(.tp-theme) :where(button, input, select, textarea) { font: inherit; } /* zero specificity: .tp-btn's weight/size win */
+.tp-theme button, .tp-theme input, .tp-theme select, .tp-theme textarea { color: inherit; letter-spacing: inherit; }
 :where(.tp-theme) :where(h1, h2, h3, p, ul, ol) { margin: 0; } /* zero specificity: .va-dayhead, .tp-sec-foot … keep their margins */
 :where(.tp-theme) :where(ul, ol) { padding: 0; list-style: none; }
 .tp-theme img { max-width: 100%; height: auto; }
@@ -337,11 +339,12 @@
   height: var(--hairline); margin: 12px 8px; overflow: hidden; color: transparent; background: var(--separator);
   font-size: 1px; line-height: 1px;
 }
+/* counts keep their number in the rail (TP-188): a small tinted pill, like the red overdue badge */
 .sb-rail .tp-sb-count {
-  position: absolute; top: 7px; right: 9px; width: 8px; height: 8px; border-radius: 50%;
-  background: var(--tint-fill); box-shadow: 0 0 0 2px var(--bg-2);
+  position: absolute; top: 3px; right: 2px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: var(--r-pill);
+  background: var(--tint-fill); color: var(--on-tint); box-shadow: 0 0 0 2px var(--bg-2);
+  font: 600 10px/16px var(--font); text-align: center;
 }
-.sb-rail .tp-sb-count > [aria-hidden="true"] { display: none; }
 .sb-rail .tp-sb-item > .tp-badge {
   position: absolute; top: 3px; right: 2px; min-width: 16px; height: 16px; min-height: 16px; padding: 0 4px;
   font-size: 10px; line-height: 16px; box-shadow: 0 0 0 2px var(--bg-2);
@@ -352,6 +355,15 @@
   background: var(--c, var(--fill)); color: var(--fg, var(--label)); font: 700 11px/1 var(--font); letter-spacing: .01em;
 }
 .sb-rail .tp-sb-course.active .tp-sb-initials { box-shadow: 0 0 0 2px var(--bg-2), 0 0 0 4px var(--tint-text); }
+/* touch screens never show the tooltips: the rail's nav items carry a small caption under the icon (TP-186) */
+@media (hover: none) {
+  .sb-rail .tp-sb-scroll, .sb-rail .tp-sb-foot { padding-left: 4px; padding-right: 4px; }
+  .sb-rail .tp-sb-item:not(.tp-sb-course) { flex-direction: column; width: 56px; min-height: 52px; gap: 2px; padding: 4px 0; }
+  .sb-rail .tp-sb-item:not(.tp-sb-course) .tp-sb-label {
+    position: static; flex: none; width: auto; max-width: 54px; height: auto; margin: 0; clip: auto; overflow: hidden;
+    text-overflow: ellipsis; font-size: 10px; line-height: 12px; font-weight: 500; letter-spacing: -.01em; text-align: center;
+  }
+}
 
 .tp-scrim { position: fixed; inset: 0; z-index: 25; background: var(--scrim); }
 
@@ -462,6 +474,8 @@ a.tp-mail { color: var(--tint-text); text-decoration: none; }
 
 /* main + large title */
 .tp-app { --content-max: var(--content-wide); }
+/* 4K / ultrawide at 100% scaling: use more of the width instead of a third of it (TP-116) */
+@media (min-width: 2200px) { .tp-app { --content-max: min(1680px, 62vw); } }
 .tp-main {
   /* one centred column right of the sidebar (≤ 1240px), the same for every view,
      so wide screens have balanced space on both sides instead of a strip next to an empty area */
@@ -471,8 +485,13 @@ a.tp-mail { color: var(--tint-text); text-decoration: none; }
 /* the toolbar's trailing controls line up with the content's right edge */
 .tp-toolbar { padding-right: max(calc(var(--margin) - 8px), calc((100% - var(--content-max)) / 2 + var(--margin) - 8px)); }
 .tp-main:focus { outline: none; }
-.tp-head { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin: 4px 0 var(--section-gap); }
-.tp-head-text { flex: 1 1 260px; min-width: 0; }
+.tp-head { display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin: 4px 0 var(--section-gap); }
+/* title on its own line; subtitle and "Bijgewerkt hh:mm" share the next one, so every page's header has the same rhythm */
+.tp-head-text { flex: 1 1 260px; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 6px; }
+.tp-head-text > .tp-large-title { flex: 1 0 100%; }
+.tp-subtitle:not([hidden]) + .tp-updated:not([hidden])::before { content: '·'; margin-right: 6px; }
+/* page actions sit on the title's line, centred on it, the same on every page (not pushed down by the subtitle) */
+.tp-head-actions { margin-top: calc((var(--lh-large-title) - 32px) / 2); }
 .tp-large-title {
   font-family: var(--font-display); font-size: var(--fs-large-title); line-height: var(--lh-large-title);
   font-weight: var(--fw-title); letter-spacing: var(--ls-large-title); overflow-wrap: anywhere;
@@ -480,7 +499,7 @@ a.tp-mail { color: var(--tint-text); text-decoration: none; }
 .tp-large-title:focus { outline: none; }
 .tp-subtitle { margin-top: 2px; color: var(--label-2); font-size: var(--fs-subhead); line-height: var(--lh-subhead); letter-spacing: var(--ls-subhead); }
 .tp-subtitle strong { color: var(--label); font-weight: 600; }
-.tp-updated { margin-top: 2px; color: var(--label-2); font-size: var(--fs-footnote); line-height: var(--lh-footnote); }
+.tp-updated { margin-top: 2px; color: var(--label-2); font-size: var(--fs-subhead); line-height: var(--lh-subhead); letter-spacing: var(--ls-subhead); }
 .tp-updated-err { display: inline-flex; align-items: center; gap: 4px; color: var(--red); }
 .tp-link-btn { border: 0; background: none; padding: 0; color: var(--tint-text); cursor: pointer; font-weight: 600; font-size: inherit; }
 .tp-link-btn:hover { text-decoration: underline; }
@@ -520,6 +539,7 @@ a.tp-mail { color: var(--tint-text); text-decoration: none; }
 .tp-tabs:not(:has(.tp-tab-ind)) .tp-tab.active { background: color-mix(in srgb, var(--tint) 7%, var(--bg-2)); } /* translucent --tint-soft dropped the 11px label to ~4:1 */
 .tp-tab-label { font-size: .6875rem; line-height: .8125rem; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tp-tab-dot { position: absolute; top: 6px; left: calc(50% + 8px); width: 8px; height: 8px; border-radius: 50%; background: var(--red-fill); }
+.tp-tab-dot.is-unread { background: var(--tint-fill); } /* "Meer": unread announcements (not an alarm) */
 
 /* "More" sheet (native <dialog>) */
 .tp-sheet {
@@ -548,15 +568,19 @@ a.tp-mail { color: var(--tint-text); text-decoration: none; }
 .tp-toast:empty { display: none; }
 /* a toast with one action ("Ongedaan maken"): the only toast that takes clicks */
 .tp-toast.has-action { display: flex; align-items: center; gap: 12px; padding: 6px 6px 6px 16px; pointer-events: auto; text-align: left; }
+/* undo toast (TP.ui.undoToast): text + one action; the only toast you can click */
+.tp-toast.tp-toast-undo { display: flex; align-items: center; gap: 12px; pointer-events: auto; text-align: left; padding: 4px 6px 4px 16px; }
+.tp-toast-text { flex: 1 1 auto; min-width: 0; }
 .tp-toast-btn {
-  flex: none; min-height: 32px; padding: 0 12px; border: 0; border-radius: var(--r-pill); cursor: pointer;
-  background: rgba(255, 255, 255, .14); color: #FFFFFF; font: 600 var(--fs-subhead)/1 var(--font);
+  flex: none; min-height: 36px; padding: 6px 12px; border: 0; border-radius: var(--r-pill); cursor: pointer;
+  background: transparent; color: #F5A35F; font-weight: 600;
 }
-.tp-toast-btn:hover { background: rgba(255, 255, 255, .22); }
-.tp-toast-btn:focus-visible { outline: 2px solid #FFFFFF; outline-offset: 2px; }
+.tp-toast-btn:hover { background: rgba(255,255,255,.1); }
+.tp-toast-btn:focus-visible { outline: 2px solid #F5A35F; outline-offset: 1px; }
 
 /* --- responsive shell --- */
-@media (max-width: 699px) {
+/* compact navigation (tab bar) on phones and on short screens: landscape phones, 200% zoom (TP-035) */
+@media (max-width: 699px), (max-height: 500px) and (max-width: 1099px) {
   .tp-app, .tp-app.sb-collapsed, .tp-app.sb-rail { grid-template-columns: minmax(0, 1fr); }
   .tp-sidebar, .tp-sb-toggle, .tp-scrim { display: none !important; }
   .tp-tabbar { display: block; }
@@ -572,7 +596,15 @@ a.tp-mail { color: var(--tint-text); text-decoration: none; }
   .tp-kbd { display: none; }
   .tp-menu { position: fixed; right: 8px; left: 8px; top: calc(var(--toolbar-h) + 4px); min-width: 0; }
 }
-@media (min-width: 700px) and (max-width: 899px) {
+/* short screens: a slimmer tab bar (icon and label side by side) leaves more of the ~360–400px height to the content */
+@media (max-height: 500px) and (max-width: 1099px) {
+  .tp-tab { min-height: 36px; flex-direction: row; gap: 6px; padding: 2px 4px; }
+  .tp-tab .tp-ic { width: 18px; height: 18px; }
+  .tp-tab-dot { top: 4px; left: auto; right: 6px; }
+  .tp-main { padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
+  .tp-toasts { bottom: calc(60px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (min-width: 700px) and (max-width: 899px) and (min-height: 501px) {
   /* the rail by default; the toolbar button / ⌘\ expands the full sidebar as an overlay */
   .tp-app, .tp-app.sb-collapsed, .tp-app.sb-open { grid-template-columns: var(--rail-w) minmax(0, 1fr); }
   .tp-app.sb-open .tp-sidebar {
@@ -623,7 +655,7 @@ a.tp-mail { color: var(--tint-text); text-decoration: none; }
 }
 .tp-pal-opt {
   display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 6px 10px;
-  border-radius: var(--r-control); cursor: pointer;
+  border-radius: var(--r-control); cursor: pointer; color: var(--label); text-decoration: none; /* results are <a href> */
 }
 .tp-pal-opt[aria-selected="true"] { background: var(--tint-soft); }
 .tp-pal-tile {
@@ -685,6 +717,11 @@ mark.tp-hl { background: color-mix(in srgb, var(--tint) 22%, transparent); color
 .tp-deep-mark .tp-wordmark { font-size: 15px; }
 .tp-deep-back-label { max-width: 34vw; overflow: hidden; text-overflow: ellipsis; }
 .tp-deep-spacer { flex: 1; }
+.tp-deep-hide {
+  flex: none; display: inline-grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 8px;
+  background: none; color: var(--label-2); cursor: pointer;
+}
+.tp-deep-hide:hover { background: var(--fill); color: var(--label); }
 @media (max-width: 520px) { .tp-deep-link span, .tp-deep-name { display: none; } }
 
 /* ========================================================================== components */
@@ -741,6 +778,11 @@ a.tp-row:active, button.tp-row:active, summary.tp-row:active { background: var(-
   font-size: var(--fs-subhead); line-height: var(--lh-subhead); text-align: right; font-variant-numeric: tabular-nums;
 }
 .tp-chev { flex: none; display: grid; place-items: center; color: var(--label-3); }
+/* one "opens elsewhere" glyph everywhere: 14 px, label-3 when it decorates a row/menu item, label-2 when it is the
+   (icon-only) hit target (.va-ext, .cv-ext) */
+:is(.tp-ext, .tp-menu-ext, .st-trail > .tp-ic, .an-ext > .tp-ic, .kl-app .tp-row-trail > .tp-ic) { width: 14px; height: 14px; color: var(--label-3); }
+:is(.va-ext, .cv-ext) > .tp-ic { width: 14px; height: 14px; }
+:is(.va-ext, .cv-ext) { color: var(--label-2); }
 @media (prefers-contrast: more) { .tp-chev { color: var(--label-2); } }
 
 /* disclosure */
@@ -769,6 +811,17 @@ a.tp-row:active, button.tp-row:active, summary.tp-row:active { background: var(-
 @media (prefers-color-scheme: dark) { .tp-theme[data-appearance="system"] .tp-badge-red { background: #D70015; } }
 .tp-badge-gray { background: var(--fill); color: var(--label); }
 .tp-dot { display: inline-block; flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--dot, var(--label-3)); }
+/* Status words carry the state (never the tint alone, greyscale-safe): "3 d te laat" red 600 + alert glyph,
+   "morgen / over 2 d" (binnenkort) amber 600 + clock glyph. --red-tile: 5.9:1 on the red-tinted row (light). */
+:is(.tp-status-overdue, .va-dl .va-urg.is-overdue, .cv-due.is-overdue), :is(.tp-status-urgent, .va-dl .va-urg.is-urgent, .va-exam .va-urg.is-urgent, .cv-due.is-urgent) { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; }
+:is(.tp-status-overdue, .va-dl .va-urg.is-overdue, .cv-due.is-overdue) { color: var(--red-tile, var(--red)); }
+:is(.tp-status-urgent, .va-dl .va-urg.is-urgent, .va-exam .va-urg.is-urgent, .cv-due.is-urgent) { color: var(--amber); }
+:is(.tp-status-overdue, .va-dl .va-urg.is-overdue, .cv-due.is-overdue)::before, :is(.tp-status-urgent, .va-dl .va-urg.is-urgent, .va-exam .va-urg.is-urgent, .cv-due.is-urgent)::before {
+  content: ''; flex: none; width: 12px; height: 12px; background: currentColor;
+  -webkit-mask: var(--tp-status-ic) center / contain no-repeat; mask: var(--tp-status-ic) center / contain no-repeat;
+}
+:is(.tp-status-overdue, .va-dl .va-urg.is-overdue, .cv-due.is-overdue) { --tp-status-ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7.5v5.5M12 16.5v.2'/%3E%3C/svg%3E"); }
+:is(.tp-status-urgent, .va-dl .va-urg.is-urgent, .va-exam .va-urg.is-urgent, .cv-due.is-urgent) { --tp-status-ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v5l3 2'/%3E%3C/svg%3E"); }
 
 /* date tile */
 .tp-datetile {
@@ -936,7 +989,7 @@ a.tp-row:active, button.tp-row:active, summary.tp-row:active { background: var(-
 /* generic form inputs (views may use these in sheets/forms) */
 .tp-input, .tp-theme input[type="text"], .tp-theme input[type="date"], .tp-theme input[type="datetime-local"],
 .tp-theme input[type="time"], .tp-theme input[type="url"], .tp-theme input[type="number"], .tp-theme textarea {
-  min-height: 34px; padding: 6px 10px; border: var(--hairline) solid var(--separator); border-radius: var(--r-control);
+  min-height: 36px; padding: 6px 10px; border: var(--hairline) solid var(--separator); border-radius: var(--r-control);
   background: var(--bg-2); color: var(--label); font-size: var(--fs-body);
 }
 .tp-theme input::placeholder, .tp-theme textarea::placeholder { color: var(--label-2); }
@@ -949,6 +1002,15 @@ a.tp-row:active, button.tp-row:active, summary.tp-row:active { background: var(-
 .tp-prose img { border-radius: 8px; }
 .tp-prose table { border-collapse: collapse; max-width: 100%; display: block; overflow-x: auto; }
 .tp-prose td, .tp-prose th { border: var(--hairline) solid var(--separator); padding: 4px 8px; }
+.tp-prose li { display: list-item; }
+.tp-prose li > :where(ul, ol) { margin: .2em 0 0; }   /* nested lists keep their own indent and marker */
+.tp-prose ul ul { list-style: circle; } .tp-prose ul ul ul { list-style: square; }
+.tp-prose ol ol { list-style: lower-alpha; }
+.tp-prose th { font-weight: 600; text-align: left; }
+/* long code/preformatted lines scroll inside the card instead of being clipped at its edge */
+.tp-prose pre { max-width: 100%; overflow-x: auto; margin: 0 0 .7em; padding: 8px 10px; border-radius: 8px;
+  background: var(--fill, rgba(120,120,128,.12)); font: .875em/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre; }
+.tp-prose code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9em; }
 
 /* ========================================================================== banners (auth / stale) */
 .tp-banners:empty { display: none; }
@@ -992,6 +1054,27 @@ a.tp-row:active, button.tp-row:active, summary.tp-row:active { background: var(-
 }
 
 /* ========================================================================== touch / narrow (device table) */
+/* coarse pointers: ≥ 44 px hit areas without moving anything (an invisible ::after around the control) */
+@media (pointer: coarse) {
+  .tp-tb-btn::after { content: ''; position: absolute; inset: -4px; }
+  .tp-btn-icon, .va-iconbtn, .va-check, .cv-mini, .tp-detail-head .tp-tb-btn { position: relative; }
+  .tp-btn-icon::after, .va-iconbtn::after, .va-check::after { content: ''; position: absolute; inset: -8px; }
+  .cv-mini::after { content: ''; position: absolute; inset: -4px; }
+}
+/* no hover (touch screens): what a tooltip says must be visible — rail names under the icons, rail counts as numbers */
+@media (hover: none) and (min-width: 700px) {
+  .sb-rail .tp-sb-item { flex-direction: column; justify-content: center; gap: 2px; width: 56px; min-height: 52px; padding: 4px 0; }
+  .sb-rail .tp-sb-item .tp-sb-label {
+    position: static; width: auto; height: auto; margin: 0; clip: auto; max-width: 54px;
+    font-size: 10px; line-height: 12px; font-weight: 500; text-align: center; overflow: hidden; text-overflow: ellipsis;
+  }
+  .sb-rail .tp-sb-count {
+    top: 3px; right: 2px; width: auto; height: 16px; min-width: 16px; padding: 0 4px; border-radius: var(--r-pill);
+    background: color-mix(in srgb, var(--tint) 14%, var(--bg-2)); color: var(--tint-text);
+    font: 600 10px/16px var(--font); text-align: center;
+  }
+  .sb-rail .tp-sb-count > [aria-hidden="true"] { display: inline; }
+}
 /* ≤ 360px: segments size to their label and may shrink (ellipsis) instead of pushing the page wider */
 @media (max-width: 360px) {
   .tp-segmented { grid-auto-columns: minmax(0, auto); } .tp-seg span { display: block; padding: 0 7px; line-height: 28px; text-align: center; }
@@ -1003,6 +1086,30 @@ a.tp-row:active, button.tp-row:active, summary.tp-row:active { background: var(-
   .tp-row-sub { white-space: normal; overflow-wrap: anywhere; }
   /* inline text links ≥ 24px tall (WCAG 2.5.8) */
   .tp-sec-foot a, .va-foot a, .tp-empty a, .tp-banner a { display: inline-block; min-height: 24px; padding: 3px 0; }
+}
+
+/* ========================================================================== forced colours (Windows High Contrast)
+   Backgrounds are replaced by the system palette, so every state that lived in a fill gets a border/outline in system
+   colours; colour choices (swatches, course dots) keep their real colour (forced-color-adjust: none) with a frame. */
+@media (forced-colors: active) {
+  .tp-switch { forced-color-adjust: none; border: 1px solid CanvasText; background: Canvas; }
+  .tp-switch::before { top: 1px; left: 1px; background: CanvasText; box-shadow: none; }
+  .tp-switch:checked { background: Highlight; border-color: Highlight; }
+  .tp-switch:checked::before { background: HighlightText; }
+  .tp-segmented { border: 1px solid ButtonText; }
+  .tp-seg-pill { display: none; }
+  .tp-seg input:checked + span { forced-color-adjust: none; background: Highlight; color: HighlightText; }
+  .tp-swatch-c, .tp-dot, .tp-sb-initials, .va-swatch, .va-bar, .va-unread, .ag-chip-dot, .cs-color-dot, .tp-tab-dot {
+    forced-color-adjust: none; box-shadow: none; border: 1px solid CanvasText;
+  }
+  .va-unread-off { border-color: transparent; }
+  .tp-swatch input:checked + .tp-swatch-c { outline: 3px solid Highlight; outline-offset: 2px; }
+  .tp-btn-tinted, .tp-btn-filled, .tp-btn-gray, .tp-badge, .tp-datetile, .tp-search-field, .tp-select select, .tp-banner, .tp-toast {
+    border: 1px solid ButtonText;
+  }
+  .tp-sb-item.active, .tp-tab.active, .tp-pal-opt[aria-selected="true"], .va-src-row.is-on { outline: 2px solid Highlight; outline-offset: -2px; }
+  .tp-group, .tp-detail, .tp-palette, .tp-sheet, .tp-menu { border: 1px solid CanvasText; }
+  :is(.tp-status-overdue, .va-dl .va-urg.is-overdue, .cv-due.is-overdue)::before, :is(.tp-status-urgent, .va-dl .va-urg.is-urgent, .va-exam .va-urg.is-urgent, .cv-due.is-urgent)::before { background: CanvasText; }
 }
 
 /* ========================================================================== motion (v1.5, see TP.motion) */
@@ -1082,7 +1189,35 @@ a.tp-row:active, button.tp-row:active, summary.tp-row:active { background: var(-
     :is(.tp-disclosure:not(.cv-folder), .cv-doc, .cv-ann, .cs-hidden)::details-content { transition: none !important; }
   }
 }
+/* ========================================================================== print (one block; views add their own
+   "hide the controls" rules in their CSS). Paper is light whatever the appearance: the dark tokens never print. */
 @media print {
-  .tp-sidebar, .tp-toolbar, .tp-tabbar, .tp-toasts, .tp-toast, .tp-skip, .tp-banners { display: none !important; }
-  .tp-app { display: block; background: #fff; }
+  .tp-sidebar, .tp-toolbar, .tp-tabbar, .tp-toasts, .tp-toast, .tp-skip, .tp-banners, .tp-scrim, .tp-head-actions, .tp-sec-actions,
+  .tp-noresults, .tp-skeleton, .tp-live, .tp-sheet, .tp-palette, .tp-detail, .tp-menu { display: none !important; }
+  .tp-theme, .tp-theme[data-appearance] {
+    --bg: #FFFFFF; --bg-2: #FFFFFF; --bg-3: #FFFFFF;
+    --label: #1F2430; --label-2: rgba(31, 36, 48, .74); --label-3: rgba(31, 36, 48, .40);
+    --separator: rgba(31, 36, 48, .22); --separator-strong: rgba(31, 36, 48, .35);
+    --fill: rgba(118, 114, 110, .13); --fill-2: rgba(118, 114, 110, .07);
+    --red: #D70015; --red-fill: #FF3B30; --red-tile: #B0000F; --amber: #8A5300; --amber-fill: #F5B000;
+    --green: #1E7B36; --green-fill: #34C759;
+    --tint-text: var(--tint-text-l);
+    --tint-soft: color-mix(in srgb, var(--tint) 15%, transparent); --tint-tile: color-mix(in srgb, var(--tint) 12%, #FFFFFF);
+    --shadow-card: none; --card-ring: none;
+    color-scheme: light; color: #1F2430;
+  }
+  .tp-app { display: block; min-height: 0; background: #FFFFFF; }
+  .tp-main { max-width: none; padding: 0; }
+  .tp-cols { display: block; }
+  .tp-group { box-shadow: none; border: .5pt solid rgba(31, 36, 48, .25); overflow: visible; }
+  /* keep rows whole and headings with their first row (TP-131) */
+  .tp-row, .tp-group > *, .va-day, .tp-error-row { break-inside: avoid; }
+  .tp-sec-head, .tp-head, .va-dayhead, h2, h3 { break-after: avoid; }
+  .tp-section { margin-bottom: 18pt; }
+  /* row controls are for the screen */
+  .va-check, .va-iconbtn, .va-ext, .cv-mini, .tp-chev, .va-filters, .va-dl-add, .tp-segmented, .tp-select, .tp-switch, .tp-btn-icon { display: none !important; }
+  .tp-theme a { color: inherit; text-decoration: none; }
+  .tp-dot, .tp-datetile, .va-bar, .va-swatch { -webkit-print-color-adjust: exact; print-color-adjust: exact; } /* course colours + date tiles carry meaning */
+  .tp-row-title, .tp-row-sub { white-space: normal; overflow: visible; }
+  .tp-theme *, .tp-theme *::before, .tp-theme *::after { animation: none !important; transition: none !important; }
 }

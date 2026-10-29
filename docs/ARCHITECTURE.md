@@ -286,6 +286,9 @@ Groups (8 rows each, then "Nog n resultaten tonen"): Navigatie (views incl. sett
 Open: files → `TP.data.ultraOpen(cid,id)` (⌘↵ → `ultraDownload`); folders/pages/assignments/links → `state.focus` + navigate to
 `TP.shell.href('course', {cid})` (or rerender when that course is already shown); every document open → `TP.data.addRecent`.
 Footer: `TP.index.statusText()`; opening the palette triggers `TP.index.crawlIfStale()`. Full-screen sheet below 700 px.
+Results are `<a role="option" tabindex="-1" href>` (absolute: route via `TP.shell.href`, files the Ultra item URL, deadlines/announcements
+their Toledo URL): a plain click or ↵ runs the action above; middle-click, ⌘/Ctrl-click (not on files: that downloads) and Shift-click
+open the link natively. The shell closes the palette when the route changes (Back).
 
 ## TP.ui (core) — HTML-string helpers; views compose these, use `data-action` + event delegation
 ```
@@ -322,6 +325,9 @@ TP.shell.toast(text) ; TP.shell.announce(text) (aria-live polite)
 TP.shell.app → the shell root element while the shell is shown (palette mounts into it), else null
 TP.shell.mod → '⌘' on Apple platforms, 'Ctrl ' elsewhere (shortcut hints) ; TP.shell.isRail() → sidebar is the icon rail
 TP.shell.rerender()               // re-run current view render (called on settings/data change for current view)
+TP.shell.setParams({id}, {replace}) // (bug bash) put the current view's own state in '&id=' without a re-render (push, or replace);
+                                  // → false on Ultra / the course page / no change. Back/Forward re-render the view with ctx.params.
+TP.shell.detail.open({title, html, onAction, onKey, opener, key?, link?}) // key → '&sheet=<key>' history entry; link → "Kopieer link"
 ```
 View contract:
 ```
@@ -336,14 +342,16 @@ TP.shell.register('overview', {
                                           // ⌘/Ctrl/Alt, weren't handled (defaultPrevented) and with no detail sheet open (agenda: t/d/w/m/a/j/k/g/?…)
   destroy(ctx) { … }                      // optional
 });
-ctx = { root: HTMLElement (view container in shadow root), params, route, origin:'portal'|'ultra', setActions([{id,label,icon,onClick}]), setTitle(text), setSubtitle(html) }
+ctx = { root: HTMLElement (view container in shadow root), params, route, origin:'portal'|'ultra', setActions([{id,label,icon,onClick}]), setTitle(text), setSubtitle(html), setParams(params, {replace}) }
+Optional `docTitle` (string or fn(ctx)) overrides the tab title; default: the nav name ("Overzicht · Toledo+", never the greeting), a sub-page (`params.id`) "<title> · <nav name>", the course page its course name.
 Course view params: `{cid}` | `{luId}`, optional `focus: contentId` (also read from `state.focus`): once the tree is loaded it opens the containing folders, scrolls to the row, focuses it and highlights it for 2.4 s.
 ```
 Views attach ONE delegated listener per event type on `ctx.root` in render's first call (guard with a flag on root), never on document.
 Shell layout: skip link; sidebar ≥700px (glass, sticky full height – only the content column scrolls; sections: Overview, Courses, Deadlines, Planning, Announcements, then "Pinned" courses, Settings at bottom; counts trailing), bottom tab bar <700px (Overview, Courses, Deadlines, Planning, More→Search everywhere/Announcements/Settings); toolbar with large title, subtitle, search field filtering the view (with a ⌘K button opening the palette), refresh, account menu (mail badge→Outlook, Toledo classic toggle, logout).
-Sidebar modes: **expanded** (240px) or **icon rail** (`.sb-rail`, 64px: centred icons with `title` tooltips, labels visually hidden but kept as accessible names, counts → dot, overdue → small red badge, pinned courses → coloured circles with two initials, Toledo+ mark on top). ≥900px: ⌘\ / Ctrl+\ and the toolbar button toggle, persisted in `state.ui.sidebarCollapsed`. 700–899px: the rail by default; toggling expands the full sidebar as an overlay (`.sb-open`, scrim, Esc). The toggle has `aria-expanded`. Grid columns animate (none under reduced motion). `page.css` keeps `<body>` at `overflow: visible` (only `<html>` scrolls) – otherwise body becomes a scroll container and sticky breaks. Theme: `data-appearance`, `data-density`, `--tint`, `--tint-text` on the shell root.
-On Ultra pages that are not a course outline, and on portal routes other than '#/home' (incl. '#/home?…'), '#/', '': if `wrap.deepBar`, show a slim glass top bar (Toledo+ mark → overview, "‹ <course>" back link when the path has a course id, page stays the original) and pad the page top.
-"Classic" mode: settings.wrap.portal/courses false → original page shows; a floating "Toledo+" pill (page.css) re-enables.
+Sidebar modes: **expanded** (240px) or **icon rail** (`.sb-rail`, 64px: centred icons with `title` tooltips, labels visually hidden but kept as accessible names — shown as small captions under the icons on `(hover: none)` touch screens —, counts → a small tinted number pill, overdue → small red badge, pinned courses → coloured circles with two initials, Toledo+ mark on top). ≥900px: ⌘\ / Ctrl+\ and the toolbar button toggle, persisted in `state.ui.sidebarCollapsed`. 700–899px: the rail by default; toggling expands the full sidebar as an overlay (`.sb-open`, scrim, Esc). The toggle has `aria-expanded`. Grid columns animate (none under reduced motion). `page.css` keeps `<body>` at `overflow: visible` (only `<html>` scrolls) – otherwise body becomes a scroll container and sticky breaks. Theme: `data-appearance`, `data-density`, `--tint`, `--tint-text` on the shell root.
+On Ultra pages that are not a course outline, and on portal routes other than '#/home' (incl. '#/home?…'), '#/', '': if `wrap.deepBar`, show a slim glass top bar (Toledo+ mark → overview, "‹ <course>" back link when the path has a course id, Deadlines, Instellingen, and a ✕ that sets `wrap.deepBar` false; page stays the original) and pad the page top.
+"Classic" mode: settings.wrap.portal/courses false → original page shows; a floating "Toledo+" pill (page.css, accessible name "Terug naar Toledo+") re-enables. Right after the switch a `role="status"` bubble above the pill (`#tplus-switch-hint`, `shell.classicOn`) says what happened and that it stays on the next visit, and focus moves to the pill.
+Compact navigation (tab bar) below 700px **and** on short screens (`max-height: 500px` up to 1099px wide: landscape phones, 200% zoom), where the tab bar is slimmer (icon and label side by side). The phone "Meer" tab has a tinted dot when announcements are unread.
 
 ## Boot (core)
 `src/boot.js`: `await TP.settings.load(); await TP.data.init();` decide origin + route; mount shell or deep bar; then `TP.index.load()` + `TP.index.schedule()`; on portal listen to `hashchange`, on Ultra poll `location.pathname` every 400ms (client-side routing). Hide the original page as early as possible (`document_start`, class `tplus-on` on `<html>`) to avoid a flash.
@@ -706,3 +714,88 @@ calendar; open popovers re-anchor on resize (via the view's ResizeObserver).
 
 **KU Loket view:** exams/lessons show an error with "Opnieuw" (`TP.kuloket.refresh`) when KU Loket failed (`status().exams|lessons.ok === false`,
 error other than auth/ics), saved data with a "saved" note, and a skeleton while nothing is known yet — "no exams"/"no classes" only after an answer.
+
+## Addendum (bug bash) — state in the URL, history, links
+- **Portal URL** stays `#/home?tplus=<route>[&id=<param>]`; one extra, shell-owned query key: `&sheet=<key>` while a detail sheet is open.
+  It is not part of the route (`parseHash` ignores it), so it never re-renders the view.
+- **Detail sheet**: `TP.shell.detail.open({…, key})` pushes `…&sheet=<key>` (key: `o.key`, else the opener's `data-key`/`data-id`/`data-eid`;
+  stepping to another item in an open sheet replaces the entry). Back closes the sheet and stays on the view; Esc/✕/an action closes it and
+  pops the entry (`history.back()`); navigating from a sheet entry replaces it. A sheet entry without an open sheet (Forward, reload, a pasted
+  URL) is dropped with `replaceState` — views do not reopen sheets from the URL yet. Portal only; on Ultra the sheet has no entry.
+  `link` adds "Kopieer link" (`navigator.clipboard.writeText`, result announced and shown on the button — a toast would sit under the modal backdrop).
+- **`setParams({id}, {replace})`** (`ctx.setParams`, `TP.shell.setParams`): a view writes its own state to `&id=` with `pushState`/`replaceState`
+  — no hashchange, no re-render, `ctx.params`/the route key/tab title follow. Back/Forward then fire a normal route change, so the view is
+  destroyed and rendered again with the earlier `ctx.params.id`. Used by Courses › Bewerk (`id=edit`); the Agenda can use it for its date
+  (`id=YYYY-MM-DD`, read in render from `ctx.params.id`).
+- **History direction stack** (`hist`): `intent` may be `'push'`, `'replace'` or null (traversal); push/replaceState and same-view URL changes
+  (a sheet opening/closing) keep it in step.
+- **Unknown route** `#/home?tplus=<unknown>`: the start page shows and the hash is replaced with its route.
+- **Palette** closes when the route changes; its results are links (see TP.palette).
+- **Tab titles**: see the view contract (`docTitle`).
+
+## Addendum (unreleased) — Accessibility, design tokens, print (bug bash: patterns 1, 2, 14, 15, 16)
+- **Focus across re-renders — one helper, `TP.shell.focus`** (pattern 1). Every view used to carry its own snap/restore pair and a
+  render that removed the focused control (Mark all read, a row marked done, a closed banner, the language rebuild) dropped focus to `<body>`.
+  ```
+  TP.shell.focus.snap(scope[, el]) → snapshot of the focused control (default: scope's active element) or null
+  TP.shell.focus.restore(snap, { fallback?, scope? }) → bool   // fallback: selector/element preferred when the control is gone
+  TP.shell.focus.keep(scope, fn, opts)                         // snap → await fn() → restore
+  TP.shell.focus.to(el) → bool                                 // focus anything (a heading gets tabindex=-1)
+  TP.shell.focus.key(el) → selector                            // "the same control" in the next render
+  ```
+  The key is the control's data attributes (`data-fk` first, then `data-action`/`data-shell`/`data-detail-action` + `data-key`/`data-id`/
+  `data-eid`/`data-lu`/`data-day`/`data-route`/`data-sec`/`name` (+ `value` for radios)), never a position or a per-render id
+  (`tp-h-*`, `tp-d-*`, settings `st-*`). When the control is gone: `fallback`, then the next items of its list (up to 3) and the one before,
+  then the heading of its `[data-section]`, then the page's large title — never `<body>`. Fallbacks only apply when focus was actually lost
+  (a later restore may override a fallback an inner re-render chose). Used by: the shell's `renderView` and chrome rebuild (language change),
+  `VA.paint` (Overzicht, Deadlines, Mededelingen), Instellingen, Vakken (focus follows a moved course), the course page, the detail sheet's
+  opener (row marked done → next row), "Later" on the update banner, "Klassiek" (focus → the Toledo+ pill, now `aria-label` "Terug naar Toledo+").
+- **`TP.ui.rovingKey(ev)`** — roving focus in a grid of buttons (APG date picker): container `[data-roving="<columns>"]`, items
+  `[data-roving-item]` (one `tabindex=0`, the rest `-1`), optional `[data-roving-prev]`/`[data-roving-next]` for PageUp/PageDown. ←/→ ±1,
+  ↑/↓ ±one row, Home/End. The shell calls it for the whole app; the Agenda calls it first in its own key handler (its arrows page the agenda).
+  Used by the Agenda mini calendar (tab stop: selected day, else today, else the 1st).
+- **`TP.ui.toggle`**: the switch is named by its title only (`aria-labelledby`), the help text is `aria-describedby`.
+  **`TP.ui.section`**: the count is `aria-hidden` and announced as ", 3 items" (`common.items`), so headings read "Week van 16 nov, 1 item".
+  **`TP.ui.noResults(q)`** also announces "Geen resultaten voor “q”" (debounced) through the shell's live region; the shell's own announcement
+  only says the result count.
+- **CSS** (`ui.css`): `@media (forced-colors: active)` block (switch, segmented, swatches/dots keep their colour with a frame, buttons/badges/
+  fields/cards get system-colour borders, selection = Highlight); one `@media print` block (light tokens whatever the appearance, chrome +
+  row controls hidden, rows/headings don't split; views add their own: `agenda.css` whole day + no side column, `deadlines.css` filters/add row);
+  `(pointer: coarse)` 44 px hit areas via `::after`; `(hover: none)` rail labels + rail counts as numbers, card captions from `title`.
+  `:where(.tp-theme) :where(button, input, select, textarea) { font: inherit }` (zero specificity) so `.tp-btn*` keep their weights.
+- **Course colours** (`TP.util`): `COURSE_COLORS` = `COLOR_ORDER` = blue, green, indigo, teal, purple, brown, navy, forest, plum, olive, slate, lavender (+ graphite
+  for "no course"). Red/pink/orange/yellow are status-like and no longer handed out (a colour chosen before still renders); mint/cyan were
+  near-duplicates of teal/blue. New keys are not accents.
+
+## Addendum v1.7 (unreleased) — reading & marking read (bug bash 2026-10)
+
+- **`TP.data.markAllRead(scope) → Promise<{n, unread, synced: Promise<bool>, undo(): Promise}>`** — the one "mark as read" (shared
+  pattern 5). `scope` = `{events}` (exactly these: the rows in view, filter + search applied) | `{luId}` (what Nieuw shows for one course)
+  | `{}` (all of Nieuw). Adds the items to `state.feedSeen` and **always** writes the local read-set via `markRead` (also with
+  `sync.markReadInToledo` off; with it on the unread ones are PATCHed, failures queue in `pendingRead` → `synced` resolves `false`).
+  `undo()` waits for the PATCH, restores the previous `feedSeen` (replace) and calls `markUnread` on the items it newly read.
+  `markFeedSeen()` is now `markAllRead({})` and resolves to the sync result. Callers: Overzicht (`ov-readall` with the search scope,
+  `ov-readgroup` per course), Mededelingen (`an-readall`: the visible unread rows), the course page (`read-new`: the course's unread feed
+  events + unread announcements; also resets the "since your last visit" dots for the session).
+- **`TP.ui.undoToast(label, restore, {ms=8000, undone, undoLabel, returnFocus, onDismiss}) → {undo, dismiss} | null`** — shared pattern 13:
+  a toast with "Ongedaan maken" in the shell's `.tp-toasts` (one offer at a time; paused while hovered/focused; ⌘Z/Ctrl+Z undoes outside
+  text fields; announced with the shortcut). Without the shell: a plain toast, `null`. Plain toasts are now `aria-hidden` one by one (the
+  container no longer is), so the undo button is reachable.
+- **`TP.ui.updatedText(ms)`** — "Bijgewerkt 14:05" today, "Bijgewerkt ma 26 okt 14:05" otherwise (`common.updatedOn`); used by the shell's
+  status line, the Overzicht subtitle and `TP.ui.empty({timestamp})`. **`TP.ui.initials(names[]) → string[]`** — rail avatars: letters/digits
+  only, function words skipped, trailing number/roman numeral kept, unique within the list. `TP.ui.swatches` options accept `used:true`
+  (`.tp-swatch-used`).
+- **Shell:** `doRefresh()` reads `refresh()`'s `{ok, auth, stale}`: only a success toasts "Bijgewerkt"; a failure toasts
+  `shell.refreshFailedCached` with `updatedText(lastUpdated)`. The status line drops its own stamp when the view's subtitle already shows it
+  (one "Bijgewerkt"). View contract: optional **`docTitle()`** — the document title when it should differ from the large title (Overzicht).
+- **`TP.data.ultraDownload()`** resolves `true` (saved) | `'opened'` (no blob possible here, e.g. portal: opened in a tab) | `false` (failed,
+  nothing opened — the caller toasts `course.downloadFailed`).
+- **`TP.util.sanitize(html, {base})`** — relative `href`/`src` resolve against `base` (Ultra bodies: `https://ultra.edu.kuleuven.cloud/`);
+  `<a href="#…">` keeps its text but loses the link (ids are stripped and a hash change would hit the portal router).
+- **Default course colours** come from `TP.util.courseColorKey(luId, n)` (unique among the current courses) in `resolveColor`.
+  `kindOf`: `x-bb-courselink` → link; forum/journal/blog/wiki links → tool.
+- **Routes:** `#/home?tplus=announcements&id=<luId|advalvas>` opens Mededelingen on that source; `#/home?tplus=settings&id=about` scrolls to
+  that block; Vakken › Bewerk keeps `&id=edit` in the hash (`history.replaceState`, no extra history entry).
+- **Course page:** announcement rows take their unread state from the matching portal event (`TP.annSheet.fromUltra`), else "created after the
+  previous visit"; the header's "n nieuw" = rows with a dot, other unread feed events of the course are "+n meldingen". `.cv-prose` also has
+  `.tp-prose` (lists, nested lists, tables, `<pre>` scroll: ui.css).

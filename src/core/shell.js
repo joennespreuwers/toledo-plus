@@ -136,6 +136,9 @@
     if (inPlace) {
       const h = hashFor(route, params);
       if (location.hash === h) { onLocation(true); return; }
+      // Leaving from an open detail sheet's history entry: replace it, so Back returns to the list, not to a sheet
+      // entry with nothing to reopen (TP-199).
+      if (sheetOf(location.hash) != null) { hist.intent = 'replace'; location.replace(location.pathname + location.search + h); return; }
       hist.intent = 'push';
       location.hash = h; // → hashchange → onLocation
       return;
@@ -143,26 +146,66 @@
     location.assign(href(route, params));
   }
 
-  /** ctx.setParams(params, {replace}): a view puts its own state in the URL (e.g. the Agenda's date, TP-200) without
-   *  being re-rendered. Pushes a history entry (replace → replaces it), so Back returns to the previous state (that
-   *  switches the view to the older URL, which renders it from its params). Portal only. */
-  function setParams(params = {}, o = {}) {
-    if (origin !== 'portal' || !current) return;
-    const h = hashFor(current.route, params);
-    if (location.hash === h) return;
+  // ---------------- route state + history (bug bash pattern 12) ----------------
+  // State that matters lives in the hash, so reload, Back and bookmarks keep it:
+  //  - setParams({ id }, { replace }) — a view puts its own state in '&id=' (Courses › Bewerk, the Agenda date) without
+  //    a re-render; Back/Forward re-render the view with the earlier params (ctx.params).
+  //  - the open detail sheet gets its own entry ('…&sheet=<key>'): Back closes the sheet and stays on the view.
+  // Portal only (the Ultra course page keeps Ultra's own URL).
+  function sheetOf(h) {
+    const m = /^#\/home\/?\?/.test(h || '') ? /[?&]sheet=([^&]*)/.exec(h) : null;
+    return m ? safe(() => decodeURIComponent(m[1]), m[1]) : null;
+  }
+  function setHash(h, replace) {
     const url = location.pathname + location.search + h;
-    if (o.replace) {
-      history.replaceState(history.state, '', url);
-      if (hist.pos >= 0) hist.stack[hist.pos] = h;
-    } else {
-      history.pushState(history.state, '', url);
-      hist.stack = hist.stack.slice(0, hist.pos + 1);
-      hist.stack.push(h);
-      if (hist.stack.length > 50) hist.stack.shift();
-      hist.pos = hist.stack.length - 1;
+    hist.intent = replace ? 'replace' : 'push';
+    if (replace) history.replaceState(history.state, '', url); else history.pushState(history.state, '', url);
+    safe(historyDirection); // no hashchange fires for push/replaceState: keep the direction stack in step
+  }
+  function setParams(params, o = {}) {
+    if (!current || mode !== 'shell' || origin !== 'portal' || current.route === 'course') return false;
+    const v = params && (params.id ?? params.param);
+    const r = mkRoute(current.route, v != null ? String(v) : '');
+    if (!r) return false;
+    const h = hashFor(r.route, r.params);
+    if (location.hash === h) return false;
+    setHash(h, !!o.replace || sheetOf(location.hash) != null);
+    current.params = r.params;
+    current.ctx.params = r.params;
+    current.key = r.route + JSON.stringify(r.params);
+    updateHead();
+    return true;
+  }
+  /** → the hash pushed for a sheet that just opened (null when it gets no entry). */
+  function pushSheet(key) {
+    if (origin !== 'portal' || mode !== 'shell' || !current || current.route === 'course') return null;
+    const h = hashFor(current.route, current.params) + '&sheet=' + encodeURIComponent(String(key || '1').slice(0, 120));
+    if (location.hash !== h) setHash(h, sheetOf(location.hash) != null); // stepping to another item: same entry
+    return h;
+  }
+  /** On a URL change: a sheet whose entry was left (Back) closes; a sheet entry with no open sheet (Forward, reload)
+   *  is dropped from the URL. */
+  function syncSheet() {
+    if (origin !== 'portal') return;
+    const open = !!$('.tp-detail')?.open;
+    const inUrl = sheetOf(location.hash) != null;
+    if (open && detail?.pushed && !inUrl) { detail.popped = true; closeDetail(); return; }
+    if (!open && inUrl) {
+      const r = parseHash(location.hash);
+      if (r) setHash(hashFor(r.route, r.params), true);
     }
-    current.params = { ...params };
-    current.key = current.route + JSON.stringify(current.params);
+  }
+  /** "Kopieer link" in the detail sheet head (when the view passes `link`). */
+  async function copyLink(url, btn) {
+    let ok = false;
+    try { await navigator.clipboard.writeText(url); ok = true; } catch (_) { ok = false; }
+    const msg = t(ok ? 'shell.linkCopied' : 'shell.copyFailed');
+    announce(msg); // a toast would sit under the modal sheet's backdrop: the button says it instead
+    if (!btn) return;
+    btn.innerHTML = icon(ok ? 'check' : 'warning', { size: 18 });
+    btn.title = msg;
+    clearTimeout(btn.__tpT);
+    btn.__tpT = setTimeout(() => { btn.innerHTML = icon('link', { size: 18 }); btn.title = t('shell.copyLink'); }, 2000);
   }
 
   // ---------------- registration ----------------
@@ -336,6 +379,7 @@
     const collapsed = !!TP.state?.get?.()?.ui?.sidebarCollapsed;
     app.classList.toggle('sb-collapsed', collapsed);
     app.classList.toggle('sb-rail', isRail());
+    const focus = safe(() => snapFocus(app), null); // e.g. the language radio: the rebuild must not drop focus to <body>
     app.innerHTML = `
 <a class="tp-skip" href="#tp-main" data-shell="skip">${esc(t('shell.skip'))}</a>
 <div class="tp-scrim" data-shell="scrim" hidden></div>
@@ -392,10 +436,11 @@
 </dialog>
 <dialog class="tp-detail" aria-labelledby="tp-detail-title">
   <div class="tp-detail-head"><h2 id="tp-detail-title"></h2>
+    <button type="button" class="tp-tb-btn" data-shell="detail-copy" aria-label="${esc(t('shell.copyLink'))}" title="${esc(t('shell.copyLink'))}" hidden>${icon('link', { size: 18 })}</button>
     <button type="button" class="tp-tb-btn" data-shell="detail-close" aria-label="${esc(t('shell.close'))}">${icon('xmark', { size: 18 })}</button></div>
   <div class="tp-detail-body"></div>
 </dialog>
-<div class="tp-toasts" aria-hidden="true"></div>
+<div class="tp-toasts"></div>
 <div class="tp-live tp-sr" role="status" aria-live="polite" aria-atomic="true"></div>`;
     const wrap = app.querySelector('.tp-view-wrap');
     if (keepRoot) wrap.appendChild(keepRoot);
@@ -409,6 +454,7 @@
     renderMenu();
     renderBanners();
     updateSearchUi();
+    if (focus) safe(() => restoreFocus(focus));
   }
   const $ = (sel) => app?.querySelector(sel);
 
@@ -454,10 +500,9 @@
     return `<li><a class="tp-sb-item${active ? ' active' : ''}" href="${esc(href(route))}" data-route="${route}"${active ? ' aria-current="page"' : ''}${tip}>${icon(route, { size: 20 })}<span class="tp-sb-label">${esc(t('nav.' + route))}</span>${navTrail(route, counts)}</a></li>`;
   }
 
-  // Rail: courses as coloured circles with two initials ("Montage Technieken 1" → "MT").
-  function initials(c) {
-    const w = String(c.name || '').normalize('NFKD').replace(/[̀-ͯ]/g, '').split(/[\s\-_/]+/).filter((x) => /^[a-z]/i.test(x));
-    const txt = (w.length > 1 ? w[0][0] + w[1][0] : (w[0] || c.name || '?').slice(0, 2)).toUpperCase();
+  // Rail: courses as coloured circles with two initials ("Montage Technieken 1" → "MT"), unique within the list (TP.ui.initials).
+  function initials(c, txt) {
+    txt = txt || (TP.ui.initials ? TP.ui.initials([c.name])[0] : String(c.name || '?').slice(0, 2).toUpperCase());
     const fg = safe(() => (TP.util.contrast('#FFFFFF', c.color) >= 4.5 ? '#FFFFFF' : '#000000'), '#FFFFFF');
     return `<span class="tp-sb-initials" aria-hidden="true" style="--c:${esc(TP.util.safeColor ? TP.util.safeColor(c.color) : c.color)};--fg:${fg}">${esc(txt)}</span>`;
   }
@@ -490,7 +535,7 @@
     const next = on == null ? !inSidebar(luId) : !!on;
     safe(() => Promise.resolve(TP.settings.setCourse(luId, { inSidebar: next })).catch(() => {}));
     const name = safe(() => TP.data.course(luId)?.name, '') || '';
-    announce(t(next ? 'shell.sbAdded' : 'shell.sbRemoved', { name }));
+    toast(t(next ? 'shell.sbAdded' : 'shell.sbRemoved', { name })); // visible too: on a narrow screen the sidebar isn't in view
     return next;
   }
 
@@ -504,10 +549,11 @@
       const m = TP.state?.get?.()?.cidMap || {};
       return Object.keys(m).find((k) => m[k] === act.params?.cid) || null;
     }, null));
-    const rows = list.map((c) => {
+    const ini = safe(() => TP.ui.initials(list.map((c) => c.name)), []);
+    const rows = list.map((c, i) => {
       const isAct = !!actLu && c.luId === actLu;
       const tip = isRail() ? ` title="${esc(c.name)}"` : ` title="${esc(c.title || c.name)}"`;
-      return `<li><a class="tp-sb-item tp-sb-course${c.unread ? ' is-unread' : ''}${isAct ? ' active' : ''}" href="${esc(href('course', { luId: c.luId }))}" data-lu="${esc(c.luId)}"${isAct ? ' aria-current="page"' : ''}${tip}>${TP.ui.dot(c.color)}${initials(c)}<span class="tp-sb-label">${esc(c.name)}</span>${c.unread ? countHtml(c.unread, t('shell.unread', { n: c.unread })) : ''}</a></li>`;
+      return `<li><a class="tp-sb-item tp-sb-course${c.unread ? ' is-unread' : ''}${isAct ? ' active' : ''}" href="${esc(href('course', { luId: c.luId }))}" data-lu="${esc(c.luId)}"${isAct ? ' aria-current="page"' : ''}${tip}>${TP.ui.dot(c.color)}${initials(c, ini[i])}<span class="tp-sb-label">${esc(c.name)}</span>${c.unread ? countHtml(c.unread, t('shell.unread', { n: c.unread })) : ''}</a></li>`;
     }).join('');
     return `<h2 class="tp-sb-heading-wrap"><button type="button" class="tp-sb-group-btn" data-shell="sb-courses" aria-expanded="${!closed}" aria-controls="tp-sb-courses" id="tp-sb-courses-h"><span>${esc(t('nav.coursesGroup'))}</span>${icon('chevronRight', { size: 13, strokeWidth: 2.4 })}</button></h2>
 <ul class="tp-sb-list tp-sb-courses-list" id="tp-sb-courses" aria-labelledby="tp-sb-courses-h"${closed ? ' hidden' : ''}>${rows}</ul>`;
@@ -536,7 +582,7 @@
         const a = act === r;
         const dotHtml = r === 'deadlines' && counts.overdue ? `<span class="tp-tab-dot" aria-hidden="true"></span><span class="tp-sr">${esc(t('shell.overdue', { n: counts.overdue }))}</span>` : '';
         return `<li><a class="tp-tab${a ? ' active' : ''}" href="${esc(href(r))}" data-route="${r}"${a ? ' aria-current="page"' : ''}>${icon(r, { size: 22 })}<span class="tp-tab-label">${esc(t('nav.' + r))}</span>${dotHtml}</a></li>`;
-      }).join('')}<li><button type="button" class="tp-tab${moreActive ? ' active' : ''}" data-shell="more" aria-haspopup="dialog"${moreActive ? ' aria-current="page"' : ''}>${icon('ellipsis', { size: 22 })}<span class="tp-tab-label">${esc(t('nav.more'))}</span></button></li></ul>`; };
+      }).join('')}<li><button type="button" class="tp-tab${moreActive ? ' active' : ''}" data-shell="more" aria-haspopup="dialog"${moreActive ? ' aria-current="page"' : ''}>${icon('ellipsis', { size: 22 })}<span class="tp-tab-label">${esc(t('nav.more'))}</span>${moreDot(counts)}</button></li></ul>`; };
       // The selection pill slides to the new tab (FLIP across the re-render); only when the tab bar is shown.
       if (M() && tabbar.getClientRects().length && tabbar.querySelector('.tp-tab-ind:not([hidden])')) TP.motion.flip(tabbar, paint, { selector: '.tp-tab-ind' });
       else paint();
@@ -560,6 +606,13 @@
     }
     const back = $('.tp-tb-back');
     if (back) back.hidden = current?.route !== 'course';
+  }
+
+  // TP-038: unread announcements live behind "Meer" on phones — a neutral dot says so (red stays for overdue).
+  function moreDot(counts) {
+    const n = counts.announcements;
+    if (!n) return '';
+    return `<span class="tp-tab-dot is-unread" aria-hidden="true"></span><span class="tp-sr">, ${esc(t('nav.announcements'))}: ${esc(t('shell.unread', { n }))}</span>`;
   }
 
   function toggleCoursesGroup(btn) {
@@ -631,8 +684,16 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
   document.addEventListener('pointerdown', (ev) => {
     if (!app) return;
     const acct = $('.tp-account');
-    if (acct && !ev.composedPath().includes(acct)) closeMenu(false);
+    if (acct && !ev.composedPath().includes(acct) && closeMenu(false)) swallowClick(ev);
   }, true);
+  // TP-148: the press that dismisses the account menu only dismisses it — the click that follows never reaches
+  // whatever was under the pointer (a deadline row, "Alles als gelezen markeren", …).
+  function swallowClick(down) {
+    if (!host || !down.composedPath().includes(host)) return;
+    const stop = (e) => { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); };
+    window.addEventListener('click', stop, { capture: true, once: true });
+    setTimeout(() => window.removeEventListener('click', stop, { capture: true }), 700);
+  }
 
   function openSheet() {
     const d = $('.tp-sheet');
@@ -705,11 +766,11 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     }
     if (banners.ultra && !banners.auth) {
       const ultra = safe(() => TP.data?.ultraLoginUrl?.(), null) || 'https://ultra.edu.kuleuven.cloud/ultra/course';
-      html += `<div class="tp-banner" data-banner="ultra">${icon('warning', { size: 17 })}<span class="tp-banner-text"><strong>${esc(t('shell.ultraTitle'))}</strong> · ${esc(t('shell.ultraText'))}</span>${TP.ui.button(t('shell.ultraOpen'), { kind: 'tinted', attrs: { href: ultra, target: '_blank', rel: 'noopener' } })}</div>`;
+      html += `<div class="tp-banner" data-banner="ultra">${icon('warning', { size: 17 })}<span class="tp-banner-text"><strong>${esc(t('shell.ultraTitle'))}</strong> · ${esc(t('shell.ultraText'))}</span>${TP.ui.button(t('shell.ultraOpen'), { kind: 'tinted', attrs: { href: ultra, target: '_blank', rel: 'noopener', 'aria-description': t('common.newTab') } })}</div>`;
     }
     if (banners.update) {
       const u = banners.update;
-      html += `<div class="tp-banner" data-banner="update">${icon('download', { size: 17 })}<span class="tp-banner-text"><strong>${esc(t('update.banner', { version: u.version }))}</strong> · ${esc(t('update.how'))}</span>${TP.ui.button(t('update.get'), { kind: 'tinted', attrs: { href: u.url, target: '_blank', rel: 'noopener' } })}${TP.ui.button(t('update.dismiss'), { kind: 'plain', attrs: { 'data-shell': 'update-dismiss' } })}</div>`;
+      html += `<div class="tp-banner" data-banner="update">${icon('download', { size: 17 })}<span class="tp-banner-text"><strong>${esc(t('update.banner', { version: u.version }))}</strong> · ${esc(t('update.how'))}</span>${TP.ui.button(t('update.get'), { kind: 'tinted', attrs: { href: u.url, target: '_blank', rel: 'noopener', 'aria-description': t('common.newTab') } })}${TP.ui.button(t('update.dismiss'), { kind: 'plain', attrs: { 'data-shell': 'update-dismiss' } })}</div>`;
     }
     if (el.innerHTML === html) return;
     const kinds = (root) => new Set([...root.querySelectorAll('.tp-banner')].map((b) => b.dataset.banner));
@@ -745,12 +806,19 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     const d = $('.tp-detail');
     if (!d) return null;
     const opener = o.opener || safe(() => shadow.activeElement, null);
-    // The view may re-render while the sheet is open (e.g. "klaar"): remember how to find the opener again.
-    const sel = safe(() => ['data-action', 'data-key', 'data-id', 'data-eid'].map((k) => (opener.getAttribute(k) != null ? `[${k}="${CSS.escape(opener.getAttribute(k))}"]` : '')).join(''), '');
-    detail = { onAction: o.onAction || null, onKey: o.onKey || null, opener, sel };
+    // The view may re-render while the sheet is open (e.g. "klaar"): remember how to find the opener again,
+    // or the row after it when the opener's row is gone (TP.shell focus helper).
+    const snap = safe(() => (opener && app.contains(opener) ? snapFocus(current?.root?.contains(opener) ? current.root : app, opener) : null), null);
+    const was = d.open ? detail : null;
+    detail = { onAction: o.onAction || null, onKey: o.onKey || null, opener, snap, pushed: !!was?.pushed };
     d.querySelector('#tp-detail-title').textContent = o.title || '';
     d.querySelector('.tp-detail-body').innerHTML = o.html || '';
+    const copy = d.querySelector('[data-shell="detail-copy"]');
+    if (copy) { copy.hidden = !o.link; copy.dataset.link = o.link || ''; }
     if (!d.open) d.showModal();
+    // TP-199: the sheet is the newest "page" — Back closes it (key: o.key or the opener's data-key/-id)
+    const key = o.key || safe(() => opener.dataset.key || opener.dataset.id || opener.dataset.eid, null);
+    if (safe(() => pushSheet(key), null)) detail.pushed = true;
     d.querySelector('.tp-detail-body [data-detail-action], .tp-detail-body a, .tp-detail-body button')?.focus();
     return d;
   }
@@ -768,16 +836,22 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     return true;
   }
   function onDetailClosed() {
-    let op = detail?.opener;
-    const sel = detail?.sel;
+    const op = detail?.opener;
+    const snap = detail?.snap;
+    // Closed with Esc / ✕ / an action: leave the sheet's history entry too (not when Back closed it, or a navigation
+    // already moved on to another URL).
+    if (detail?.pushed && !detail.popped && origin === 'portal' && sheetOf(location.hash) != null && !$('.tp-detail')?.open) history.back();
     detail = null;
     const restore = () => {
-      if ((!op || !op.isConnected) && sel) op = safe(() => app.querySelector(sel), null);
+      if (snap) { if (snap.scope && !snap.scope.isConnected && current?.root) snap.scope = current.root; restoreFocus(snap); return; }
       if (op && op.isConnected && shadow.activeElement !== op) safe(() => op.focus({ preventScroll: true }));
     };
     restore();
-    // a pending re-render (e.g. after "klaar") may replace the opener right after: once more when it settled
-    setTimeout(() => { if (!shadow.activeElement || shadow.activeElement === app) { op = null; restore(); } }, 200);
+    // a pending re-render (e.g. after "klaar") may replace or bring back the opener right after: again when it settled
+    // (only while focus is lost or still on the stand-in we picked)
+    const again = () => { const a = shadow.activeElement; if (!a || a === app || a === fellBack) restore(); };
+    setTimeout(again, 200);
+    setTimeout(again, 700);
   }
 
   // ---------------- toast + live region ----------------
@@ -864,9 +938,11 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
       // Views can opt out of the "Bijgewerkt hh:mm" line (view.showUpdated === false, e.g. settings);
       // a load error is still shown.
       const showStamp = current.view?.showUpdated !== false;
-      const stamp = ms && showStamp ? esc(t('common.updated', { time: TP.fmt.time(ms) })) : '';
+      const stamp = ms && showStamp ? esc(TP.ui.updatedText ? TP.ui.updatedText(ms) : t('common.updated', { time: TP.fmt.time(ms) })) : '';
+      // The view's subtitle may already say "Bijgewerkt hh:mm" (overview): then the error line doesn't repeat it (TP-146).
+      const inSub = !!(stamp && $('.tp-subtitle')?.textContent.includes(TP.fmt.time(ms)));
       up.innerHTML = failed
-        ? `${stamp ? stamp + ' · ' : ''}<span class="tp-updated-err">${icon('warning', { size: 13 })}${esc(t('shell.loadError'))}</span> · <button type="button" class="tp-link-btn" data-shell="refresh">${esc(t('common.retry'))}</button>`
+        ? `${stamp && !inSub ? stamp + ' · ' : ''}<span class="tp-updated-err">${icon('warning', { size: 13 })}${esc(t('shell.loadError'))}</span> · <button type="button" class="tp-link-btn" data-shell="refresh">${esc(t('common.retry'))}</button>`
         : stamp;
       // Views may already show the timestamp in their subtitle; don't repeat it.
       const dup = !failed && stamp && $('.tp-subtitle')?.textContent.includes(TP.fmt.time(ms));
@@ -882,7 +958,20 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
         if (had) acts.querySelector(`[data-id="${CSS.escape(had)}"]`)?.focus(); // e.g. "Zet in zijbalk" → "Uit zijbalk"
       }
     }
-    if (mode === 'shell') document.title = `${title} · Toledo+`;
+    if (mode === 'shell') document.title = `${docTitle()} · Toledo+`;
+  }
+  // Tab/history title (TP-006, TP-204): the page's name, not the greeting; a sub-page keeps its parent
+  // ("Secties · Instellingen"); the course page its course name. A view may set `docTitle` (string or fn(ctx)).
+  function docTitle() {
+    if (!current) return '';
+    const v = current.view;
+    const own = safe(() => (typeof v?.docTitle === 'function' ? v.docTitle(current.ctx) : v?.docTitle), '');
+    if (own) return String(own);
+    if (current.route === 'course') return viewTitle();
+    const nav = t('nav.' + current.route);
+    if (!current.params?.id) return nav;
+    const title = viewTitle();
+    return title && title !== nav ? `${title} · ${nav}` : nav;
   }
 
   // ---------------- search ----------------
@@ -914,6 +1003,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
       const run = () => safe(() => current.view.onSearch(current.ctx, q));
       if (M()) TP.motion.flip(current.root, run); else run();
       if (nores) nores.hidden = true;
+      if (q) announceVisible(); // views with their own filter: say how many rows are left (none: TP.ui.noResults says it)
       return;
     }
     let n = 0;
@@ -925,7 +1015,13 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     }
     if (q) announceResults(n);
   }
-  const announceResults = TP.util.debounce((n) => announce(n ? t('shell.results', { n }) : t('common.noResults', { q: searchQ })), 700);
+  const announceResults = TP.util.debounce((n) => { if (n) announce(t('shell.results', { n })); }, 700); // none: TP.ui.noResults says it
+  const announceVisible = TP.util.debounce(() => {
+    const root = current?.root;
+    if (!root || !searchQ) return;
+    const n = safe(() => [...root.querySelectorAll('[data-q], [data-lq]')].filter((el) => !el.closest('[hidden]') && (el.checkVisibility ? el.checkVisibility() : true)).length, 0);
+    if (n) announce(t('shell.results', { n }));
+  }, 700);
 
   // Default filter: hide [data-q] that don't match (a matching ancestor or descendant keeps it),
   // open disclosures that contain matches, hide sections/groups left empty. Returns visible match count.
@@ -981,30 +1077,93 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
       setTitle(text) { if (current?.ctx === ctx) { current.title = text == null ? '' : String(text); updateHead(); } },
       setSubtitle(html) { if (current?.ctx === ctx) { current.subtitle = html == null ? '' : String(html); updateHead(); } },
       navigate: (r, p) => navigate(r, p),
-      setParams(p, o) { if (current?.ctx === ctx) setParams(p, o); },
       href: (r, p) => href(r, p),
+      setParams(p, o) { return current?.ctx === ctx ? setParams(p, o) : false; },
       get query() { return searchQ; },
     };
     return ctx;
   }
 
-  function captureFocus() {
-    const a = shadow?.activeElement;
-    if (!a || !current?.root?.contains(a)) return null;
-    let sel = null;
-    if (a.id) sel = '#' + CSS.escape(a.id);
-    else if (a.name) sel = `[name="${CSS.escape(a.name)}"]` + (a.type === 'radio' ? `[value="${CSS.escape(a.value)}"]` : '');
-    else if (a.dataset.action) sel = `[data-action="${CSS.escape(a.dataset.action)}"]` + (a.dataset.id ? `[data-id="${CSS.escape(a.dataset.id)}"]` : '') + (a.dataset.key ? `[data-key="${CSS.escape(a.dataset.key)}"]` : '');
-    if (!sel) return null;
-    return { sel, start: safe(() => a.selectionStart, null), end: safe(() => a.selectionEnd, null) };
+  // ---------------- focus that survives a re-render (one helper for every view) ----------------
+  // snapFocus(scope) remembers the focused control by its data keys (data-fk, data-action + data-key/id/lu/day,
+  // name + value …: what identifies "the same control" in the next render, never its position or a per-render id),
+  // plus fallbacks: the next/previous item in the same list and the heading of its section. restoreFocus(snap)
+  // focuses the same control again; when it is gone (a row marked done, "Mark all read" removed its own button,
+  // a banner closed) the first fallback that still exists, else the page's large title — never <body>.
+  // Fallbacks only apply when focus was actually lost, so they never steal focus the student moved elsewhere.
+  const KEY_ATTRS = ['data-action', 'data-shell', 'data-detail-action', 'data-key', 'data-id', 'data-eid', 'data-lu', 'data-day', 'data-route', 'data-sec', 'name'];
+  const cssq = (v) => CSS.escape(String(v));
+  function focusKeyOf(el) {
+    if (!el || el.nodeType !== 1) return null;
+    if (el.dataset?.fk) return `[data-fk="${cssq(el.dataset.fk)}"]`;
+    const parts = KEY_ATTRS.filter((a) => el.getAttribute(a) != null).map((a) => `[${a}="${cssq(el.getAttribute(a))}"]`);
+    if (parts.length && el.name && (el.type === 'radio' || el.type === 'checkbox') && el.value != null) parts.push(`[value="${cssq(el.value)}"]`);
+    if (parts.length) return el.tagName.toLowerCase() + parts.join('');
+    if (el.tagName === 'SUMMARY') { const k = focusKeyOf(el.parentElement); if (k) return `${k} > summary`; }
+    if (el.id && !/^(tp-h|tp-d|st)-/.test(el.id)) return '#' + cssq(el.id); // generated ids (uid/nid) change per render
+    return null;
   }
-  function restoreFocus(f) {
-    if (!f || !current?.root) return;
-    const el = safe(() => current.root.querySelector(f.sel), null);
-    if (!el || el === shadow.activeElement) return;
-    el.focus({ preventScroll: true });
-    if (f.start != null) safe(() => el.setSelectionRange(f.start, f.end));
+  const ITEM = 'li, .tp-row, [role="listitem"], [data-eid], [data-sec]'; // one entry of a list
+  const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), summary, [tabindex]:not([tabindex="-1"])';
+  function itemKey(item, like) {
+    if (!item || item.hidden) return null;
+    // the same kind of control in the neighbouring row (e.g. its "open" button, not its checkbox), else its first one
+    const same = like?.classList?.[0] ? item.querySelector(`${like.tagName.toLowerCase()}.${cssq(like.classList[0])}`) : null;
+    const f = same || (item.matches(FOCUSABLE) ? item : item.querySelector(FOCUSABLE));
+    return focusKeyOf(f);
   }
+  function snapFocus(scope, el) {
+    const rootNode = scope?.getRootNode?.() || shadow;
+    const a = el || rootNode?.activeElement;
+    if (!a || !scope?.contains(a)) return null;
+    const near = [];
+    // the next items in the same list first (where a reader goes on), then the one before
+    const item = a.closest(ITEM);
+    if (item && scope.contains(item) && item !== scope) {
+      for (let s = item.nextElementSibling, n = 0; s && n < 3; s = s.nextElementSibling, n++) { const k = itemKey(s, a); if (k) near.push(k); }
+      const p = item.previousElementSibling; const k = itemKey(p, a); if (k) near.push(k);
+    }
+    const sec = a.closest('section[data-section], [data-section]');
+    if (sec && scope.contains(sec)) near.push(`[data-section="${cssq(sec.dataset.section)}"] :is(h2, h3)`);
+    return { el: a, sel: focusKeyOf(a), near, scope, rootNode, start: safe(() => a.selectionStart, null), end: safe(() => a.selectionEnd, null) };
+  }
+  /** Focus `el` (a heading gets tabindex=-1 first). → true when it took focus. */
+  function focusEl(el, scroll) {
+    if (!el || !el.isConnected || el.hidden || el.closest('[hidden], [inert]')) return false;
+    if (!el.matches(FOCUSABLE) && !el.hasAttribute('tabindex')) el.setAttribute('tabindex', '-1');
+    safe(() => el.focus({ preventScroll: !(scroll && isOffscreen(el)) }));
+    return (el.getRootNode()?.activeElement || null) === el;
+  }
+  const isOffscreen = (el) => safe(() => { const r = el.getBoundingClientRect(); return r.bottom < 0 || r.top > innerHeight; }, false);
+  /** Restore a snapFocus() result. opts.fallback: selector / element to use when the control is gone (before the
+   *  snapped neighbours and the large title); opts.scope: where to look (default: the snapped scope). */
+  function restoreFocus(f, opts = {}) {
+    if (!f) return false;
+    const scope = opts.scope || f.scope;
+    const rootNode = f.rootNode || shadow;
+    const q = (sel) => (sel ? safe(() => (scope?.isConnected ? scope : rootNode).querySelector(sel), null) : null);
+    const active = rootNode?.activeElement;
+    let el = f.el?.isConnected && scope?.contains(f.el) ? f.el : q(f.sel);
+    if (el && el.disabled && f.sel && /^\[data-fk="(up|down):/.test(f.sel)) el = q(f.sel.replace(/(up|down)(?=:)/, (m) => (m === 'up' ? 'down' : 'up'))); // a moved row hit the top/bottom
+    if (el && !el.disabled) {
+      if (el === active) return true;
+      if (focusEl(el)) { if (f.start != null) safe(() => el.setSelectionRange(f.start, f.end)); return true; }
+    }
+    // focus went somewhere on purpose (not lost, and not a fallback an inner re-render picked a moment ago)
+    if (active && active.isConnected && active !== app && active !== fellBack) return false;
+    const fb = typeof opts.fallback === 'string' ? q(opts.fallback) : opts.fallback;
+    const title = $('.tp-large-title');
+    const to = [fb, ...(f.near || []).map(q)].find((x) => x && focusEl(x, true)) || (focusEl(title) ? title : null);
+    fellBack = to || null;
+    return !!to;
+  }
+  let fellBack = null;
+  /** Run fn (sync or async) and keep focus on the same control (or its fallback) across the re-render it causes. */
+  async function keepFocus(scope, fn, opts) {
+    const f = snapFocus(scope);
+    try { await fn(); } finally { restoreFocus(f, opts); }
+  }
+  const captureFocus = () => (current?.root ? snapFocus(current.root) : null);
 
   async function renderView() {
     const cur = current;
@@ -1088,6 +1247,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     const h = origin === 'portal' ? location.hash : location.pathname;
     const intent = hist.intent;
     hist.intent = null;
+    if (intent === 'replace') { if (hist.pos >= 0) hist.stack[hist.pos] = h; else { hist.stack = [h]; hist.pos = 0; } return null; }
     if (intent !== 'push') {
       if (hist.pos > 0 && hist.stack[hist.pos - 1] === h) { hist.pos--; return 'back'; }
       if (hist.stack[hist.pos + 1] === h) { hist.pos++; return 'forward'; }
@@ -1142,7 +1302,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
       // The new view is in the DOM already (input never waits): it fades/slides in over it.
       motion('transition', root, null, { direction: dir });
       $('.tp-large-title')?.focus({ preventScroll: true });
-      announce(t('shell.navigated', { title: viewTitle() }));
+      announce(t('shell.navigated', { title: docTitle() }));
     } else {
       // First paint: rows fade up in a short stagger (cached data renders synchronously; async views when ready).
       Promise.resolve(rendered).then(() => { if (current?.key === key) motion('stagger', rowsOf(root)); });
@@ -1155,7 +1315,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
   function setPill(show) {
     whenBody(() => {
       let b = document.getElementById('tplus-switch');
-      if (!show) { b?.remove(); return; }
+      if (!show) { b?.remove(); document.getElementById('tplus-switch-hint')?.remove(); return; }
       ensureFonts();
       if (!b) {
         b = document.createElement('button');
@@ -1169,8 +1329,27 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
       }
       b.textContent = t('shell.pill');
       b.title = t('shell.pillTitle');
+      b.setAttribute('aria-label', t('shell.pillTitle')); // "Terug naar Toledo+": the name says where it goes (TP-192)
       b.classList.toggle('dark', isDark());
+      if (classicExplain) { classicExplain = false; explainClassic(b); }
     });
+  }
+  // TP-192/193: right after "Klassieke Toledo" — say what happened and how to get back (a bubble by the pill, also
+  // read out), and put focus on the way back instead of leaving it on <body>.
+  let classicExplain = false;
+  function explainClassic(pill) {
+    document.getElementById('tplus-switch-hint')?.remove();
+    const tip = document.createElement('div');
+    tip.id = 'tplus-switch-hint';
+    tip.setAttribute('role', 'status');
+    if (pill.classList.contains('left')) tip.className = 'left';
+    tip.classList.toggle('dark', isDark());
+    document.body.appendChild(tip);
+    setTimeout(() => { tip.textContent = t('shell.classicOn'); }, 60); // after insertion, so the live region announces it
+    const gone = () => tip.remove();
+    setTimeout(gone, 9000);
+    pill.addEventListener('click', gone, { once: true });
+    safe(() => pill.focus({ preventScroll: true }));
   }
 
   // ---------------- deep bar ----------------
@@ -1215,14 +1394,29 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
   ${cid ? `<a class="tp-deep-back" href="${esc(href('course', { cid }))}">${icon('chevronLeft', { size: 16, strokeWidth: 2.4 })}<span class="tp-deep-back-label">${esc(backLabel)}</span><span class="tp-sr">${esc(t('deep.back', { course: backLabel }))}</span></a>` : ''}
   <span class="tp-deep-spacer"></span>
   <a class="tp-deep-link" href="${esc(href('deadlines'))}">${icon('deadlines', { size: 16 })}<span>${esc(t('deep.deadlines'))}</span></a>
-  <a class="tp-deep-link" href="${esc(href('overview'))}">${icon('overview', { size: 16 })}<span>${esc(t('deep.overview'))}</span></a>
-</nav><div class="tp-toasts" aria-hidden="true"></div>`;
+  ${deepTail()}
+</nav><div class="tp-toasts"></div>`;
+      bindDeepHide(root);
       if (cid && !courseNames.has(cid)) {
         deepCourseName(cid).then((name) => { if (name && mode === 'deep') renderDeep(); });
       }
     });
   }
   function removeDeep() { deepHost?.remove(); }
+  // TP-194: the mark already goes to Overzicht; the bar's other end reaches Settings and can hide the bar itself
+  // (settings.wrap.deepBar, the same switch as Instellingen › Geavanceerd).
+  function deepTail() {
+    return `<a class="tp-deep-link" href="${esc(href('settings'))}">${icon('settings', { size: 16 })}<span>${esc(t('deep.settings'))}</span></a>
+  <button type="button" class="tp-deep-hide" data-deep="hide" aria-label="${esc(t('deep.hide'))}" title="${esc(`${t('deep.hide')}. ${t('deep.hideHint')}`)}">${icon('xmark', { size: 14, strokeWidth: 2.4 })}</button>`;
+  }
+  function bindDeepHide(root) {
+    if (root.__tpHide) return;
+    root.__tpHide = true;
+    root.addEventListener('click', (ev) => {
+      if (!ev.target.closest?.('[data-deep="hide"]')) return;
+      safe(() => TP.settings.set({ wrap: { deepBar: false } }));
+    });
+  }
 
   // ---------------- apply location ----------------
   function onLocation(force) {
@@ -1239,10 +1433,24 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     backgroundRefresh();
     whenBody(() => {
       mount();
+      safe(normaliseHash);
       const key = r.route + JSON.stringify(r.params || {});
+      if (current && current.key !== key) safe(() => TP.palette?.isOpen?.() && TP.palette.close(false)); // TP-033
       if (!current || current.key !== key || (force && !current.view && views[r.route])) switchView(r.route, r.params);
-      else if (prevMode !== 'shell' || force) { renderNav(); updateHead(); renderView(); }
+      else {
+        if (prevMode !== 'shell' || force) { renderNav(); updateHead(); renderView(); }
+        else safe(historyDirection); // same view, other entry (a sheet opened/closed): keep the direction stack in step
+      }
+      safe(syncSheet);
     });
+  }
+  // TP-037: an unknown '#/home?tplus=<x>' shows the start page; say so in the URL too (no polluted history entry).
+  function normaliseHash() {
+    if (origin !== 'portal') return;
+    const h = location.hash;
+    const m = /^#\/home\/?\?(.*)$/.exec(h);
+    const tp = m && safe(() => new URLSearchParams(m[1]).get('tplus'), null);
+    if (tp && !parseHash(h)) { hist.intent = 'replace'; history.replaceState(history.state, '', location.pathname + location.search + hashFor(startRoute())); }
   }
 
   // Old '#/tplus/<route>[/<p>]' links (bookmarks, v1.0 builds) → the form the portal router keeps.
@@ -1289,15 +1497,23 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
         case 'classic':
         case 'classic-sig':
           closeMenu(false);
+          classicExplain = true;
           safe(() => TP.settings.set({ wrap: origin === 'ultra' ? { courses: false } : { portal: false } }));
           return;
         case 'more': openSheet(); return;
         case 'sheet-close': closeSheet(); return;
         case 'detail-close': closeDetail(); return;
+        case 'detail-copy': if (el.dataset.link) copyLink(el.dataset.link, el); return;
         case 'sb-courses': toggleCoursesGroup(el); return;
         case 'reload': location.reload(); return;
         case 'feedback': closeMenu(false); closeSheet(); safe(() => TP.feedback?.open({ page: current?.route, opener: $('.tp-avatar') })); return;
-        case 'update-dismiss': safe(() => TP.telemetry?.dismissUpdate?.(banners.update?.version)); setUpdate(null); return;
+        case 'update-dismiss': {
+          safe(() => TP.telemetry?.dismissUpdate?.(banners.update?.version));
+          setUpdate(null);
+          // the banner (and this button) go away: focus the next banner's action, else the page title — never <body>
+          if (!focusEl(app.querySelector('.tp-banner:not([data-banner="update"]) .tp-btn'))) focusEl($('.tp-large-title'));
+          return;
+        }
         case 'view-action': {
           const a = current?.actions?.[Number(el.dataset.index)];
           if (a?.onClick) Promise.resolve().then(() => a.onClick(ev, current.ctx)).catch((e) => console.warn('[Toledo+] action', e));
@@ -1339,6 +1555,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
 
   function onShellKeydown(ev) {
     if (detail?.onKey && ev.target?.closest?.('.tp-detail') && !ev.defaultPrevented) safe(() => detail.onKey(ev));
+    if (!ev.defaultPrevented && safe(() => TP.ui.rovingKey(ev), false)) return; // [data-roving] grids (mini calendar)
     // Roving focus inside the account menu.
     const menu = $('.tp-menu');
     if (menu && !menu.hidden && menu.contains(ev.target)) {
@@ -1445,11 +1662,20 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     announce(t('shell.refreshing'));
     const before = feedCount();
     try {
-      await TP.data.refresh();
-      highlightUntil = Date.now() + 4000;
-      const after = feedCount();
-      const diff = Math.max(0, after - before);
-      toast(diff ? t('shell.refreshedNew', { n: diff }) : `${t('shell.refreshed')} ${TP.fmt.time(Date.now())}`);
+      // refresh() never rejects: it resolves {ok, errors, auth, stale}. Only a real success may say "Bijgewerkt" (TP-136).
+      const res = (await TP.data.refresh()) || {};
+      if (res.stale) toast(t('shell.staleTitle'));
+      else if (res.auth) toast(t('shell.authTitle'));
+      else if (res.ok === false) {
+        const lu = safe(() => TP.data.lastUpdated(), null);
+        toast(lu ? t('shell.refreshFailedCached', { when: TP.ui.updatedText(lu) }) : t('shell.loadError'));
+      } else {
+        highlightUntil = Date.now() + 4000;
+        const after = feedCount();
+        const diff = Math.max(0, after - before);
+        const lu = safe(() => TP.data.lastUpdated(), null) || Date.now();
+        toast(diff ? t('shell.refreshedNew', { n: diff }) : `${t('shell.refreshed')} ${TP.fmt.time(lu)}`);
+      }
     } catch (e) {
       console.warn('[Toledo+] refresh failed', e);
       toast(t('shell.loadError'));
@@ -1531,8 +1757,11 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
 
   TP.shell = {
     CSS: CSS_FILES, ROUTES,
-    register, navigate, href, toast, announce, sortCourses, inSidebar, setInSidebar, sidebarCourses,
+    register, navigate, href, setParams, toast, announce, sortCourses, inSidebar, setInSidebar, sidebarCourses,
     detail: { open: openDetail, update: updateDetail, close: closeDetail, isOpen: () => !!$('.tp-detail')?.open },
+    /** Focus across re-renders: snap(scope) → restore(snap, {fallback}); keep(scope, fn, {fallback}); to(el) focuses
+     *  anything (a heading gets tabindex=-1); key(el) → the selector that finds "the same control" next render. */
+    focus: { snap: snapFocus, restore: restoreFocus, keep: keepFocus, to: (el) => focusEl(el, true), key: focusKeyOf },
     rerender: () => rerender(),
     start, preflight,
     get route() { return current ? { route: current.route, params: current.params } : null; },

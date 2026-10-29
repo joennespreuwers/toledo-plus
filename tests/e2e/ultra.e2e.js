@@ -43,7 +43,7 @@ describe('ultra course page', () => {
     assert.equal(await page.locator(S.sidebar).count(), 1, 'shell sidebar on Ultra');
     // Header line: "13 items · 3 nieuw" in label-2, no coloured dot.
     const sub = page.locator('#tplus-root .cv-sub');
-    assert.match(await sub.innerText(), /^\d+ items?( · \d+ nieuw)?$/);
+    assert.match(await sub.innerText(), /^\d+ items?( · \d+ nieuw)?( · \+\d+ meldingen?)?$/);
     assert.equal(await sub.locator('.tp-dot').count(), 0, 'no coloured dot in the header line');
     await screenshot(page, 'ultra-course-light-desktop');
   });
@@ -66,6 +66,8 @@ describe('ultra course page', () => {
       const active = sr.querySelector('nav.tp-sidebar .tp-sb-course.active .tp-sb-count [aria-hidden]');
       return {
         header: (sr.querySelector('.cv-sub-new')?.textContent || '').trim(),
+        extra: (sr.querySelector('.cv-sub-extra')?.textContent || '').trim(),
+        rowDots: sr.querySelectorAll('[data-tree] .cv-leaf .cv-new-dot, [data-tree] details.cv-doc > summary .cv-new-dot, [data-sec="announcements"] .cv-new-dot').length,
         feed: active ? Number(active.textContent) : null,
         dots: sr.querySelectorAll('[data-sec="recent"] .cv-new-dot, [data-tree] .cv-new-dot').length,
         chips: getComputedStyle(sr.querySelector('.cv-teachers') || document.body).display,
@@ -73,7 +75,10 @@ describe('ultra course page', () => {
       };
     });
     assert.match(info.header, /^\d+ nieuw$/, `header: ${info.header}`);
-    assert.equal(Number(info.header.split(' ')[0]), info.feed, 'same number as the Nieuw feed / sidebar for this course (B10)');
+    // TP-086: "n nieuw" = the rows with a dot (tree + announcements); feed notifications without a row are "+n meldingen".
+    assert.equal(Number(info.header.split(' ')[0]), info.rowDots, `the header counts exactly the rows with a dot: ${JSON.stringify(info)}`);
+    if (info.extra) assert.match(info.extra, /^\+\d+ meldingen?$/, 'the rest is labelled');
+    assert.ok(info.feed != null, 'the course has a Nieuw count in the sidebar');
     assert.ok(info.dots >= 2, 'blue dots on new items in Recent and Inhoud');
     assert.equal(info.chips, 'none', 'teacher chips hidden ≥1100px');
     assert.ok(info.teachersCard, 'Docenten card kept');
@@ -143,8 +148,10 @@ describe('ultra course page', () => {
     await page.evaluate(() => document.querySelector('#tplus-root').shadowRoot.querySelectorAll('details.cv-folder').forEach((d) => { d.open = false; }));
     await page.locator(S.search).fill('kwartel');
     await page.waitForTimeout(400);
-    const hit = page.locator('#tplus-root :text("Diepe_bron_Kwartel.pdf")').first();
+    const hit = page.locator('#tplus-root [data-tree] :text("Diepe_bron_Kwartel.pdf")').first();
     assert.ok(await hit.isVisible(), 'nested hit visible');
+    // TP-087: "Recent toegevoegd" does not list the same files a second time while searching
+    assert.equal(await page.locator('#tplus-root [data-sec="recent"] [data-lq]:visible').count(), 0, 'no duplicate rows from Recent');
     const txt = await mainText(page);
     assert.ok(!txt.includes('filmtaal_les1.pdf'), 'non-matching file still visible');
     await page.locator(S.search).fill('');

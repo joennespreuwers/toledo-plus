@@ -223,10 +223,31 @@
       : `<span class="tp-pal-tile">${icon(it.icon || 'doc', { size: 16 })}</span>`;
     const isFile = (it.type === 'doc' && FILE_KINDS.has(it.kind)) || it.type === 'ft';
     const snip = it.type === 'ft' && it.snip ? `<span class="tp-pal-sub tp-pal-snip">${it.snip}</span>` : ''; // segments escaped by TP.fulltext.snippetHtml
-    return `<div class="tp-pal-opt${it.type === 'ft' ? ' tp-pal-opt-ft' : ''}" role="option" id="tp-pal-o${i}" data-i="${i}" aria-selected="false"${isFile ? ' data-file="1"' : ''}>
+    // TP-201: every result is a real link (middle-click / ⌘-click / "copy link" work); a plain click and ↵ still run
+    // activate() (sheet, download, unfolding in the course), see onClick.
+    const href = hrefOf(it);
+    return `<a class="tp-pal-opt${it.type === 'ft' ? ' tp-pal-opt-ft' : ''}" role="option" id="tp-pal-o${i}" data-i="${i}" aria-selected="false" tabindex="-1"${href ? ` href="${esc(href)}"` : ''}${isFile ? ' data-file="1"' : ''}>
   ${lead}<span class="tp-pal-main"><span class="tp-pal-name">${esc(it.title)}</span>${it.sub ? `<span class="tp-pal-sub">${esc(it.sub)}</span>` : ''}${snip}</span>
   <span class="tp-pal-enter" aria-hidden="true">${isFile ? `<kbd>${esc(TP.shell.mod)}↵</kbd> ${icon('download', { size: 13 })}` : '<kbd>↵</kbd>'}</span>
-</div>`;
+</a>`;
+  }
+  /** Where a result leads when opened in a new tab (absolute: Ultra's <base href> points to a CDN). */
+  function hrefOf(it) {
+    const S = TP.shell;
+    return safe(() => {
+      if (it.type === 'nav') return S.href(it.route);
+      if (it.type === 'course') {
+        const cid = (TP.state.get().cidMap || {})[it.luId];
+        return onUltra() && cid ? S.href('course', { cid }) : S.href('course', { luId: it.luId });
+      }
+      if ((it.type === 'doc' || it.type === 'ft') && it.cid && it.id) {
+        return it.type === 'ft' || FILE_KINDS.has(it.kind) ? TP.data.ultraItemUrl(it.cid, it.id) : S.href('course', { cid: it.cid });
+      }
+      if (it.url) return TP.util.abs(it.url);
+      if (it.type === 'deadline') return S.href('deadlines');
+      if (it.type === 'announcement') return S.href('announcements');
+      return '';
+    }, '') || '';
   }
 
   function render(groups) {
@@ -286,6 +307,7 @@
   const update = TP.util.debounce(() => {
     if (!isOpen()) return;
     render(collect(q));
+    if (dlg) dlg.dataset.q = q; // which query is on screen (tests wait for it instead of a fixed delay)
     clearTimeout(announceTimer);
     if (q.trim()) announceTimer = setTimeout(() => TP.shell.announce(items.length ? t('shell.results', { n: items.length }) : t('common.noResults', { q: q.trim() })), 600);
   }, 60);
@@ -324,7 +346,7 @@
       if (FILE_KINDS.has(it.kind)) {
         close(false);
         // Both keep the key press' user activation for window.open / the download.
-        if (mod) Promise.resolve(TP.data.ultraDownload(it.cid, it.id)).catch(() => S.toast(t('course.downloadFailed')));
+        if (mod) Promise.resolve(TP.data.ultraDownload(it.cid, it.id)).then((r) => { if (r === false) S.toast(t('course.downloadFailed')); }, () => S.toast(t('course.downloadFailed'))); // false = failed (TP-085)
         else Promise.resolve(TP.data.ultraOpen(it.cid, it.id)).catch(() => S.toast(t('course.openFailed')));
         return;
       }
@@ -336,7 +358,7 @@
       safe(() => Promise.resolve(TP.data.addRecent({ title: it.title, url: TP.data.ultraItemUrl(it.cid, it.id), courseName: it.course || '', courseLuId: it.luId || '', kind: 'file' })).catch(() => {}));
       close(false);
       // Both keep the key press' user activation (window.open / the download).
-      if (mod) Promise.resolve(TP.data.ultraDownload(it.cid, it.id)).catch(() => S.toast(t('course.downloadFailed')));
+      if (mod) Promise.resolve(TP.data.ultraDownload(it.cid, it.id)).then((r) => { if (r === false) S.toast(t('course.downloadFailed')); }, () => S.toast(t('course.downloadFailed'))); // false = failed (TP-085)
       else TP.fulltext.open(it.hit);
       return;
     }
@@ -400,7 +422,12 @@
     if (ev.target === dlg) { close(); return; } // backdrop
     if (ev.target.closest('[data-pal="close"]')) { close(); return; }
     const o = ev.target.closest('.tp-pal-opt');
-    if (o) activate(items[Number(o.dataset.i)], { download: ev.metaKey || ev.ctrlKey });
+    if (!o) return;
+    const mod = ev.metaKey || ev.ctrlKey;
+    // ⌘/Ctrl-click or Shift-click on a link that is not a file: the browser opens it in a new tab/window (TP-201).
+    if (o.hasAttribute('href') && !o.dataset.file && (mod || ev.shiftKey)) return;
+    ev.preventDefault();
+    activate(items[Number(o.dataset.i)], { download: mod });
   }
 
   function onPointer(ev) {

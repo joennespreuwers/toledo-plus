@@ -118,6 +118,25 @@ describe('feedback', () => {
     assert.equal(api.calls.filter((c) => c.url.endsWith('/v1/feedback')).length, 0);
   });
 
+  it('too long → no silent cut: the counter and the error say it, nothing sent (TP-144)', async () => {
+    await page.locator(`${sheet} textarea`).fill('a'.repeat(4100));
+    assert.equal(await page.locator(`${sheet} textarea`).getAttribute('maxlength'), null, 'no hard cut at 4000 UTF-16 units');
+    assert.match(await page.locator(`${sheet} .tp-fb-count`).innerText(), /^4100 \/ 4000$/);
+    assert.equal(await page.locator(`${sheet} .tp-fb-count.tp-fb-over`).count(), 1);
+    await page.locator(`${sheet} [data-fb="send"]`).click();
+    await page.waitForFunction(() => /te lang/.test(document.querySelector('#tplus-root').shadowRoot.querySelector('.tp-fb-error').textContent));
+    assert.equal(api.calls.filter((c) => c.url.endsWith('/v1/feedback')).length, 0);
+  });
+
+  it('Escape keeps the typed message: reopening starts from the draft (TP-142)', async () => {
+    await page.locator(`${sheet} textarea`).fill('Een concept dat ik nog niet verstuurde.');
+    await page.keyboard.press('Escape');
+    await page.locator(sheet).waitFor({ state: 'detached' });
+    await fire(page, { action: 'feedback' });
+    await page.locator(sheet).waitFor({ state: 'visible' });
+    assert.equal(await page.locator(`${sheet} textarea`).inputValue(), 'Een concept dat ik nog niet verstuurde.');
+  });
+
   it('429 → "Even rustig" message, text kept', async () => {
     api.status = 429;
     await page.locator(`${sheet} textarea`).fill('De agenda toont niets op maandag.');

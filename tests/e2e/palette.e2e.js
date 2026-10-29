@@ -37,7 +37,12 @@ async function openPalette(page, how = 'Control+k') {
 }
 async function type(page, q) {
   await page.locator(INPUT).fill(q);
-  await page.waitForTimeout(250);
+  // wait until the palette has rendered this query (data-q), not a fixed delay: slow runners need longer
+  await page.waitForFunction(() => {
+    const d = document.querySelector('#tplus-root').shadowRoot.querySelector('dialog.tp-palette');
+    const i = d && d.querySelector('input.tp-pal-input');
+    return !d || !d.open || (i && d.dataset.q === i.value);
+  }, null, { timeout: 10000, polling: 50 });
 }
 /** Poll the palette until pred(state) holds (the index may still be filling in the background): no fixed sleeps. */
 async function until(page, pred, what, timeout = 8000) {
@@ -45,12 +50,12 @@ async function until(page, pred, what, timeout = 8000) {
   while (Date.now() - t0 < timeout) { st = await palState(page); if (pred(st)) return st; await page.waitForTimeout(100); }
   assert.fail(`${what}: ${JSON.stringify(st)}`);
 }
-async function waitIndexed(page, min = 10) {
-  await page.waitForFunction((min) => {
+async function waitIndexed(page, min = 10, courses = 0) {
+  await page.waitForFunction(([min, courses]) => {
     const sr = document.querySelector('#tplus-root').shadowRoot;
-    const m = /(\d+) documenten/.exec(sr.querySelector('dialog.tp-palette .tp-pal-status')?.textContent || '');
-    return m && Number(m[1]) >= min && !/wordt bijgewerkt/.test(sr.querySelector('dialog.tp-palette .tp-pal-status').textContent);
-  }, min, { timeout: 20000, polling: 200 });
+    const m = /(\d+) bestanden/.exec(sr.querySelector('dialog.tp-palette .tp-pal-status')?.textContent || '');
+    return m && Number(m[1]) >= min && (!courses || new RegExp(`in ${courses} vakken`).test(m.input)) && !/wordt bijgewerkt/.test(sr.querySelector('dialog.tp-palette .tp-pal-status').textContent);
+  }, [min, courses], { timeout: 20000, polling: 200 });
 }
 
 describe('⌘K palette on the portal', () => {
@@ -98,9 +103,9 @@ describe('⌘K palette on the portal', () => {
 
   it('indexes documents of all current courses in the background (relay) and finds them', async () => {
     await openPalette(page);
-    await waitIndexed(page);
+    await waitIndexed(page, 10, 12); // all 12 courses (the crawl is slower under a full-suite load)
     const st = await palState(page);
-    assert.match(st.status, /^Doorzoekt \d+ documenten in 12 vakken · bijgewerkt \d\d:\d\d$/);
+    assert.match(st.status, /^Doorzoekt \d+ bestanden in 12 vakken · bijgewerkt \d\d:\d\d$/);
     await type(page, 'ooievaar');
     const s = await palState(page);
     assert.ok(s.groups.includes(nl['palette.group.docs']), `documents group: ${s.groups}`);
@@ -146,11 +151,13 @@ describe('⌘K palette on the portal', () => {
     await page.waitForFunction(() => {
       const sr = document.querySelector('#tplus-root').shadowRoot;
       const el = sr.querySelector('[data-tree] [data-fk="at:_6012_1"]');
+      // the highlight fades after 2.4 s: note it while waiting (a slow CI runner may focus the row later than that)
+      if (el && el.classList.contains('cv-focus')) window.__tpSawHl = true;
       return el && sr.activeElement === el;
-    }, null, { timeout: 15000 });
+    }, null, { timeout: 15000, polling: 'raf' });
     const r = await inShadow(page, (sr) => ({
       open: ['_6010_1', '_6011_1'].map((id) => sr.querySelector(`details.cv-folder[data-id="${id}"]`).open),
-      hl: sr.querySelector('[data-tree] [data-fk="at:_6012_1"]').classList.contains('cv-focus'),
+      hl: !!window.__tpSawHl || sr.querySelector('[data-tree] [data-fk="at:_6012_1"]').classList.contains('cv-focus'),
       inView: (() => { const b = sr.querySelector('[data-tree] [data-fk="at:_6012_1"]').getBoundingClientRect(); return b.top >= 0 && b.bottom <= innerHeight; })(),
     }));
     assert.deepEqual(r.open, [true, true], 'containing folders opened');
@@ -177,12 +184,12 @@ describe('⌘K palette on the portal', () => {
     await page.waitForFunction(() => /Doorzoekt/.test(document.querySelector('#tplus-root').shadowRoot.querySelector('[data-index-status]')?.textContent || ''), null, { timeout: 5000 }).catch(() => {});
     const txt = await sec.innerText();
     assert.ok(txt.includes(nl['settings.search.index']), 'switch label');
-    assert.match(txt, /Doorzoekt \d+ documenten in 12 vakken/);
+    assert.match(txt, /Doorzoekt \d+ bestanden in 12 vakken/);
     assert.equal(await sec.locator('input[name="s:search.indexAll"][role="switch"]').isChecked(), true, 'on by default');
     h.rec.reset();
     await sec.locator('[data-action="reindex"]').click();
     await waitFor(() => h.rec.find((r) => /\/contents\?limit=200/.test(r.url)).length >= 12, { timeout: 15000 });
-    await page.waitForFunction(() => /Doorzoekt \d+ documenten in 12 vakken · bijgewerkt/.test(document.querySelector('#tplus-root').shadowRoot.querySelector('[data-index-status]')?.textContent || ''), null, { timeout: 15000 });
+    await page.waitForFunction(() => /Doorzoekt \d+ bestanden in 12 vakken · bijgewerkt/.test(document.querySelector('#tplus-root').shadowRoot.querySelector('[data-index-status]')?.textContent || ''), null, { timeout: 15000 });
     await sec.locator('input[name="s:search.indexAll"]').click({ force: true });
     await waitFor(async () => (await h.getSettings())?.search?.indexAll === false);
     assert.equal((await h.getSettings()).search.indexAll, false);

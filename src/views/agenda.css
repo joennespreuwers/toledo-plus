@@ -336,7 +336,24 @@
 }
 @media (forced-colors: active) {
   .ag-view .ag-ev, .ag-view .ag-chip { border: 1px solid CanvasText; }
-  .ag-now, .ag-now::before { background: Highlight; }
+  .ag-now, .ag-now::before { forced-color-adjust: none; background: Highlight; }
+  /* mini calendar: today framed, the selected day / shown range in the system highlight (fills are dropped) */
+  .ag-view .ag-mini-d.is-today { border: 2px solid CanvasText; }
+  .ag-view .ag-mini-d.in-range { border: 1px solid CanvasText; }
+  .ag-view .ag-mini-d.is-sel { forced-color-adjust: none; background: Highlight; color: HighlightText; }
+  .ag-dayhead.is-today .ag-num { border: 2px solid CanvasText; }
+  .ag-filter-btn.is-active { outline: 2px solid Highlight; }
+}
+
+/* print (TP.shell print block in ui.css hides the app chrome): the whole day, no side column, no view controls */
+@media print {
+  .ag-view { display: block; }
+  .ag-side, .ag-controls, .ag-arrows, .ag-today, .ag-wk, .ag-badge, .ag-layer, .ag-pop, .ag-empty { display: none !important; }
+  .ag-scroll { max-height: none; overflow: visible; }
+  .ag-head, .ag-allday { overflow: visible; scrollbar-gutter: auto; }
+  .ag-cal { box-shadow: none; border: .5pt solid rgba(31, 36, 48, .25); overflow: visible; }
+  .ag-month .ag-mgrid > *, .ag-ev, .ag-chip, .ag-lrow { break-inside: avoid; }
+  .ag-now { display: none; }
 }
 
 /* motion (v1.5, TP.motion tokens): popovers scale + fade in from their anchor, phone sheets slide up; both also on close

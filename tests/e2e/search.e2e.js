@@ -47,7 +47,12 @@ async function openPalette(page) {
 }
 async function type(page, q) {
   await page.locator(INPUT).fill(q);
-  await page.waitForTimeout(250);
+  // wait until the palette has rendered this query (data-q), not a fixed delay: slow runners need longer
+  await page.waitForFunction(() => {
+    const d = document.querySelector('#tplus-root').shadowRoot.querySelector('dialog.tp-palette');
+    const i = d && d.querySelector('input.tp-pal-input');
+    return !d || !d.open || (i && d.dataset.q === i.value);
+  }, null, { timeout: 10000, polling: 50 });
 }
 async function until(page, pred, what, timeout = 8000) {
   const t0 = Date.now(); let st;
@@ -156,7 +161,7 @@ describe('⌘K palette: KU Loket apps, settings sections, "+N more", typos, long
 
   it('a group with more than 8 hits ends in "+N more" that shows the rest (TP-112); a course name alone does not list its files (TP-113)', async () => {
     await openPalette(page);
-    await page.waitForFunction(() => /\d+ documenten/.test(document.querySelector('#tplus-root').shadowRoot.querySelector('dialog.tp-palette .tp-pal-status')?.textContent || '')
+    await page.waitForFunction(() => /\d+ bestanden/.test(document.querySelector('#tplus-root').shadowRoot.querySelector('dialog.tp-palette .tp-pal-status')?.textContent || '')
       && !/wordt bijgewerkt/.test(document.querySelector('#tplus-root').shadowRoot.querySelector('dialog.tp-palette .tp-pal-status').textContent), null, { timeout: 20000, polling: 200 });
     await type(page, 'syllabus');
     const st = await until(page, (s) => s.options.some((o) => /^Nog \d+ resultaten tonen$/.test(o)), '"+N more" row');
@@ -176,6 +181,7 @@ describe('⌘K palette: KU Loket apps, settings sections, "+N more", typos, long
   });
 
   it('typos: near matches with a note (TP-175); a pasted essay is clipped (TP-082)', async () => {
+    if (!(await page.locator(PAL).isVisible())) await openPalette(page); // don't depend on the previous test's palette
     await type(page, 'regienoat');
     let st = await palState(page);
     assert.ok(st.options.includes('Regienota Ooievaar'), `near match: ${st.options}`);

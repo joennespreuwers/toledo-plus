@@ -93,13 +93,12 @@
   display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
   color: var(--label-2); font-size: var(--fs-subhead, .8125rem);
 }
-.va-urg.is-urgent { color: var(--label-2); } /* the amber row tint carries "binnenkort" */
-/* overdue: the row itself is tinted red (the card clips it to its corners); words in label colour, no icon */
+/* overdue / binnenkort: the row is tinted (the card clips it to its corners) and the status word carries the state
+   in red / amber 600 with a glyph (ui.css › status words), so it survives greyscale and a washed-out projector */
 .va-dl.tone-overdue:not(.is-done) { background: var(--overdue-bg); }
 .va-dl.tone-overdue:not(.is-done):hover { background: var(--overdue-bg-hover); }
 .va-dl.tone-urgent:not(.is-done), .va-exam.tone-urgent { background: var(--urgent-bg); }
 .va-dl.tone-urgent:not(.is-done):hover, .va-exam.tone-urgent:hover { background: var(--urgent-bg-hover); }
-.va-urg.is-overdue { color: var(--label-2); } /* same as every other relative time; the row tint carries the state */
 .va-urg.is-done { color: var(--green); }
 .va-ext { color: var(--label-2); }
 .va-late { color: var(--red); font-weight: 600; }
@@ -132,7 +131,7 @@
   content: ''; position: absolute; top: 0; right: 0; left: 0; height: var(--hairline);
   background: var(--separator); pointer-events: none; z-index: 1;
 }
-.va-dayempty { margin: 0; padding: 4px var(--row-px) 12px; font-size: var(--fs-subhead); color: var(--label-2); }
+.va-dayempty { margin: 0; padding: 4px var(--row-px) 12px; font-size: var(--fs-subhead); line-height: var(--lh-subhead); color: var(--label-2); }
 
 /* ---------- filters bar (deadlines, announcements) ---------- */
 .va-filters {
@@ -203,7 +202,7 @@
 .va-feed-body .tp-row { padding-left: 36px; }
 .va-feed-item.is-read .tp-row-title { color: var(--label-2); }
 .va-feed-item .tp-row-trail { color: var(--label-2); font-size: var(--fs-subhead, .8125rem); white-space: nowrap; }
-.va-showall .tp-row-title { color: var(--tint-text, var(--tint)); font-weight: 600; }
+.va-showall .tp-row-title { color: var(--tint-text, var(--tint)); } /* body 400 like "Nog 5 in …" */
 
 /* ---------- overview: announcements ---------- */
 .va-ann.is-read .tp-row-title { color: var(--label); }
@@ -242,3 +241,15 @@
 .va-zone-note > svg { flex: none; }
 .va-zone { color: var(--label-2); font-size: var(--fs-footnote); white-space: nowrap; }
 .va-plus { margin-left: 2px; font-size: 10px; font-weight: 600; color: var(--label-2); vertical-align: 1px; }
+/* a section heading and its action never run together in the narrow side column (TP-007): more gap, and wrap when needed */
+.va-overview .tp-sec-head { column-gap: 24px; flex-wrap: wrap; row-gap: 2px; }
+.va-overview .tp-sec-actions { margin-left: auto; }
+/* "Nieuw": one line that says what it counts (TP-005) */
+.va-sec-note { margin: -4px 4px 8px !important; color: var(--label-2); font-size: var(--fs-footnote, .8125rem); line-height: 1.35; }
+/* per-course "mark as read" at the bottom of an open Nieuw group (TP-158) */
+.va-group-read { display: flex; justify-content: flex-end; padding: 2px 8px 6px; border-top: var(--hairline) solid var(--separator); }
+.va-group-read .tp-btn { min-height: 32px; font-size: var(--fs-subhead); }
+/* under "Je bent helemaal bij": the unread announcements that are not part of Nieuw (TP-154) */
+.va-empty-more { margin: -10px 16px 18px !important; text-align: center; font-size: var(--fs-subhead); }
+.va-onboard .va-onboard-link { color: inherit; text-decoration: underline; white-space: nowrap; }
+.va-author { color: var(--label-2); }

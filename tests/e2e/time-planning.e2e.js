@@ -107,7 +107,7 @@ describe('exams as first-class items, export, own deadlines (desktop)', () => {
     assert.equal(new Date(custom[0].due).getHours(), 9);
     // delete from the sheet → toast with Undo
     await dialog(page).locator('[data-detail-action="remove"]').click();
-    const undo = page.locator(`${ROOT} .tp-toast.has-action .tp-toast-btn`);
+    const undo = page.locator(`${ROOT} .tp-toast-undo .tp-toast-btn`);
     await undo.waitFor({ timeout: 4000 });
     assert.equal((await undo.innerText()).trim(), nl()['common.undo']);
     assert.ok(await waitFor(async () => (await customOf(h)).length === 0), 'removed');
@@ -120,7 +120,7 @@ describe('exams as first-class items, export, own deadlines (desktop)', () => {
     assert.equal(await page.locator(`${ROOT} .va-dl`, { hasText: 'Hoofdstuk 4 en 5 lezen' }).getAttribute('data-key'), key, 'same key (done marks and calendar UID survive)');
     // the row's X offers Undo too
     await page.locator(`${ROOT} .va-dl`, { hasText: 'Hoofdstuk 4 en 5 lezen' }).locator('[data-action="dl-remove"]').click();
-    await page.locator(`${ROOT} .tp-toast.has-action`).last().waitFor();
+    await page.locator(`${ROOT} .tp-toast-undo`).last().waitFor();
     assert.ok(await waitFor(async () => (await customOf(h)).length === 0));
     assert.deepEqual(h.errors, []);
   });

@@ -66,6 +66,7 @@
     sparkle: '<path d="M12 3.5 13.8 10 20.5 12l-6.7 2L12 20.5 10.2 14 3.5 12l6.7-2z"/>',
     sidebarAdd: '<rect x="3" y="4.5" width="18" height="15" rx="3"/><path d="M9.5 4.5v15M15.25 9.5v5M12.75 12h5"/>',
     sidebarRemove: '<rect x="3" y="4.5" width="18" height="15" rx="3"/><path d="M9.5 4.5v15M12.75 12h5"/>',
+    pencil: '<path d="M4.5 19.5h4l10-10a2.8 2.8 0 0 0-4-4l-10 10z"/><path d="m13.5 6.5 4 4"/>',
     classic: '<rect x="3" y="4.5" width="18" height="15" rx="3"/><path d="M3 9h18M7 6.8h.01M9.5 6.8h.01"/>',
   };
   const ICONS = Object.keys(P);
@@ -115,7 +116,10 @@
   // ---------------- structure ----------------
   function section({ id, title, count, actions, body, footer, cls } = {}) {
     const hid = `tp-h-${esc(id || TP.util.uid())}`;
-    const cnt = count != null && count !== '' && count !== 0 ? ` <span class="tp-count">${esc(count)}</span>` : '';
+    // The count is not part of the heading's name ("Week van 16 nov 1" read as a date): shown, but announced as
+    // ", 1 item" (headings list / region name stay readable).
+    const cnt = count != null && count !== '' && count !== 0
+      ? ` <span class="tp-count" aria-hidden="true">${esc(count)}</span><span class="tp-sr">${esc(typeof count === 'number' ? t('common.items', { n: count }) : `, ${count}`)}</span>` : '';
     const acts = (actions || []).map((a) => button(a.label, { action: a.action, icon: a.icon, kind: 'plain', attrs: a.attrs })).join('');
     return `<section class="tp-section${cls ? ' ' + esc(cls) : ''}"${id ? ` data-section="${esc(id)}"` : ''} aria-labelledby="${hid}">
   <div class="tp-sec-head"><h2 id="${hid}" class="tp-sec-title">${title ?? ''}${cnt}</h2>${acts ? `<div class="tp-sec-actions">${acts}</div>` : ''}</div>
@@ -174,20 +178,36 @@
     return `<span class="tp-datetile tp-dt-${tone}"><span class="tp-dt-d" aria-hidden="true">${esc(d)}</span><span class="tp-dt-m" aria-hidden="true">${esc(m)}</span><span class="tp-sr">${esc(full)}</span></span>`;
   }
 
+  /** "Bijgewerkt 14:05" today; "Bijgewerkt ma 26 okt 14:05" when the stamp is from another day (cached data, TP-138). */
+  function updatedText(ms) {
+    if (!ms) return '';
+    const sameDay = TP.fmt.dayKey ? TP.fmt.dayKey(ms) === TP.fmt.dayKey(Date.now()) : true;
+    return sameDay ? t('common.updated', { time: TP.fmt.time(ms) })
+      : t('common.updatedOn', { date: TP.fmt.date(ms, { weekday: 'short', day: 'numeric', month: 'short' }), time: TP.fmt.time(ms) });
+  }
+
   function empty(text, opts = {}) {
     let ts = '';
     if (opts.timestamp) {
       const ms = opts.timestamp === true ? TP.data?.lastUpdated?.() : opts.timestamp;
-      if (ms) ts = `<p class="tp-empty-ts">${esc(t('common.updated', { time: TP.fmt.time(ms) }))}</p>`;
+      if (ms) ts = `<p class="tp-empty-ts">${esc(updatedText(ms))}</p>`;
     }
     const art = opts.art === false ? '' : emptyArt();
     return `<div class="tp-empty">${art}<p>${esc(text)}</p>${ts}</div>`;
   }
 
+  // debounced like the shell's result count, so typing doesn't make the screen reader stutter
+  let nrTimer = 0;
+  const sayNoResults = (q) => {
+    clearTimeout(nrTimer);
+    nrTimer = setTimeout(() => { try { TP.shell?.announce?.(t('common.noResults', { q })); } catch (_) { /* no shell */ } }, 700);
+  };
   /** Search empty state (Apple style): centered magnifier, "Geen resultaten", "voor “x”". One per view. */
   // a pasted essay is not echoed back in full (TP-082)
   const clip = (q) => { const s = String(q ?? ''); return s.length > 60 ? s.slice(0, 59).trimEnd() + '…' : s; };
   function noResults(q) {
+    // role=status inserted together with its text is often not read (NVDA/VoiceOver): say it via the shell's live region too
+    sayNoResults(q);
     return `<div class="tp-noresults-state" role="status">${icon('search', { size: 32 })}`
       + `<p class="tp-nr-title">${esc(t('common.noResults.title'))}</p>`
       + `<p class="tp-nr-sub">${esc(t('common.noResults.for', { q: clip(q) }))}</p></div>`;
@@ -231,8 +251,11 @@
   }
 
   function toggle(name, checked, label, o = {}) {
-    const did = o.description ? `tp-d-${TP.util.uid()}` : '';
-    return `<label class="tp-toggle"><span class="tp-toggle-text"><span class="tp-toggle-label">${esc(label)}</span>${o.description ? `<span class="tp-toggle-desc" id="${did}">${esc(o.description)}</span>` : ''}</span><input type="checkbox" role="switch" class="tp-switch" name="${esc(name)}"${checked ? ' checked' : ''}${did ? ` aria-describedby="${did}"` : ''}${attrs(o.attrs)}></label>`;
+    // The switch is named by its title only (aria-labelledby); the help text is its description, not part of the name
+    // (screen readers, voice control). The whole row stays the <label> hit target.
+    const uid = TP.util.uid();
+    const lid = `tp-l-${uid}`, did = o.description ? `tp-d-${uid}` : '';
+    return `<label class="tp-toggle"><span class="tp-toggle-text"><span class="tp-toggle-label" id="${lid}">${esc(label)}</span>${o.description ? `<span class="tp-toggle-desc" id="${did}">${esc(o.description)}</span>` : ''}</span><input type="checkbox" role="switch" class="tp-switch" name="${esc(name)}"${checked ? ' checked' : ''} aria-labelledby="${lid}"${did ? ` aria-describedby="${did}"` : ''}${attrs(o.attrs)}></label>`;
   }
 
   function select(name, options, value, o = {}) {
@@ -245,22 +268,167 @@
   function swatches(name, options, value) {
     const items = (options || []).map((opt) => {
       const c = TP.util.safeColor(opt.color);
-      return `<label class="tp-swatch" title="${esc(opt.label)}"><input type="radio" name="${esc(name)}" value="${esc(opt.value)}"${String(opt.value) === String(value) ? ' checked' : ''} aria-label="${esc(opt.label)}"><span class="tp-swatch-c" style="--sw:${c}" aria-hidden="true">${icon('check', { size: 13, strokeWidth: 3 })}</span></label>`;
+      return `<label class="tp-swatch${opt.used ? ' tp-swatch-used' : ''}" title="${esc(opt.label)}"><input type="radio" name="${esc(name)}" value="${esc(opt.value)}"${String(opt.value) === String(value) ? ' checked' : ''} aria-label="${esc(opt.label)}"><span class="tp-swatch-c" style="--sw:${c}" aria-hidden="true">${icon('check', { size: 13, strokeWidth: 3 })}</span></label>`;
     }).join('');
     return `<div class="tp-swatches" role="radiogroup">${items}</div>`;
+  }
+
+  /** Roving focus in a grid of buttons (APG date picker): one tab stop (tabindex=0, the rest -1); ←/→ ±1, ↑/↓ ±one row,
+   *  Home/End start/end of the row, PageUp/PageDown press the container's [data-roving-prev]/[data-roving-next].
+   *  Markup: a container [data-roving="<columns>"] around buttons [data-roving-item]. Call from a keydown handler
+   *  (the shell does it for the whole app); → true when the key was handled. */
+  function rovingKey(ev) {
+    const tg = (ev.composedPath && ev.composedPath()[0]) || ev.target;
+    const item = tg && tg.closest && tg.closest('[data-roving-item]');
+    const box = item && item.closest('[data-roving]');
+    if (!box || ev.altKey || ev.ctrlKey || ev.metaKey) return false;
+    const items = [...box.querySelectorAll('[data-roving-item]')];
+    const cols = Math.max(1, Number(box.getAttribute('data-roving')) || items.length);
+    const i = items.indexOf(item);
+    const k = ev.key;
+    let j = null;
+    if (k === 'ArrowRight') j = i + 1;
+    else if (k === 'ArrowLeft') j = i - 1;
+    else if (k === 'ArrowDown') j = i + cols;
+    else if (k === 'ArrowUp') j = i - cols;
+    else if (k === 'Home') j = i - (i % cols);
+    else if (k === 'End') j = i - (i % cols) + cols - 1;
+    else if (k === 'PageUp' || k === 'PageDown') {
+      const b = box.querySelector(k === 'PageUp' ? '[data-roving-prev]' : '[data-roving-next]');
+      if (!b) return false;
+      ev.preventDefault();
+      b.click();
+      // the grid repaints (other month): put focus on its tab stop once it is there
+      const doc = box.getRootNode();
+      let n = 0;
+      const again = () => {
+        const to = box.isConnected ? null : doc.querySelector('[data-roving] [data-roving-item][tabindex="0"]');
+        if (to) to.focus(); else if (++n < 12) setTimeout(again, 40);
+      };
+      setTimeout(again, 0);
+      return true;
+    } else return false;
+    ev.preventDefault();
+    const to = items[Math.max(0, Math.min(items.length - 1, j))];
+    if (to && to !== item) {
+      items.forEach((x) => x.setAttribute('tabindex', x === to ? '0' : '-1'));
+      to.focus();
+    }
+    return true;
   }
 
   const cols = (mainHtml, sideHtml) =>
     `<div class="tp-cols"><div class="tp-col-main">${mainHtml ?? ''}</div>${sideHtml ? `<div class="tp-col-side">${sideHtml}</div>` : ''}</div>`;
 
-  /** Undo after a destructive or bulk action (shared pattern): a toast `label` with an "Ongedaan maken" button that
-   *  calls restore(). Generic on purpose: any view can use it. → the toast element (or null without a shell). */
-  function undoToast(label, restore) {
-    try { return TP.shell.toast(label, { action: { label: t('common.undo'), hint: t('common.undoHint'), onClick: restore } }); } catch (_) { return null; }
+  // ---------------- course initials (rail avatars) ----------------
+  // Letters and digits only (no "B>" from a nickname with markup), function words skipped ("Inleiding tot de economie" → "IE"),
+  // a trailing number or roman numeral kept ("Wiskunde II" → "W2"), and collisions in one list resolved with the next candidate.
+  const STOP = new Set(('de het een van tot en in op voor met der des den te aan bij uit naar over '
+    + 'the of and to for a an on at with from into '
+    + 'le la les du des et au aux pour un une sur par dans l d').split(' '));
+  const ROMAN = { i: 1, ii: 2, iii: 3, iv: 4, v: 5, vi: 6, vii: 7, viii: 8, ix: 9, x: 10 };
+  function initialCandidates(name) {
+    const w = String(name ?? '').normalize('NFKD').replace(/[̀-ͯ]/g, '').split(/[^A-Za-z0-9]+/).filter(Boolean);
+    let num = '';
+    if (w.length > 1) {
+      const last = w[w.length - 1];
+      if (/^\d{1,2}$/.test(last)) num = last;
+      else if (ROMAN[last.toLowerCase()] && last === last.toUpperCase()) num = String(ROMAN[last.toLowerCase()]);
+      if (num) w.pop();
+    }
+    const letters = w.filter((x) => /^[a-z]/i.test(x));
+    const content = letters.filter((x) => !STOP.has(x.toLowerCase()));
+    const base = content.length ? content : letters;
+    const c = [];
+    if (base.length > 1) c.push(base[0][0] + base[1][0]);
+    if (base.length && num) c.push(base[0][0] + num[0]);
+    if (base.length > 2) c.push(base[0][0] + base[base.length - 1][0]);
+    if (base.length && base[0].length > 1) c.push(base[0].slice(0, 2));
+    for (const x of base.slice(1)) for (const ch of x.slice(1)) if (/[a-z]/i.test(ch)) c.push(base[0][0] + ch);
+    for (const ch of (base[0] || '').slice(2)) c.push(base[0][0] + ch);
+    if (!c.length) c.push(base[0] ? base[0][0] : (w[0] ? w[0].slice(0, 2) : '?'));
+    return [...new Set(c.map((x) => x.toUpperCase()))];
+  }
+  /** Two-character initials for a list of names, unique within the list where possible (same order as `names`). */
+  function initials(names) {
+    const used = new Set();
+    return (names || []).map((n) => {
+      const c = initialCandidates(n);
+      const pick = c.find((x) => !used.has(x)) || c[0];
+      used.add(pick);
+      return pick;
+    });
+  }
+
+  // ---------------- undo toast (shared pattern: one helper for every reversible action) ----------------
+  /**
+   * A toast with an "Ongedaan maken" button for an action that already happened (no confirm dialogs).
+   * label: plain text ("13 mededelingen gelezen"); restore(): undoes it (may return a promise).
+   * o.ms (default 8000; paused while hovered/focused), o.undone: text toasted after a successful undo,
+   * o.onDismiss(undone): called once when the offer ends. ⌘Z / Ctrl+Z undoes while the toast is shown.
+   * Only one offer at a time: a newer one ends the older (its change stays). Without the shell: a plain toast.
+   * → { undo(), dismiss() } | null
+   */
+  function undoToast(label, restore, o = {}) {
+    const S = TP.shell || {};
+    const app = S.app && S.app.isConnected ? S.app : null;
+    const box = app && app.querySelector('.tp-toasts');
+    if (!box || typeof restore !== 'function') { try { S.toast && S.toast(label); } catch (_) { /* no shell */ } return null; }
+    box.querySelectorAll('.tp-toast-undo').forEach((x) => x.__tpEnd && x.__tpEnd());
+    const el = document.createElement('div');
+    el.className = 'tp-toast tp-toast-undo show';
+    el.setAttribute('role', 'group');
+    el.setAttribute('aria-label', String(label ?? ''));
+    el.innerHTML = `<span class="tp-toast-text">${esc(label)}</span><button type="button" class="tp-toast-btn">${esc(o.undoLabel || t('common.undo'))}</button>`;
+    box.appendChild(el);
+    try { TP.motion && TP.motion.enter(el, { from: 'up', duration: TP.motion.DUR && TP.motion.DUR[3] }); } catch (_) { /* motion optional */ }
+    const ms = o.ms || 8000;
+    let timer = null;
+    let ended = false;
+    const arm = () => { clearTimeout(timer); timer = setTimeout(() => end(false), ms); };
+    const onKey = (ev) => {
+      if (!(ev.metaKey || ev.ctrlKey) || ev.shiftKey || ev.altKey || String(ev.key).toLowerCase() !== 'z') return;
+      const p = ev.composedPath ? ev.composedPath()[0] : ev.target;
+      if (p && (p.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(p.tagName || ''))) return; // the field's own undo
+      ev.preventDefault();
+      undo();
+    };
+    function end(undone) {
+      if (ended) return;
+      ended = true;
+      clearTimeout(timer);
+      removeEventListener('keydown', onKey, true);
+      const hadFocus = el.contains(el.getRootNode().activeElement);
+      const gone = () => el.remove();
+      try { if (TP.motion && !TP.motion.disabled) TP.motion.leave(el, { to: 'down', duration: TP.motion.DUR[2], onDone: gone }); else gone(); } catch (_) { gone(); }
+      if (hadFocus && o.returnFocus && o.returnFocus.isConnected) o.returnFocus.focus({ preventScroll: true });
+      try { o.onDismiss && o.onDismiss(undone); } catch (_) { /* ignore */ }
+    }
+    async function undo() {
+      if (ended) return;
+      end(true);
+      try {
+        await restore();
+        S.toast && S.toast(o.undone || t('common.undone'));
+      } catch (e) {
+        console.warn('[Toledo+] undo failed', e);
+        S.toast && S.toast(t('common.undoFailed'));
+      }
+    }
+    el.__tpEnd = () => end(false);
+    el.querySelector('button').addEventListener('click', (ev) => { ev.preventDefault(); undo(); });
+    el.addEventListener('pointerenter', () => clearTimeout(timer));
+    el.addEventListener('pointerleave', () => { if (!ended && !el.contains(el.getRootNode().activeElement)) arm(); });
+    el.addEventListener('focusin', () => clearTimeout(timer));
+    el.addEventListener('focusout', () => { if (!ended) arm(); });
+    addEventListener('keydown', onKey, true);
+    arm();
+    try { S.announce && S.announce(`${label}. ${t('common.undoHint', { key: (S.mod || 'Ctrl ') + 'Z' })}`); } catch (_) { /* ignore */ }
+    return { undo, dismiss: () => end(false) };
   }
 
   TP.ui = {
     icon, ICONS, logo, wordmark, emptyArt, attrs, section, group, row, disclosure, badge, dot, dateTile, empty, noResults, skeleton, errorRow,
-    button, segmented, toggle, select, swatches, cols, undoToast,
+    button, segmented, toggle, select, swatches, cols, updatedText, initials, undoToast, rovingKey,
   };
 })();

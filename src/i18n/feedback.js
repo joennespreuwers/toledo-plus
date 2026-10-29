@@ -20,11 +20,11 @@
       'feedback.text.count': '{n} / {max}',
       'feedback.text.short': 'Schrijf minstens {min} tekens.',
       'feedback.contact.label': 'Hoe kunnen we je bereiken? (optioneel)',
-      'feedback.contact.note': 'Alleen als je een antwoord wilt, bv. een e-mailadres. Dit blijft privé en komt nooit in het openbare verslag.',
+      'feedback.contact.note': 'Alleen als je een antwoord wilt, bv. een e-mailadres. Dit blijft privé en komt nooit in het openbare issue op GitHub.',
       'feedback.meta.label': 'Stuur versie, browser, taal en pagina mee',
       'feedback.meta.page': 'pagina {page}',
       'feedback.meta.desc': '{details} — helpt ons problemen na te spelen.',
-      'feedback.public': 'Je bericht kan als openbaar issue op GitHub verschijnen, met versie, browser, taal en pagina als je die meestuurt. Je contactgegevens en je gebruikssignaal-id gaan er nooit mee. Zet er geen namen, studentennummers of cursusinhoud in.',
+      'feedback.public': 'Je bericht kan als openbaar issue op GitHub verschijnen, met versie, browser, taal en pagina als je die meestuurt. Je contactgegevens en je gebruikssignaal-id gaan er nooit mee. Zet er geen namen, studentennummers of inhoud van je vakken in.',
       'feedback.send': 'Verstuur',
       'feedback.sending': 'Versturen…',
       'feedback.done.title': 'Bedankt!',
@@ -44,7 +44,7 @@
       'update.banner': 'Toledo+ {version} is beschikbaar.',
       'update.get': 'Downloaden',
       'update.how': 'Pak de zip uit, vervang de map en klik op ↻ bij Toledo+ op de extensiepagina van je browser.',
-      'update.dismiss': 'Later',
+      'update.dismiss': 'Verbergen',
     },
     en: {
       'feedback.menu': 'Send feedback',
@@ -85,7 +85,7 @@
       'update.banner': 'Toledo+ {version} is available.',
       'update.get': 'Download',
       'update.how': 'Unzip it, replace the folder and click ↻ on Toledo+ in your browser’s extensions page.',
-      'update.dismiss': 'Later',
+      'update.dismiss': 'Hide',
     },
     fr: {
       'feedback.menu': 'Donner ton avis',
@@ -110,7 +110,7 @@
       'feedback.send': 'Envoyer',
       'feedback.sending': 'Envoi…',
       'feedback.done.title': 'Merci !',
-      'feedback.done.body': 'Ton avis est bien arrivé. On le regarde lors du prochain tour.',
+      'feedback.done.body': 'Ton avis est bien arrivé. On le lira lors de notre prochaine relecture des retours.',
       'feedback.error.rate': 'Doucement — réessaie plus tard.',
       'feedback.error.invalid': 'Ce message n’a pas pu être envoyé. Vérifie le texte et réessaie.',
       'feedback.error.network': 'Impossible de joindre le serveur. Ton texte est toujours là ; réessaie dans un instant.',
@@ -126,7 +126,22 @@
       'update.banner': 'Toledo+ {version} est disponible.',
       'update.get': 'Télécharger',
       'update.how': 'Décompresse le zip, remplace le dossier et clique sur ↻ à côté de Toledo+ dans la page des extensions de ton navigateur.',
-      'update.dismiss': 'Plus tard',
+      'update.dismiss': 'Masquer',
+    },
+  });
+  // bug bash 2026-10: mark-as-read scope + undo, failure states, course page, courses edit
+  TP.i18n.add({
+    nl: {
+      'feedback.text.long': "Je bericht is {n} tekens te lang (max. {max}).",
+      'feedback.error.stale': "Toledo+ is net bijgewerkt. Kopieer je tekst, herlaad de pagina en verstuur opnieuw.",
+    },
+    en: {
+      'feedback.text.long': "Your message is {n} characters too long (max {max}).",
+      'feedback.error.stale': "Toledo+ was just updated. Copy your text, reload the page and send it again.",
+    },
+    fr: {
+      'feedback.text.long': "Ton message dépasse de {n} caractères (max. {max}).",
+      'feedback.error.stale': "Toledo+ vient d’être mis à jour. Copie ton texte, recharge la page et renvoie-le.",
     },
   });
 })();

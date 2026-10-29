@@ -557,7 +557,9 @@
       if (pal[cs.color]) return { color: pal[cs.color], colorKey: cs.color };
       if (/^#[0-9a-f]{3,8}$/i.test(cs.color)) return { color: cs.color, colorKey: null };
     }
-    return { color: colorForIndex(toledoIndex), colorKey: U().colorKeyForIndex ? U().colorKeyForIndex(toledoIndex) : null };
+    // Default: unique among the current courses even when several share a Toledo colour number (N7, TP-111).
+    const key = U().courseColorKey ? U().courseColorKey(luId, toledoIndex) : (U().colorKeyForIndex ? U().colorKeyForIndex(toledoIndex) : null);
+    return { color: (key && pal[key]) || colorForIndex(toledoIndex), colorKey: key };
   }
 
   function eventTime(e) { return toMs(e.date); }
@@ -585,7 +587,7 @@
       luId,
       enrollmentId: en.id,
       title: en.title || '',
-      name: (cs.nickname && String(cs.nickname).trim()) || courseName(en.title),
+      name: (cs.nickname && String(cs.nickname).trim().slice(0, 60)) || courseName(en.title), // same limit as the field (imports, TP-008)
       code: courseCode(en.title),
       color, colorKey,
       semester: en.semester || 'UNKNOWN',
@@ -677,8 +679,8 @@
       }
       if (h === 'resource/x-bb-document') return 'page';
       if (/asmt|assignment|test|survey/.test(h)) return 'assignment';
-      if (h === 'resource/x-bb-externallink') return 'link';
-      if (/lti-link/.test(h)) return 'tool';
+      if (h === 'resource/x-bb-externallink' || h === 'resource/x-bb-courselink') return 'link';
+      if (/lti-link|forumlink|journallink|bloglink|wikilink|x-bb-discussion/i.test(h)) return 'tool'; // TP-099: not "Pagina"
       return 'page';
     }
     const st = x.subType;
@@ -959,9 +961,40 @@
     })());
   }
 
-  /** Everything new in the feed counts as seen (ids + floor, bounded). With sync on, also marks them read. */
+  /**
+   * One "mark as read" for every list (shared pattern 5). scope:
+   *   {events: Event[]}  exactly these (the rows in view: a filtered/searched list)
+   *   {luId}             what Nieuw shows for one course
+   *   {}                 everything in Nieuw
+   * Always writes local state (feedSeen + the read-set), also with "Markeer gelezen in Toledo" off (TP-155); with it on,
+   * the unread ones are PATCHed to Toledo (failures queue in pendingRead).
+   * → {n (items in scope), unread (newly read), synced: Promise<bool> (false = Toledo not updated yet), undo(): Promise}
+   */
+  async function markAllRead(scope = {}) {
+    const items = Array.isArray(scope.events) ? scope.events.filter((e) => e && e.id != null)
+      : feed().filter((g) => !scope.luId || g.luId === scope.luId).flatMap((g) => g.items);
+    const read = ST().read || {};
+    const unread = items.filter((e) => !e.read && !read[e.id]);
+    const before = JSON.parse(JSON.stringify(ST().feedSeen || {}));
+    await seeFeed(items);
+    const synced = unread.length ? markRead(unread) : Promise.resolve(true);
+    const undo = async () => {
+      await Promise.resolve(synced).catch(() => {}); // a read:false must not overtake the read:true PATCH
+      await setState({ feedSeen: before }, { replace: true });
+      if (unread.length) await markUnread(unread);
+      emit('change', 'state');
+    };
+    return { n: items.length, unread: unread.length, synced: Promise.resolve(synced).catch(() => false), undo };
+  }
+
+  /** Everything new in the feed counts as seen and read (= markAllRead({})). → bool (false when the Toledo sync failed) */
   async function markFeedSeen() {
-    const items = feed().flatMap((g) => g.items);
+    const r = await markAllRead({});
+    return r.synced;
+  }
+
+  /** feedSeen <- these items (ids + floor, bounded). */
+  async function seeFeed(items) {
     const fs = ST().feedSeen || {};
     const ids = Object.assign({}, fs.ids || {});
     for (const e of items) if (e.id != null) ids[e.id] = eventTime(e);
@@ -975,8 +1008,6 @@
       await setState({ feedSeen: { ids: Object.fromEntries(items.filter((e) => e.id != null).map((e) => [e.id, eventTime(e)])) } });
     }
     emit('change', 'state');
-    if ((S().sync || {}).markReadInToledo && items.length) return markRead(items);
-    return true;
   }
 
   let pinWarned = false;
@@ -1382,16 +1413,18 @@
     location.href = href; // popup blocked: navigate this tab instead of doing nothing
   }
 
-  /** Download a file item: attachment → blob (default credentials) → <a download>. Never throws; → true when saved. */
+  /** Download a file item: attachment → blob (default credentials) → <a download>. Never throws.
+   *  → true (saved) | 'opened' (no blob possible here, e.g. on the portal: opened in a new tab instead) | false (failed; nothing
+   *  opened — the caller says "Download mislukt", TP-085). */
   async function ultraDownload(cid, contentId, fileName) {
     const node = cachedNode(cid, contentId);
     const name = fileName || (node && node.contentHandler && node.contentHandler.file && node.contentHandler.file.fileName) || (node && node.title) || '';
     let att = null;
     try {
       att = await attachmentUrl(cid, contentId, name);
-      if (!att) { openUrl(null, itemLink(cid, contentId)); return false; }
+      if (!att) { openUrl(null, itemLink(cid, contentId)); return 'opened'; }
       // Only on the Ultra origin do we have the session cookie for the download endpoint.
-      if (!net().isSameOrigin(att.url)) { openUrl(null, att.url); return false; }
+      if (!net().isSameOrigin(att.url)) { openUrl(null, att.url); return 'opened'; }
       const blob = await net().blob(att.url);
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
@@ -1404,8 +1437,8 @@
       setTimeout(() => URL.revokeObjectURL(a.href), 60e3);
       return true;
     } catch (e) {
+      // No new tab here: it would show the same error (or, with the click's activation gone, navigate this tab away).
       log('download failed', e && e.status);
-      openUrl(null, att ? att.url : itemLink(cid, contentId));
       return false;
     }
   }
@@ -1672,7 +1705,7 @@
     authExpired: () => authExpired, loginUrl, isStale: () => stale,
     ultraAuthExpired: () => ultraAuth, ultraLoginUrl: () => `${ULTRA}/ultra/course`,
     courses, course, feed, kindOf, deadlines, calendarItems, announcements, schedule, link, quickLinks,
-    markRead, markFeedSeen, setPinned, toggleDone, setDone, addCustomDeadline, updateCustomDeadline, removeCustomDeadline, addRecent,
+    markRead, markFeedSeen, markAllRead, setPinned, toggleDone, setDone, addCustomDeadline, updateCustomDeadline, removeCustomDeadline, addRecent,
     ics, icsEvents, icsName, icsReminder,
     userName, loadUser,
     ultraCourse, ultraTree, ultraDownload, ultraOpen, ultraAnnouncement, resolveCourseId, clearCourseCache, ultraItemUrl: itemLink,

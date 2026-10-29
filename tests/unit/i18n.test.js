@@ -86,3 +86,53 @@ test('keyboard modifier follows the platform: ⌘ on macOS (userAgentData "macOS
     assert.equal(T.t('fulltext.course.done', { n: 2 }).includes('Ctrl+K'), true);
   }
 });
+
+// Bug bash (TP-053, TP-056, TP-122, TP-123, TP-124, TP-126, TP-055, TP-166, TP-054, TP-058): one wording per idea.
+test('copy consistency: day plurals, action labels, one "new tab" phrase, one classic label, greeting at night', () => {
+  const s = sandbox();
+  s.load('src/core/util.js'); s.load('src/core/i18n.js');
+  for (const f of list('src/i18n', /\.js$/)) s.load(f);
+  const { TP } = s;
+  const T = TP.i18n._table;
+  // TP-053: no bare "d"/"j" day abbreviation; singular and plural forms
+  s.setLanguage('nl');
+  assert.equal(TP.t('fmt.inDays', { n: 1 }), 'over 1 dag');
+  assert.equal(TP.t('fmt.daysAgo', { n: 3 }), '3 dagen geleden');
+  assert.equal(TP.t('va.overdueBy', { n: 1 }), '1 dag te laat');
+  s.setLanguage('en');
+  assert.equal(TP.t('fmt.inDays', { n: 3 }), 'in 3 days');
+  assert.equal(TP.t('va.overdueBy', { n: 1 }), '1 day overdue');
+  s.setLanguage('fr');
+  assert.equal(TP.t('fmt.daysAgo', { n: 2 }), 'il y a 2 jours');
+  for (const l of ['nl', 'en', 'fr']) {
+    for (const [k, v] of Object.entries(T[l])) if (/^(fmt\.(inDays|daysAgo)|va\.overdueBy)/.test(k)) assert.doesNotMatch(v, /\{n\} [dj]\b/, `${l} ${k}: ${v}`);
+  }
+  // TP-056: past dates within a week read "N dagen geleden", never a weekday next to "gisteren"
+  s.setLanguage('nl');
+  const d = new Date(); d.setDate(d.getDate() - 3); d.setHours(12, 0, 0, 0);
+  assert.equal(TP.fmt.ago(d.getTime()), '3 dagen geleden');
+  // TP-126: "Mark all read" is an action, not a status
+  assert.equal(T.nl['announcements.readAll'], 'Alles als gelezen markeren');
+  assert.equal(T.nl['overview.new.readAll'], 'Alles als gelezen markeren');
+  // TP-123: one word for "done" in NL
+  assert.equal(T.nl['courses.done'], T.nl['common.done']);
+  // TP-122: a Toledo deadline's source is not a "melding" (notification)
+  assert.doesNotMatch(T.nl['va.source.toledo'], /melding/i);
+  // TP-124: one NL phrasing for "opens in a new tab"
+  const newTab = Object.entries(T.nl).filter(([k]) => /newTab$/.test(k)).map(([, v]) => v.replace(/[()]/g, ''));
+  assert.ok(newTab.length >= 4);
+  assert.deepEqual([...new Set(newTab)], ['opent in een nieuw tabblad']);
+  // TP-055: the footer and the account menu name classic Toledo the same way
+  for (const l of ['nl', 'en', 'fr']) {
+    assert.equal(T[l]['brand.classicShort'], T[l]['shell.classic'], l);
+    assert.equal(T[l]['brand.classicTitle'], T[l]['shell.classicHint'], l);
+  }
+  // TP-166: the night greeting is a greeting, not a goodbye
+  assert.doesNotMatch(T.nl['overview.greet.night'], /nacht/i);
+  assert.doesNotMatch(T.en['overview.greet.night'], /night/i);
+  assert.doesNotMatch(T.fr['overview.greet.night'], /nuit/i);
+  // TP-054: EN/FR explain "Ad Valvas"
+  for (const l of ['en', 'fr']) assert.match(T[l]['announcements.school'], /Ad Valvas \(.+\)/, l);
+  // TP-058: "ICS" is explained as a file
+  for (const l of ['nl', 'en', 'fr']) assert.match(T[l]['settings.dl.reminder'], /\.ics/, l);
+});

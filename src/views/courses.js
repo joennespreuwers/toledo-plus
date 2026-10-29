@@ -21,25 +21,10 @@
   const save = (p) => { Promise.resolve(p).catch(() => {}); };
   const cssEsc = (s) => (globalThis.CSS && CSS.escape ? CSS.escape(String(s)) : String(s).replace(/["\\]/g, '\\$&'));
 
-  function snapFocus(root) {
-    const a = root.getRootNode().activeElement;
-    if (!a || !root.contains(a)) return null;
-    if (a.dataset && a.dataset.fk) return { fk: a.dataset.fk };
-    if (a.name) return { name: a.name, value: a.type === 'radio' ? a.value : null };
-    return null;
-  }
-  function restoreFocus(root, f) {
-    if (!f) return;
-    let el = null;
-    if (f.fk) el = root.querySelector(`[data-fk="${cssEsc(f.fk)}"]`);
-    else if (f.name) el = root.querySelector(`[name="${cssEsc(f.name)}"]${f.value != null ? `[value="${cssEsc(f.value)}"]` : ''}`);
-    if (el && !el.disabled) el.focus({ preventScroll: true });
-    else if (f.fk && /^(up|down):/.test(f.fk)) {
-      // A moved row hit the top/bottom: keep focus on its other move button.
-      const other = f.fk.replace(/^(up|down)/, (m) => (m === 'up' ? 'down' : 'up'));
-      root.querySelector(`[data-fk="${cssEsc(other)}"]`)?.focus({ preventScroll: true });
-    }
-  }
+  // Focus across re-renders: TP.shell.focus finds the same control by its data-fk (so it follows a moved row), else
+  // the next row or the section heading — never <body>.
+  const snapFocus = (root) => TP.shell.focus.snap(root);
+  const restoreFocus = (root, f) => TP.shell.focus.restore(f, { scope: root });
 
   function allCourses() {
     return TP.data.courses({ includeHidden: true, includeCommunities: true, currentOnly: false }) || [];
@@ -90,10 +75,23 @@
     }
     return parts.filter(Boolean).join(' · ');
   }
-  const colorOptions = () => {
+  // Red and pink read as "te laat": not offered as a course colour (a course that already has one keeps it). Colours other
+  // current courses use are dimmed and named "in gebruik", so two courses don't end up looking the same (TP-114).
+  const STATUS_COLORS = ['red', 'pink'];
+  const colorOptions = (c, used) => {
     const P = TP.util.PALETTE;
-    return (TP.util.COURSE_COLORS || Object.keys(P)).map((k) => ({ value: k, color: P[k], label: t('courses.colors.' + k) }));
+    const own = (TP.settings.course(c.luId) || {}).color || c.colorKey || '';
+    return (TP.util.COURSE_COLORS || Object.keys(P)).filter((k) => !STATUS_COLORS.includes(k) || k === own).map((k) => {
+      const inUse = k !== own && used && used.has(k);
+      return { value: k, color: P[k], label: t('courses.colors.' + k) + (inUse ? ` (${t('courses.colorUsed')})` : ''), used: inUse };
+    });
   };
+  /** Colour keys of the current courses, except `luId`'s own. */
+  function usedColors(luId) {
+    const out = new Set();
+    try { for (const c of TP.data.courses({ includeHidden: true, currentOnly: true }) || []) if (c.luId !== luId && c.colorKey) out.add(c.colorKey); } catch { /* none */ }
+    return out;
+  }
 
   // ---------- render ----------
   function cardHtml(c, max) {
@@ -117,7 +115,9 @@
   // "Zet in zijbalk" (v1.5): a small trailing toggle on every card; the sidebar lists only these courses.
   function sbButton(c, name) {
     const on = !!TP.settings.course(c.luId).inSidebar;
-    return `<button type="button" class="cs-sb-btn${on ? ' is-on' : ''}" data-action="sidebar" data-lu="${esc(c.luId)}" data-fk="sb:${esc(c.luId)}" aria-pressed="${on}" aria-label="${esc(t('shell.sbToggle', { name }))}" title="${esc(t(on ? 'shell.sbRemove' : 'shell.sbAdd'))}">${TP.ui.icon(on ? 'sidebarRemove' : 'sidebarAdd', { size: 18 })}</button>`;
+    // A toggle button (constant name + aria-pressed); touch screens, which have no hover tooltip, also show a caption with
+    // the state ("In zijbalk" / "Zet in zijbalk") (TP-190).
+    return `<button type="button" class="cs-sb-btn${on ? ' is-on' : ''}" data-action="sidebar" data-lu="${esc(c.luId)}" data-fk="sb:${esc(c.luId)}" aria-pressed="${on}" aria-label="${esc(t('shell.sbToggle', { name }))}" title="${esc(t(on ? 'shell.sbRemove' : 'shell.sbAdd'))}">${TP.ui.icon(on ? 'sidebarRemove' : 'sidebarAdd', { size: 18 })}<span class="cs-sb-cap" aria-hidden="true">${esc(t(on ? 'courses.sbIn' : 'courses.sbOut'))}</span></button>`;
   }
 
   // Edit mode: one compact row per course.
@@ -136,15 +136,15 @@
         <details class="cs-color" data-color-pop>
           <summary class="cs-color-btn" data-fk="color:${lu}" aria-label="${esc(t('courses.colorOf', { name, color: colorName }))}"><span class="cs-color-dot" style="background:${esc(c.color || 'var(--fill)')}"></span></summary>
           <div class="cs-pop tp-glass" role="group" aria-label="${esc(t('courses.colorOf', { name, color: colorName }))}">
-            ${TP.ui.swatches(`color${SEP}${c.luId}`, colorOptions(), key)}
+            ${TP.ui.swatches(`color${SEP}${c.luId}`, colorOptions(c, usedColors(c.luId)), key)}
             ${cs.color ? `<button type="button" class="cs-link-btn" data-action="color-reset" data-lu="${lu}" data-fk="cr:${lu}">${esc(t('courses.colorReset'))}</button>` : ''}
           </div>
         </details>
         <span class="cs-nick">
           <label class="cs-sr" for="${nid}">${esc(t('courses.nicknameFor', { name: orig }))}</label>
           <input id="${nid}" type="text" class="cs-input" name="nick${SEP}${lu}" value="${esc(cs.nickname || '')}"
-            placeholder="${esc(orig)}" autocomplete="off" spellcheck="false" maxlength="60">
-          <span class="cs-erow-meta">${esc([c.code, c.available === false ? t('courses.unavailable') : ''].filter(Boolean).join(' · '))}</span>
+            placeholder="${esc(orig)}" title="${esc(orig)}" autocomplete="off" spellcheck="false" maxlength="60">
+          <span class="cs-erow-meta" title="${esc(orig)}">${esc([c.code, orig, c.available === false ? t('courses.unavailable') : ''].filter(Boolean).join(' · '))}</span>
         </span>
         <label class="cs-hide cs-insb" title="${esc(t('shell.sbAdd'))}"><span class="cs-hide-label">${esc(t('shell.sbShort'))}</span><input type="checkbox" role="switch" class="tp-switch" name="sidebar${SEP}${lu}"${cs.inSidebar ? ' checked' : ''} aria-label="${esc(t('shell.sbToggle', { name }))}"></label>
         <label class="cs-hide" title="${esc(t('courses.hide'))}"><span class="cs-hide-label">${esc(t('courses.hide'))}</span><input type="checkbox" role="switch" class="tp-switch" name="hide${SEP}${lu}"${cs.hidden ? ' checked' : ''} aria-label="${esc(t('courses.hideName', { name }))}"></label>
@@ -185,7 +185,7 @@
     cur = ctx;
     const root = ctx.root;
     bind(root);
-    ctx.setActions([{ id: 'edit', label: t(ui.edit ? 'courses.done' : 'courses.edit'), icon: ui.edit ? 'check' : undefined, onClick: toggleEdit }]);
+    ctx.setActions([{ id: 'edit', label: t(ui.edit ? 'courses.done' : 'courses.edit'), icon: ui.edit ? 'check' : 'pencil', onClick: toggleEdit }]);
 
     const focus = snapFocus(root);
     const s = TP.settings.get();
@@ -209,6 +209,9 @@
         : TP.ui.group(TP.ui.empty(emptyText()));
     } else if (!visible.length && !hidden.length) {
       body = TP.ui.group(TP.ui.empty(emptyText()));
+    } else if (!visible.length) {
+      body = TP.ui.group(`${TP.ui.empty(t('courses.allHidden'))}<p class="cs-empty-act">${TP.ui.button(t('courses.showAll'), { kind: 'tinted', action: 'unhide-all', attrs: { 'data-fk': 'unhide-all' } })}</p>`)
+        + hiddenHtml(hidden);
     } else {
       body = (visible.length ? `<ul class="cs-grid" role="list">${visible.map((c) => cardHtml(c, max)).join('')}</ul>` : '')
         + hiddenHtml(hidden);
@@ -223,7 +226,7 @@
             ${TP.ui.select('cs-sort', sortOpts, s.courses?.sort || 'activity', { ariaLabel: t('courses.sort') })}
           </div>
         </div>
-        ${ui.edit ? `<p class="cs-hint" id="cs-edit-hint">${esc(t('courses.editHint'))}</p>` : ''}
+        ${ui.edit ? `<p class="cs-hint" id="cs-edit-hint">${esc(t('courses.editHint'))} ${esc(t('courses.hideHint'))}</p>` : ''}
         <div class="cs-body">${body}</div>
         <div class="cs-noresults" hidden></div>
       </div>`;
@@ -240,9 +243,12 @@
 
   function toggleEdit() {
     ui.edit = !ui.edit;
+    // TP-206: edit mode is in the URL ('&id=edit'), so reload and Back keep it
+    try { if (cur && cur.setParams) cur.setParams(ui.edit ? { id: 'edit' } : {}); } catch { /* best effort */ }
     if (live()) repaint();
     TP.shell.announce?.(t(ui.edit ? 'courses.editOn' : 'courses.editOff'));
   }
+
 
   function applySearch(root, q) {
     ui.q = String(q || '').trim();
@@ -331,6 +337,11 @@
         case 'move-down': return move(lu, 1);
         case 'color-reset': save(TP.settings.setCourse(lu, { color: null })); break;
         case 'unhide': save(TP.settings.setCourse(lu, { hidden: false })); break;
+        case 'unhide-all': {
+          const { inView } = lists(TP.settings.get());
+          for (const c of inView) if (c.hidden) save(TP.settings.setCourse(c.luId, { hidden: false }));
+          break;
+        }
         case 'sidebar': ev.preventDefault(); TP.shell.setInSidebar(lu); break;
         case 'cs-retry': ev.preventDefault(); Promise.resolve(TP.data.load('enrollments', { force: true })).catch(() => {}); return;
         default: return;

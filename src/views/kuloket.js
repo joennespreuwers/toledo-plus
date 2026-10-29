@@ -57,7 +57,7 @@
       body = TP.ui.group(`<div class="kl-note">${icon('calendar', { size: 15 })}<p>${esc(t('kuloket.today.none'))}</p></div>`);
     }
     return TP.ui.section({ id: 'kl-today', title: esc(t('kuloket.today.title')), body,
-      actions: [{ label: t('kuloket.today.open') + ' ›', action: 'kl-agenda', attrs: { href: TP.shell.href('agenda') } }] });
+      actions: [{ label: t('kuloket.today.open'), action: 'kl-agenda', attrs: { href: TP.shell.href('agenda') } }] });
   }
 
   function appsSections() {

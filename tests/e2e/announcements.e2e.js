@@ -260,7 +260,9 @@ describe('announcement sheet', () => {
   });
 
   it('⌘K: an announcement result opens the sheet instead of leaving the page', async () => {
-    const url = page.url();
+    // the previous test's sheet leaves its history entry asynchronously (history.back after close)
+    await page.waitForFunction(() => !/&sheet=/.test(location.hash), null, { timeout: 3000 }).catch(() => {});
+    const url = page.url().replace(/&sheet=[^&]*/, '');
     await page.keyboard.press('Control+k');
     await page.locator('#tplus-root dialog.tp-palette').waitFor({ state: 'visible' });
     await page.locator('#tplus-root dialog.tp-palette input.tp-pal-input').fill('oefensessie');
@@ -274,9 +276,12 @@ describe('announcement sheet', () => {
     await page.keyboard.press('Enter');
     const s = await untilSheet(page, (x) => x.open && x.body, 'palette sheet');
     assert.equal(s.title, 'Extra oefensessie montage');
-    assert.equal(page.url(), url);
+    // same page; only the sheet's own history entry is added (Back closes it), and Esc removes it again
+    assert.equal(page.url().replace(/&sheet=[^&]*/, ''), url);
+    assert.match(page.url(), /&sheet=/);
     await page.keyboard.press('Escape');
     await untilSheet(page, (x) => !x.open, 'closed');
+    await page.waitForFunction((u) => location.href === u, url, { timeout: 3000 });
   });
 
   it('screenshots: light/dark × desktop/phone', async () => {

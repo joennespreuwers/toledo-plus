@@ -16,8 +16,8 @@
       'courses.sort.name': 'Naam',
       'courses.sort.manual': 'Eigen volgorde',
       'courses.edit': 'Bewerk',
-      'courses.done': 'Gereed',
-      'courses.editHint': 'Pas per vak de bijnaam, kleur, zijbalk en zichtbaarheid aan. Sleep aan het handvat of gebruik ↑ en ↓ voor je eigen volgorde. Wijzigingen worden meteen bewaard.',
+      'courses.done': 'Klaar',
+      'courses.editHint': 'Pas per vak de bijnaam, kleur, zijbalk en zichtbaarheid aan. Sleep aan het handvat of gebruik ↑ en ↓ voor je eigen volgorde (de sortering wordt dan Eigen volgorde). Wijzigingen worden meteen bewaard.',
       'courses.unavailable': 'Nog niet beschikbaar',
       'courses.unread': '{n} nieuw',
       'courses.unread.one': '1 nieuw',
@@ -47,7 +47,7 @@
       'courses.colors.brand': 'Toledo+', 'courses.colors.blue': 'Blauw', 'courses.colors.purple': 'Paars', 'courses.colors.pink': 'Roze', 'courses.colors.red': 'Rood',
       'courses.colors.orange': 'Oranje', 'courses.colors.yellow': 'Geel', 'courses.colors.green': 'Groen', 'courses.colors.mint': 'Mint',
       'courses.colors.teal': 'Blauwgroen', 'courses.colors.cyan': 'Cyaan', 'courses.colors.indigo': 'Indigo', 'courses.colors.brown': 'Bruin',
-      'courses.colors.graphite': 'Grafiet',
+      'courses.colors.graphite': 'Grafiet', 'courses.colors.navy': 'Marineblauw', 'courses.colors.forest': 'Bosgroen', 'courses.colors.plum': 'Pruim', 'courses.colors.olive': 'Olijf', 'courses.colors.slate': 'Leisteen', 'courses.colors.lavender': 'Lavendel',
     },
     en: {
       'courses.title': 'Courses',
@@ -62,7 +62,7 @@
       'courses.sort.manual': 'Custom order',
       'courses.edit': 'Edit',
       'courses.done': 'Done',
-      'courses.editHint': 'Change each course’s nickname, colour, sidebar and visibility. Drag the handle or use ↑ and ↓ for your own order. Changes are saved right away.',
+      'courses.editHint': 'Change each course’s nickname, colour, sidebar and visibility. Drag the handle or use ↑ and ↓ for your own order (sorting then switches to Custom order). Changes are saved right away.',
       'courses.unavailable': 'Not available yet',
       'courses.unread': '{n} new',
       'courses.unread.one': '1 new',
@@ -92,7 +92,7 @@
       'courses.colors.brand': 'Toledo+', 'courses.colors.blue': 'Blue', 'courses.colors.purple': 'Purple', 'courses.colors.pink': 'Pink', 'courses.colors.red': 'Red',
       'courses.colors.orange': 'Orange', 'courses.colors.yellow': 'Yellow', 'courses.colors.green': 'Green', 'courses.colors.mint': 'Mint',
       'courses.colors.teal': 'Teal', 'courses.colors.cyan': 'Cyan', 'courses.colors.indigo': 'Indigo', 'courses.colors.brown': 'Brown',
-      'courses.colors.graphite': 'Graphite',
+      'courses.colors.graphite': 'Graphite', 'courses.colors.navy': 'Navy', 'courses.colors.forest': 'Forest green', 'courses.colors.plum': 'Plum', 'courses.colors.olive': 'Olive', 'courses.colors.slate': 'Slate', 'courses.colors.lavender': 'Lavender',
     },
     fr: {
       'courses.title': 'Cours',
@@ -107,7 +107,7 @@
       'courses.sort.manual': 'Ordre personnalisé',
       'courses.edit': 'Modifier',
       'courses.done': 'OK',
-      'courses.editHint': 'Modifie le surnom, la couleur, la barre latérale et la visibilité de chaque cours. Fais glisser la poignée ou utilise ↑ et ↓ pour ton propre ordre. Les changements sont enregistrés tout de suite.',
+      'courses.editHint': 'Modifie le surnom, la couleur, la barre latérale et la visibilité de chaque cours. Fais glisser la poignée ou utilise ↑ et ↓ pour ton propre ordre (le tri passe alors à Ordre personnalisé). Les changements sont enregistrés tout de suite.',
       'courses.unavailable': 'Pas encore disponible',
       'courses.unread': '{n} nouveaux',
       'courses.unread.one': '1 nouveau',
@@ -137,7 +137,7 @@
       'courses.colors.brand': 'Toledo+', 'courses.colors.blue': 'Bleu', 'courses.colors.purple': 'Violet', 'courses.colors.pink': 'Rose', 'courses.colors.red': 'Rouge',
       'courses.colors.orange': 'Orange', 'courses.colors.yellow': 'Jaune', 'courses.colors.green': 'Vert', 'courses.colors.mint': 'Menthe',
       'courses.colors.teal': 'Bleu-vert', 'courses.colors.cyan': 'Cyan', 'courses.colors.indigo': 'Indigo', 'courses.colors.brown': 'Brun',
-      'courses.colors.graphite': 'Graphite',
+      'courses.colors.graphite': 'Graphite', 'courses.colors.navy': 'Bleu marine', 'courses.colors.forest': 'Vert forêt', 'courses.colors.plum': 'Prune', 'courses.colors.olive': 'Olive', 'courses.colors.slate': 'Ardoise', 'courses.colors.lavender': 'Lavande',
     },
   });
 
@@ -190,6 +190,33 @@
       'courses.sortManualOn': 'Tri : ordre perso',
       'courses.movedTo': '{name} est maintenant en position {n} sur {total}',
       'courses.error': 'Impossible de charger tes cours',
+    },
+  });
+  // bug bash 2026-10: mark-as-read scope + undo, failure states, course page, courses edit
+  TP.i18n.add({
+    nl: {
+      'courses.colorUsed': "in gebruik",
+      'courses.sbIn': "In zijbalk",
+      'courses.sbOut': "Zet in zijbalk",
+      'courses.allHidden': "Alle vakken zijn verborgen.",
+      'courses.showAll': "Toon alle vakken",
+      'courses.hideHint': "Verbergen haalt een vak uit Vakken, Nieuw en Mededelingen; zijn deadlines, examens en lessen blijven zichtbaar.",
+    },
+    en: {
+      'courses.colorUsed': "in use",
+      'courses.sbIn': "In sidebar",
+      'courses.sbOut': "Add to sidebar",
+      'courses.allHidden': "All courses are hidden.",
+      'courses.showAll': "Show all courses",
+      'courses.hideHint': "Hiding a course removes it from Courses, New and Announcements; its deadlines, exams and classes stay visible.",
+    },
+    fr: {
+      'courses.colorUsed': "déjà utilisée",
+      'courses.sbIn': "Dans la barre",
+      'courses.sbOut': "Ajouter à la barre",
+      'courses.allHidden': "Tous les cours sont masqués.",
+      'courses.showAll': "Afficher tous les cours",
+      'courses.hideHint': "Masquer un cours le retire de Cours, Nouveautés et Annonces ; ses échéances, examens et cours restent visibles.",
     },
   });
 })();
