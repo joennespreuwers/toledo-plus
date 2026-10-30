@@ -6,6 +6,8 @@ Het formaat volgt [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) en he
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-10-30
+
 ### Added
 - **Zoeken, overal hetzelfde**: the toolbar search, the course search and ⌘K now match the same way: accents and word order don't matter ("chemie verslag", "economie"), course codes work with or without the space ("zx1003"), dates as you see them work ("morgen", "28 okt", "vr 30 okt", "30/10"), and one typo in a longer word still finds it ("programeren"). The same item is found by the same things everywhere (title, course, code, teacher/sender, date), and the matching words are highlighted.
 - ⌘K finds KU Loket apps ("ISP", "MOBIB", "vrijstellingen") and individual settings ("iCal", "donker", "reset", "volledige tekst" open Instellingen at that section); view names also work in the other languages ("instellingen" in English).
