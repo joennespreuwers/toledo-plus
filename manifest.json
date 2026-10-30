@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Toledo+",
   "short_name": "Toledo+",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "Een rustige, overzichtelijke Toledo: deadlines, nieuwe items, vakken, agenda en KU Loket in één app, volgens Apple's ontwerprichtlijnen.",
   "minimum_chrome_version": "114",
   "icons": {
