@@ -295,16 +295,19 @@ describe('agenda — views, keyboard, layout, filters (desktop 1440)', () => {
       const s = sr.querySelector('.ag-scroll'); const r = s.getBoundingClientRect();
       const inView = (el) => { if (!el) return false; const b = el.getBoundingClientRect(); return b.top >= r.top - 1 && b.top <= r.bottom; };
       const first = [...sr.querySelectorAll('.ag-col.is-today .ag-ev')].sort((a, b) => a.offsetTop - b.offsetTop)[0];
-      return { top: s.scrollTop, h: s.clientHeight, sh: s.scrollHeight, hh: sr.querySelector('.ag-hour').offsetHeight, first: inView(first), now: inView(sr.querySelector('.ag-now')), firstH: Math.min(...[...sr.querySelectorAll('.ag-col .ag-ev')].map((e) => e.offsetTop)) / sr.querySelector('.ag-hour').offsetHeight };
+      return { top: s.scrollTop, h: s.clientHeight, sh: s.scrollHeight, hh: sr.querySelector('.ag-hour').offsetHeight, first: inView(first), now: inView(sr.querySelector('.ag-now')), want: Number(sr.querySelector('.ag-timegrid').dataset.scroll) };
     });
     assert.ok(sc.sh > sc.h + 100, 'the grid scrolls inside its container');
     assert.ok(sc.h >= 11 * sc.hh - 2 && sc.h <= 24 * sc.hh + 2, `at least 11 hours visible, more on a tall window (TP-021) (${sc.h}px)`);
     const nowH = new Date().getHours();
-    // 1 h before the week's earliest lesson (the demo data moves with today's date, so that is not always 09:00).
-    const want = Math.max(0, Math.floor(sc.firstH) - 1);
-    if (nowH >= want && nowH <= want + 10) assert.ok(Math.abs(sc.top / sc.hh - want) < 0.1, `scrolled to ${want}:00, 1 h before the week's first lesson (${sc.top / sc.hh} h)`);
+    // the grid is scrolled to the hour the view chose (1 h before the week's first lesson, or around now: TP.agenda.scrollHour,
+    // unit-tested); the demo data moves with today's date, so that hour is not fixed here
+    assert.ok(Number.isFinite(sc.want) && sc.want >= 0 && sc.want <= 13, `data-scroll ${sc.want}`);
+    const exp = Math.min(sc.want * sc.hh, sc.sh - sc.h); // a tall window can't scroll past the end of the day
+    assert.ok(Math.abs(sc.top - exp) < 0.1 * sc.hh, `scrolled to ${sc.want}:00 or the bottom (${sc.top / sc.hh} h)`);
     assert.ok(sc.now, 'the current time is in view');
-    assert.ok(sc.first || nowH > 18, 'the first lesson is in view (unless it is evening)');
+    const followsNow = sc.want === Math.min(13, Math.max(0, nowH - 1)); // TP.agenda.scrollHour: now outside the lesson window → around now
+    assert.ok(sc.first || followsNow, 'the first lesson is in view (unless the view follows the current time)');
     const dl = await shadowCount(page, '.ag-allday .ag-chip-deadline');
     if (dl) assert.ok(await shadowCount(page, '.ag-dlmark') >= 1, 'deadline marker at its time');
     const aria = await page.locator(ev('Filmtaal 1')).first().getAttribute('aria-label');
