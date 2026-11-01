@@ -6,6 +6,9 @@ Het formaat volgt [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) en he
 
 ## [Unreleased]
 
+### Changed
+- Vakken: all course cards are the same height, set by the tallest one (a name over two lines, "Nog niet beschikbaar"), so the grid lines up.
+
 ## [1.7.0] - 2026-10-30
 
 ### Added
