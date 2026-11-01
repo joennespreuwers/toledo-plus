@@ -64,11 +64,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
 
       - name: Use the fresh screenshots (if the screens job succeeded)
         if: needs.screens.result == 'success'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: screens
           path: website/assets/img/
@@ -90,7 +90,7 @@ jobs:
           # Social previews (WhatsApp, Discord, …) cache by image URL: version og:image / twitter:image too.
           find _site -name '*.html' -not -path '_site/demo/ext/*' -exec sed -i -E "s#(content=\"https://toledoplus\.be/[^\"?]*\.png)\"#\1?v=${V}\"#g" {} +
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
 
