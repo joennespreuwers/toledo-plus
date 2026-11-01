@@ -100,6 +100,35 @@
     root.setAttribute('data-browser', 'edge');
     document.querySelectorAll('[data-b]').forEach(function (el) { el.hidden = el.getAttribute('data-b') !== 'edge'; });
   }
+  // Hero: name the browser you are on ("Download voor Edge"); Safari and Firefox get a note instead of the download
+  // (Safari is coming, Firefox is not supported). Without JS, or for an unknown browser, the Chrome-and-Edge copy stays.
+  (function () {
+    var ua = navigator.userAgent || '';
+    var name = null, note = null;
+    if (/\bEdg(A|iOS)?\//.test(ua)) name = 'Edge';
+    else if (/\bOPR\//.test(ua)) name = 'Opera';
+    else if (/\bVivaldi\//.test(ua)) name = 'Vivaldi';
+    else if (navigator.brave) name = 'Brave';
+    else if (/\bFirefox\/|\bFxiOS\//.test(ua)) note = 'firefox';
+    else if (/\bCriOS\//.test(ua) || (/\bSafari\//.test(ua) && !/(Chrome|Chromium)\//.test(ua))) note = 'safari'; // every iPhone browser is Safari inside
+    else if (/(Chrome|Chromium)\//.test(ua)) {
+      var arc = false;
+      try { arc = !!getComputedStyle(root).getPropertyValue('--arc-palette-title'); } catch (e) { arc = false; }
+      name = arc ? 'Arc' : 'Chrome';
+    }
+    if (note) {
+      root.setAttribute('data-browser', note);
+      var n = document.querySelector('.browser-note[data-note="' + note + '"]');
+      if (n) n.hidden = false;
+      return;
+    }
+    if (!name) return;
+    document.querySelectorAll('.hero [data-for]').forEach(function (el) {
+      var tpl = el.getAttribute('data-for');
+      var txt = el.lastChild && el.lastChild.nodeType === 3 ? el.lastChild : null; // the button's label follows its icon
+      if (txt) txt.nodeValue = tpl.replace('{b}', name); else el.textContent = tpl.replace('{b}', name);
+    });
+  })();
   // Header menu (<details>, narrow screens): close it after a choice, on Escape and on a click elsewhere.
   document.querySelectorAll('.nav-menu').forEach(function (m) {
     m.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('a')) m.open = false; });

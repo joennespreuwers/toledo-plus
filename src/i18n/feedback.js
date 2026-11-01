@@ -42,8 +42,8 @@
       'telemetry.about': 'Privacy: je Toledo-gegevens blijven in je browser en bij Toledo. Naar api.toledoplus.be gaan alleen een anoniem dagelijks signaal (uit te zetten), de updatecheck en feedback die je zelf verstuurt.',
       'telemetry.privacy': 'Privacy',
       'update.banner': 'Toledo+ {version} is beschikbaar.',
-      'update.get': 'Downloaden',
-      'update.how': 'Pak de zip uit, vervang de map en klik op ↻ bij Toledo+ op de extensiepagina van je browser.',
+      'update.get': 'Bekijk update',
+      'update.how': 'Op toledoplus.be staat hoe je bijwerkt voor jouw browser.',
       'update.dismiss': 'Verbergen',
     },
     en: {
@@ -83,8 +83,8 @@
       'telemetry.about': 'Privacy: your Toledo data stays in your browser and with Toledo. Only an anonymous daily signal (can be turned off), the update check and feedback you send yourself go to api.toledoplus.be.',
       'telemetry.privacy': 'Privacy',
       'update.banner': 'Toledo+ {version} is available.',
-      'update.get': 'Download',
-      'update.how': 'Unzip it, replace the folder and click ↻ on Toledo+ in your browser’s extensions page.',
+      'update.get': 'See update',
+      'update.how': 'toledoplus.be shows how to update for your browser.',
       'update.dismiss': 'Hide',
     },
     fr: {
@@ -124,8 +124,8 @@
       'telemetry.about': 'Confidentialité : tes données Toledo restent dans ton navigateur et chez Toledo. Seuls un signal quotidien anonyme (désactivable), la vérification des mises à jour et les avis que tu envoies toi-même vont vers api.toledoplus.be.',
       'telemetry.privacy': 'Confidentialité',
       'update.banner': 'Toledo+ {version} est disponible.',
-      'update.get': 'Télécharger',
-      'update.how': 'Décompresse le zip, remplace le dossier et clique sur ↻ à côté de Toledo+ dans la page des extensions de ton navigateur.',
+      'update.get': 'Voir la mise à jour',
+      'update.how': 'toledoplus.be explique comment mettre à jour pour ton navigateur.',
       'update.dismiss': 'Masquer',
     },
   });

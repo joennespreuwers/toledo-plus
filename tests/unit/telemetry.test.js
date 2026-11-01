@@ -11,7 +11,7 @@ const HOUR = 3600e3;
 const T0 = Date.UTC(2026, 9, 26, 10, 0, 0);
 const UUID4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
-function load({ origin = 'https://toledo.kuleuven.be', telemetry, updateCheck, latest = { version: '1.3.0', url: 'https://github.com/joennespreuwers/toledo-plus/releases/tag/v1.3.0', notes: 'Nieuw' },
+function load({ origin = 'https://toledo.kuleuven.be', telemetry, updateCheck, latest = { version: '1.3.0', url: 'https://toledoplus.be/#update', notes: 'Nieuw' },
   fail = null, w = world(), ua = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0' } = {}) {
   const s = sandbox({ origin, now: T0, globals: { crypto: webcrypto } });
   s.ctx.navigator.userAgent = ua;
@@ -80,16 +80,16 @@ test('forget queue is sent on boot even with the usage signal off (it is a delet
   assert.equal(pings(calls).length, 0, 'still no ping');
 });
 
-test('update URL: only this project on GitHub or toledoplus.be; "../" escapes fall back to the releases page (TP-178)', () => {
+test('update URL: only toledoplus.be; anything else (GitHub, look-alikes) becomes the update page (TP-178)', () => {
   const { TP } = load();
-  const R = 'https://github.com/joennespreuwers/toledo-plus/releases/latest';
-  assert.equal(TP.telemetry.safeUrl('https://github.com/joennespreuwers/toledo-plus/releases/tag/v1.7.0'), 'https://github.com/joennespreuwers/toledo-plus/releases/tag/v1.7.0');
+  const R = 'https://toledoplus.be/#update';
   assert.equal(TP.telemetry.safeUrl('https://toledoplus.be/#update'), 'https://toledoplus.be/#update');
-  assert.equal(TP.telemetry.safeUrl('https://github.com/joennespreuwers/toledo-plus/../../evil-org/evil-repo/releases/latest'), R);
-  assert.equal(TP.telemetry.safeUrl('https://github.com/joennespreuwers/toledo-plus/%2e%2e/%2e%2e/evil/x'), R);
+  assert.equal(TP.telemetry.safeUrl('https://toledoplus.be/en/#update'), 'https://toledoplus.be/en/#update');
+  assert.equal(TP.telemetry.safeUrl('https://github.com/joennespreuwers/toledo-plus/releases/tag/v1.7.0'), R);
   assert.equal(TP.telemetry.safeUrl('https://toledoplus.be.evil.example/'), R);
-  assert.equal(TP.telemetry.safeUrl('https://github.com/joennespreuwers/toledo-plus-evil/x'), R);
+  assert.equal(TP.telemetry.safeUrl('https://toledoplus.be:8443/'), R);
   assert.equal(TP.telemetry.safeUrl('javascript:alert(1)'), R);
+  assert.equal(TP.telemetry.safeUrl(null), R);
 });
 
 test('ping: payload is exactly {id, v, browser, lang}; id is a stored uuid v4; POST to the API', async () => {
@@ -177,7 +177,7 @@ test('update check: at most every 12 h, emits update for a newer version, respec
   const seen = [];
   TP.telemetry.on('update', (u) => seen.push(u));
   const u = await TP.telemetry.checkUpdate();
-  assert.deepEqual(JSON.parse(JSON.stringify(u)), { version: '1.3.0', url: 'https://github.com/joennespreuwers/toledo-plus/releases/tag/v1.3.0', notes: 'Nieuw' });
+  assert.deepEqual(JSON.parse(JSON.stringify(u)), { version: '1.3.0', url: 'https://toledoplus.be/#update', notes: 'Nieuw' });
   assert.equal(seen.length, 1);
   assert.equal(TP.telemetry.pendingUpdate().version, '1.3.0');
   const gets = () => calls.filter((c) => c.url.endsWith('/v1/latest')).length;
@@ -192,7 +192,7 @@ test('update check: at most every 12 h, emits update for a newer version, respec
   const v4 = await TP.telemetry.checkUpdate();
   assert.equal(gets(), 2);
   assert.equal(v4.version, '1.4.0');
-  assert.equal(v4.url, 'https://github.com/joennespreuwers/toledo-plus/releases/latest', 'only our own release URLs');
+  assert.equal(v4.url, 'https://toledoplus.be/#update', 'only toledoplus.be');
   assert.equal(v4.notes.length, 500);
   clock.add(13 * HOUR);
   setLatest({ version: '1.2.0' });

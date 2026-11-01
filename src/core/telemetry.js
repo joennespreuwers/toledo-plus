@@ -19,7 +19,9 @@
 
   const API = 'https://api.toledoplus.be';
   const PORTAL = 'https://toledo.kuleuven.be';
-  const RELEASES = 'https://github.com/joennespreuwers/toledo-plus/releases/latest';
+  const SITE = 'https://toledoplus.be/';
+  /** The update page on toledoplus.be in the UI language (every browser, also future Safari/store builds, updates from there). */
+  const updatePage = () => SITE + ({ nl: '', en: 'en/', fr: 'fr/' }[lang()] ?? '') + '#update';
   const HOUR = 3600e3;
   const DAY = 24 * HOUR;
   const K = { id: 'telemetry:id', ping: 'telemetry:lastPing', upd: 'telemetry:lastUpdateCheck', latest: 'telemetry:latest', dismissed: 'telemetry:dismissedUpdate', forget: 'telemetry:forget' };
@@ -203,16 +205,17 @@
   }
 
   // ---------------------------------------------------------------- update check
-  /** Only the project's GitHub pages or toledoplus.be (TP-178): parsed, so "/toledo-plus/../../other" can't escape. */
+  /** The update banner only ever links to toledoplus.be (TP-178: parsed, so "toledoplus.be.evil.example" can't pass);
+   *  anything else (also an old GitHub release URL) becomes the update page in the UI language. */
   function safeUrl(u) {
     try {
-      if (typeof u !== 'string' || !/^https:\/\//i.test(u)) return RELEASES;
-      const x = new URL(u);
-      if (x.protocol !== 'https:' || x.username || x.password || x.port) return RELEASES;
-      if (x.hostname === 'github.com' && x.pathname.startsWith('/joennespreuwers/toledo-plus/')) return x.href;
-      if (x.hostname === 'toledoplus.be' || x.hostname === 'www.toledoplus.be') return x.href;
+      if (typeof u === 'string' && /^https:\/\//i.test(u)) {
+        const x = new URL(u);
+        if (x.protocol === 'https:' && !x.username && !x.password && !x.port
+          && (x.hostname === 'toledoplus.be' || x.hostname === 'www.toledoplus.be')) return x.href;
+      }
     } catch (_) { /* fall through */ }
-    return RELEASES;
+    return updatePage();
   }
 
   function normalizeLatest(x) {
