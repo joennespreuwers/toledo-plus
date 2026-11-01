@@ -90,7 +90,7 @@ jobs:
           # Social previews (WhatsApp, Discord, …) cache by image URL: version og:image / twitter:image too.
           find _site -name '*.html' -not -path '_site/demo/ext/*' -exec sed -i -E "s#(content=\"https://toledoplus\.be/[^\"?]*\.png)\"#\1?v=${V}\"#g" {} +
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
 
