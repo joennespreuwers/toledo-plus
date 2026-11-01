@@ -3,7 +3,7 @@
   "name": "Toledo+",
   "short_name": "Toledo+",
   "version": "1.7.0",
-  "description": "Een rustige, overzichtelijke Toledo: deadlines, nieuwe items, vakken, agenda en KU Loket in één app, volgens Apple's ontwerprichtlijnen.",
+  "description": "Een rustige Toledo voor studenten van KU Leuven: deadlines, nieuwe bestanden, vakken, agenda en KU Loket op één plek. Onofficieel.",
   "minimum_chrome_version": "114",
   "icons": {
     "16": "icons/icon16.png",
