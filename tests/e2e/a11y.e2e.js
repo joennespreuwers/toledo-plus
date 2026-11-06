@@ -222,7 +222,7 @@ describe('update banner', () => {
   before(async () => {
     h = await launch(); page = h.page;
     await h.ctx.route('https://api.toledoplus.be/**', (route) => (route.request().url().endsWith('/v1/latest')
-      ? route.fulfill({ status: 200, contentType: 'application/json', body: '{"version":"99.0.0","url":"https://github.com/joennespreuwers/toledo-plus/releases/latest","notes":""}' })
+      ? route.fulfill({ status: 200, contentType: 'application/json', body: '{"version":"99.0.0","url":"https://toledoplus.be/#update","notes":""}' })
       : route.fulfill({ status: 204 })));
   });
   after(async () => { await h?.close(); });

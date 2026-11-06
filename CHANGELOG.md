@@ -10,6 +10,8 @@ Het formaat volgt [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) en he
 - Agenda: the week grid starts at the hour the agenda picks (an hour before your first lesson, or around now) again. It was scrolled before your lessons were in and then kept the hour of an empty week.
 
 ### Changed
+- The update banner now links to the update page on toledoplus.be (in your language) instead of GitHub, so every browser and every way of installing gets the right instructions; the button says "Bekijk update".
+- Website: "everything stays in your browser" in the hero and a privacy section with three points (no account, nothing on our server, open source); feature cards all the same size with shorter texts; the download button names your browser ("Download voor Edge"), Safari visitors see "Safari komt later" and Firefox visitors that it isn't supported, each with the demo.
 - Vakken: all course cards are the same height, set by the tallest one (a name over two lines, "Nog niet beschikbaar"), so the grid lines up.
 
 ## [1.7.0] - 2026-10-30

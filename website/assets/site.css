@@ -250,6 +250,22 @@ html { scrollbar-color: color-mix(in srgb, var(--label) 26%, transparent) transp
 .hero .demo-link { margin: 18px 0 0; }
 .hero .fine { margin: 10px 0 0; font-size: .875rem; color: var(--label-2); display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 18px; }
 /* phones: Toledo+ installs on a computer — say so next to the Download button */
+.hero .local-pill {
+  display: inline-flex; align-items: center; gap: 8px; margin: 18px auto 0; padding: 7px 14px 7px 10px; border-radius: 999px;
+  background: color-mix(in srgb, var(--green, #34C759) 13%, transparent); color: var(--label); font-size: .9375rem; font-weight: 500; line-height: 1.35; text-align: left;
+}
+.hero .local-pill svg { flex: none; width: 18px; height: 18px; color: var(--green); }
+.hero .browser-note { max-width: 34em; margin: 26px auto 0; padding: 16px 18px; border-radius: 16px; background: var(--card); box-shadow: var(--shadow-card); text-align: center; }
+.hero .browser-note p { margin: 0 0 12px; color: var(--label-2); }
+.hero .browser-note strong { color: var(--label); }
+html[data-browser="safari"] .hero .cta, html[data-browser="firefox"] .hero .cta,
+html[data-browser="safari"] .hero .demo-link, html[data-browser="firefox"] .hero .demo-link,
+html[data-browser="safari"] .hero .phone-note, html[data-browser="firefox"] .hero .phone-note { display: none; }
+.privacy-points { list-style: none; margin: 18px 0 18px; padding: 0; display: grid; gap: 14px; }
+@media (min-width: 760px) { .privacy-points { grid-template-columns: repeat(3, 1fr); gap: 20px; } }
+.privacy-points h3 { margin: 0 0 4px; font-size: 1.0625rem; font-weight: 600; letter-spacing: -.012em; }
+.privacy-points p { margin: 0; font-size: 1rem !important; line-height: 1.45; }
+.privacy .privacy-fine { font-size: .9375rem !important; }
 .hero .phone-note { display: none; max-width: 30em; margin: 14px auto 0; font-size: .9375rem; color: var(--label-2); }
 @media (max-width: 699px) { .hero .phone-note { display: block; } }
 
@@ -291,7 +307,7 @@ html { scrollbar-color: color-mix(in srgb, var(--label) 26%, transparent) transp
 .card p:last-child { margin-bottom: 0; }
 
 /* features */
-.features { display: grid; gap: 12px; list-style: none; margin: 0; padding: 0; grid-template-columns: 1fr; }
+.features { display: grid; gap: 12px; list-style: none; margin: 0; padding: 0; grid-template-columns: 1fr; grid-auto-rows: 1fr; } /* equal cards */
 @media (min-width: 640px) { .features { grid-template-columns: repeat(2, 1fr); gap: 16px; } }
 @media (min-width: 1000px) { .features { grid-template-columns: repeat(3, 1fr); } }
 .feature {
