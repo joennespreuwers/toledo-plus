@@ -22,7 +22,7 @@
   const S = {
     ctx: null, mode: null, anchor: null, q: '', items: new Map(), seq: 0,
     pop: null, popKind: '', popOpener: null, timer: null, ro: null, lastNarrow: null,
-    prefs: null, known: new Map(), scroll: { key: '', top: 0, pending: false }, mini: null, swipe: null, paintT: 0,
+    prefs: null, known: new Map(), scroll: { key: '', top: 0, set: 0, pending: false }, mini: null, swipe: null, paintT: 0,
   };
   const bound = new WeakSet();
 
@@ -544,12 +544,15 @@
     view.className = cls;
     view.dataset.mode = m;
     view.innerHTML = html;
-    // keep the grid where the student scrolled it; jump to the first lesson only for a new range
+    // Keep the grid where the student scrolled it; otherwise (re)apply the start hour. The lessons, the deadline
+    // marks and the day's height all arrive over several paints, so a grid scrolled once against an empty week keeps
+    // an hour — and a bottom clamp — that no longer matches what the view chose.
+    const moved = Math.abs(S.scroll.top - S.scroll.set) > 1;
     const key = `${m}|${r.from}|${r.days}`;
     const nsc = view.querySelector('.ag-scroll');
     S.scroll.key = key;
     if (nsc) {
-      if (key !== prevKey || S.scroll.pending) autoScroll(nsc);
+      if (key !== prevKey || S.scroll.pending || !moved) autoScroll(nsc);
       else nsc.scrollTop = S.scroll.top;
     }
     if (lsc && typeof window !== 'undefined' && window.scrollY !== pageY) window.scrollTo(0, pageY);
@@ -563,8 +566,12 @@
   function autoScroll(sc, tries = 0) {
     const hour = Number(sc.closest('.ag-timegrid').dataset.scroll || 8);
     const hh = (sc.querySelector('.ag-hour') || {}).offsetHeight || 0;
-    sc.scrollTop = hour * hh;
-    S.scroll.pending = !hh || (hour > 0 && sc.scrollTop === 0);
+    const want = hour * hh;
+    sc.scrollTop = want;
+    // What we actually got: a tall window can't scroll past the end of the day, so the start hour lands at the bottom
+    // instead. Remembered, so the next paint can tell a clamp from a scroll by the student.
+    S.scroll.set = sc.scrollTop; S.scroll.top = sc.scrollTop;
+    S.scroll.pending = !hh || (want > 0 && sc.scrollTop < Math.min(want, sc.scrollHeight - sc.clientHeight) - 1);
     if (S.scroll.pending && tries < 40 && typeof requestAnimationFrame === 'function') {
       requestAnimationFrame(() => { if (sc.isConnected && S.scroll.pending) autoScroll(sc, tries + 1); });
     }
@@ -1084,7 +1091,7 @@ ${src ? `<p class="ag-pop-src">${esc(t('agenda.pop.source.' + src))}${l.source =
       closePop(false);
       clearInterval(S.timer); S.timer = null;
       if (S.ro) { S.ro.disconnect(); S.ro = null; }
-      S.ctx = null; S.q = ''; S.seq++; S.scroll.key = '';
+      S.ctx = null; S.q = ''; S.seq++; S.scroll.key = ''; S.scroll.top = 0; S.scroll.set = 0;
     },
   });
 })();
