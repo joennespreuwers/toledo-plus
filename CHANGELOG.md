@@ -6,6 +6,9 @@ Het formaat volgt [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) en he
 
 ## [Unreleased]
 
+### Fixed
+- toledoplus.be showed the version in development (1.7) while the Download button handed out the latest release (1.6). The site now names the released version, and a new release updates it.
+
 ### Changed
 - Vakken: all course cards are the same height, set by the tallest one (a name over two lines, "Nog niet beschikbaar"), so the grid lines up.
 

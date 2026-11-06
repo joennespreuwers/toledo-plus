@@ -27,7 +27,8 @@ demo/                 toledoplus.be/demo/: the real extension UI with fake data 
   data/*.json         the fictitious dataset (same shape as tests/fixtures/*.json)
   ext/                copy of manifest.json, src/, ui.css, page.css, icons/ — gitignored, made at build time
 tools/                dev-only, not deployed
-  screens.mjs         regenerates the screenshots, og.png and the version text
+  screens.mjs         regenerates the screenshots, og.png and the version text (the deploy rewrites that to the
+                      released version, see below)
   check.mjs           Playwright checks for the site and the demo
   sync-ext.mjs        copies the extension into demo/ext/ for local testing
 CNAME                 toledoplus.be
@@ -54,7 +55,10 @@ language (setting `language` = nl, en, fr: the UI chrome matches the page, the f
 `assets/img/overview-{light,dark}-<lang>.webp` (2400 px wide), `overview-light-<lang>.png` (1440 px fallback) and
 `og-<lang>.png` (brand card). `index.html`, `en/` and `fr/` (and their privacy/terms pages) point at their own set.
 It also writes the version from `manifest.json` into the three index pages (hero, download card, JSON-LD) and refreshes
-`demo/ext/`. Uses `sharp` when installed (smaller PNGs), otherwise Chromium's encoder. Keep `assets/img/` under ~1.5 MB
+`demo/ext/`. That value is not what the deployed site shows: `pages.yml` rewrites it to the **latest GitHub release** —
+the version the Download button hands out — so toledoplus.be never names a version nobody can download
+(`manifest.json` is the version in development and runs ahead until `release.yml` has cut the release). Publishing a
+release therefore redeploys the site. Uses `sharp` when installed (smaller PNGs), otherwise Chromium's encoder. Keep `assets/img/` under ~1.5 MB
 (the script prints the sizes; `check.mjs` fails above that). Needs Playwright with Chromium (`npx playwright install chromium`).
 
 The script only relies on `#tplus-root`'s shadow root having a `<main>` with content, so UI changes don't break it.
@@ -150,6 +154,7 @@ At your domain registrar / DNS provider:
 ## Things to update by hand
 
 - **Download link** points to `https://github.com/joennespreuwers/toledo-plus/releases/latest/download/toledo-plus.zip`, so every release must have an asset named exactly `toledo-plus.zip`.
+- **Version text** is never edited by hand: the deploy takes it from the latest release, so it always matches that download.
 - **Privacy policy:** keep `privacy.html` (+ `en/`, `fr/`) in sync with `PRIVACY.md` and `manifest.json` (`host_permissions`, the usage ping). Update the "Laatst bijgewerkt" date.
 - `sitemap.xml` `lastmod` when content changes.
 

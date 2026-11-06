@@ -20,3 +20,12 @@ test('release.yml runs unit + e2e before packing and rejects an empty CHANGELOG 
   assert.ok(unit < pack && e2e < pack && pack < rel, 'tests → pack → release');
   assert.match(y, /RELEASE_NOTES\.md[\s\S]*grep -q '\[\^\[:space:\]\]' RELEASE_NOTES\.md[\s\S]*exit 1/, 'empty-notes check');
 });
+
+test('pages.yml writes the released version into the site, not the one in development (#46)', () => {
+  const y = read('.github/workflows/pages.yml');
+  assert.match(y, /gh release view --json tagName/, 'the site version comes from the latest GitHub release');
+  assert.match(y, /SV=\$\{SV:-\$MV\}/, 'without a release it falls back to manifest.json');
+  const sed = y.split('\n').find((l) => l.includes("name 'index.html'"));
+  assert.ok(sed && sed.includes('${SV}') && !sed.includes('${MV}'), 'the version text in the pages is the released one');
+  assert.match(y, /release:\n\s+types: \[published\]/, 'a published release redeploys the site');
+});

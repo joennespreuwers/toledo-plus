@@ -18,6 +18,9 @@ on:
       - "page.css"
       - "icons/**"
       - "fonts/**"
+  # a published release changes the version the site shows (and the zip the Download button hands out)
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -74,15 +77,23 @@ jobs:
           path: website/assets/img/
 
       - name: Assemble site (+ demo/ext from the extension)
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           mkdir _site
           cp -R website/. _site/
           rm -rf _site/tools _site/.screens _site/README.md _site/.gitignore _site/demo/ext
           mkdir -p _site/demo/ext
           cp -R manifest.json ui.css page.css src icons fonts _site/demo/ext/
-          # The version shown on the site always follows manifest.json (no manual edits per release).
+          # The version shown on the site is the one the Download button hands out: the latest GitHub release
+          # (releases/latest/download/toledo-plus.zip). manifest.json is the version in development and runs ahead of
+          # it until release.yml has cut the release, so the site would promise a download nobody can get (#46).
+          # No releases yet (or the API is unreachable) → manifest.json, as before.
           MV=$(node -p "require('./manifest.json').version")
-          find _site -maxdepth 2 -name 'index.html' -not -path '_site/demo/*' -exec sed -i -E "s/((Versie|Version) )[0-9]+\.[0-9]+\.[0-9]+/\1${MV}/g; s/(Toledo\+ )[0-9]+\.[0-9]+\.[0-9]+(<\/h3>)/\1${MV}\2/g; s/(\"softwareVersion\": \")[^\"]*(\")/\1${MV}\2/g" {} +
+          SV=$(gh release view --json tagName --jq .tagName 2>/dev/null | sed 's/^v//')
+          SV=${SV:-$MV}
+          echo "Site version: $SV (latest release; manifest.json is at $MV)"
+          find _site -maxdepth 2 -name 'index.html' -not -path '_site/demo/*' -exec sed -i -E "s/((Versie|Version) )[0-9]+\.[0-9]+\.[0-9]+/\1${SV}/g; s/(Toledo\+ )[0-9]+\.[0-9]+\.[0-9]+(<\/h3>)/\1${SV}\2/g; s/(\"softwareVersion\": \")[^\"]*(\")/\1${SV}\2/g" {} +
           # Cache-busting: GitHub Pages caches for 10 min, so a new page could load an old stylesheet/script.
           V="${GITHUB_SHA::8}"
           find _site -name '*.html' -not -path '_site/demo/ext/*' -exec sed -i -E "s#((src|srcset|href)=\"[^\"?]*\.(css|js|webp|png))\"#\1?v=${V}\"#g" {} +
