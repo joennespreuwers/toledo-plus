@@ -315,6 +315,38 @@ describe('agenda — views, keyboard, layout, filters (desktop 1440)', () => {
     await screenshot(page, 'agenda-week-light-1440');
   });
 
+  it('the grid keeps the scroll the student chose across a repaint, and starts a new week at the view\'s hour', async () => {
+    const grid = () => inShadow(page, (sr) => {
+      const s = sr.querySelector('.ag-scroll');
+      return { top: s.scrollTop, hh: sr.querySelector('.ag-hour').offsetHeight, max: s.scrollHeight - s.clientHeight, want: Number(sr.querySelector('.ag-timegrid').dataset.scroll) };
+    });
+    const at = (g) => Math.min(g.want * g.hh, g.max);   // the hour the view chose, or the bottom of the day on a tall window
+    const g0 = await grid();
+    assert.ok(Math.abs(g0.top - at(g0)) < 1, 'starts where the view chose');
+    const mine = Math.round(at(g0) >= 3 * g0.hh ? at(g0) - 3 * g0.hh : at(g0) + 3 * g0.hh);   // 3 h away from that
+    await inShadow(page, (sr, y) => { sr.querySelector('.ag-scroll').scrollTop = y; }, mine);
+
+    // a repaint of the same week (here: hiding the lessons, which also changes the grid's content) leaves it alone
+    const side = page.locator(`${ROOT} .ag-side`);
+    await side.locator('input[name="ag-show"][value="lesson"]').uncheck();
+    await page.waitForFunction(() => document.querySelector('#tplus-root').shadowRoot.querySelectorAll('.ag-ev-lesson').length === 0);
+    assert.equal(Math.round((await grid()).top), mine, 'the scroll the student chose survives a repaint');
+    await side.locator('input[name="ag-show"][value="lesson"]').check();
+    await page.locator(ev('Filmtaal 1')).first().waitFor();
+
+    // a new range starts at the hour that week chose again, not at the one the student had scrolled to
+    await focusInView(page);
+    const r0 = await rangeText(page);
+    await page.keyboard.press('n'); await rangeChanged(page, r0);
+    const g1 = await grid();
+    assert.ok(Math.abs(g1.top - at(g1)) < 1, `next week starts at ${g1.want}:00 or the bottom (${g1.top / g1.hh} h)`);
+    const r1 = await rangeText(page);
+    await page.keyboard.press('t'); await rangeChanged(page, r1);
+    const g2 = await grid();
+    assert.ok(Math.abs(g2.top - at(g2)) < 1, 'and so does this week again');
+    assert.deepEqual(h.errors, []);
+  });
+
   it('keyboard: d/w/m/a/l switch views, j/k/n/p/←/→ page, t = today; typing in search is left alone', async () => {
     await focusInView(page);
     const r0 = await rangeText(page);
