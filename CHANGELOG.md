@@ -6,6 +6,11 @@ Het formaat volgt [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) en he
 
 ## [Unreleased]
 
+### Added
+- Firefox prototype packaging with a Firefox-specific Manifest V3 background
+  configuration and `web-ext` development command. The optional Chrome
+  landing-page network redirect is replaced by the existing Firefox fallback.
+
 ### Fixed
 - Agenda: the week grid starts at the hour the agenda picks (an hour before your first lesson, or around now) again. It was scrolled before your lessons were in and then kept the hour of an empty week.
 

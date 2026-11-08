@@ -15,5 +15,6 @@ worker/.wrangler/
 website/.screens/
 .dev.vars
 .dev-profile/
+.dev-firefox-profile/
 package-lock.json
 _metadata/

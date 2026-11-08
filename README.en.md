@@ -41,9 +41,15 @@ Toledo+ is not (yet) in the Chrome Web Store. Installing takes a minute:
 3. Open the extensions page:
    - **Chrome:** `chrome://extensions`
    - **Edge:** `edge://extensions`
+   - **Firefox:** `about:debugging#/runtime/this-firefox`
 4. Turn on **Developer mode** (top right in Chrome, bottom left in Edge).
 5. Click **Load unpacked** and select the unzipped folder (the one containing `manifest.json`).
 6. Open [toledo.kuleuven.be/portal](https://toledo.kuleuven.be/portal) and log in as usual.
+
+For Firefox, use the Firefox zip (`toledo-plus-<version>-firefox.zip`) and click
+**Load Temporary Add-on**, selecting the extracted `manifest.json`. Firefox uses
+the existing Toledo+ landing-page fallback instead of the optional Chrome
+network redirect.
 
 > Chrome may warn at startup that developer-mode extensions are running – that's normal for extensions outside the Web Store.
 
@@ -76,6 +82,8 @@ git clone https://github.com/joennespreuwers/toledo-plus.git && cd toledo-plus
 npm install && npx playwright install chromium
 npm test            # unit + e2e (headless Chromium with the extension and a mocked Toledo)
 npm run pack        # dist/toledo-plus-<version>.zip
+npm run pack:firefox # dist/toledo-plus-<version>-firefox.zip
+npm run dev:firefox  # launch the staged Firefox build with web-ext
 ```
 
 No build step: load the folder directly with *Load unpacked*. Read [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`docs/DESIGN.md`](docs/DESIGN.md) first.
