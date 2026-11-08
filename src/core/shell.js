@@ -1470,6 +1470,36 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
   // ---------------- events ----------------
   const plainClick = (ev) => ev.button === 0 && !ev.metaKey && !ev.ctrlKey && !ev.shiftKey && !ev.altKey;
 
+  function startLogout(ev, el) {
+    if (!plainClick(ev)) {
+      try { chrome.storage.local.set({ 'tp:loggedOutAt': Date.now() }); sessionStorage.setItem('tp:loggedOutAt', String(Date.now())); } catch (e) { console.warn('[Toledo+] logout marker', e); }
+      return false;
+    }
+    ev.preventDefault();
+    const href = el.href;
+    const now = Date.now();
+    try { sessionStorage.setItem('tp:loggedOutAt', String(now)); } catch (e) { console.warn('[Toledo+] logout session marker', e); }
+    let stored;
+    try {
+      const result = chrome.storage.local.set({ 'tp:loggedOutAt': now });
+      stored = result && typeof result.then === 'function' ? result : Promise.resolve();
+    } catch (e) {
+      console.warn('[Toledo+] logout storage marker', e);
+      stored = Promise.resolve();
+    }
+    let wiped;
+    try {
+      wiped = Promise.resolve(TP.data?.wipeLocal?.({ scope: 'user' })).catch((e) => {
+        console.warn('[Toledo+] logout data wipe', e);
+      });
+    } catch (e) {
+      console.warn('[Toledo+] logout data wipe', e);
+      wiped = Promise.resolve();
+    }
+    Promise.all([stored, wiped]).then(() => { location.assign(href); });
+    return true;
+  }
+
   function onShellClick(ev) {
     if (ev.target === $('.tp-sheet')) { closeSheet(); return; } // backdrop click
     if (ev.target === $('.tp-detail')) { closeDetail(); return; }
@@ -1524,8 +1554,7 @@ ${item(`${icon('logout')}<span class="tp-menu-label">${esc(t('shell.logout'))}</
     }
     // Logout: remember it for a few minutes so src/landing.js doesn't bounce the student straight back into Toledo (Agent J).
     if (el.tagName === 'A' && el.hasAttribute('data-tp-logout')) {
-      try { chrome.storage.local.set({ 'tp:loggedOutAt': Date.now() }); sessionStorage.setItem('tp:loggedOutAt', String(Date.now())); } catch { /* storage gone */ }
-      try { TP.data?.wipeLocal?.({ scope: 'user' }); } catch { /* TP-181: forget this user's cached data (shared PCs) */ }
+      if (startLogout(ev, el)) return;
     }
     // External links in the menu / More sheet (mail → new tab): close the popover behind them.
     if (el.tagName === 'A' && el.target && el.closest('.tp-menu, .tp-sheet')) { closeMenu(false); closeSheet(); return; }
