@@ -22,12 +22,19 @@ test('Firefox prototype manifest uses a compatible background and no Chrome-only
   assert.ok(firefoxManifest.background && Array.isArray(firefoxManifest.background.scripts));
   assert.ok(firefoxManifest.background.scripts.includes('background.js'));
   assert.equal(firefoxManifest.background.persistent, false);
-  assert.deepEqual(firefoxManifest.permissions, ['storage']);
-  assert.equal(firefoxManifest.declarative_net_request, undefined);
+  assert.equal(firefoxManifest.browser_specific_settings.gecko.strict_min_version, '140.0'); // data_collection_permissions
+  assert.equal(firefoxManifest.browser_specific_settings.gecko_android.strict_min_version, '142.0');
   assert.deepEqual([...firefoxManifest.host_permissions].sort(), [...ORIGINS].sort());
   for (const p of firefoxManifest.background.scripts) assert.ok(exists(p), `${p} missing`);
   for (const s of firefoxManifest.content_scripts || []) {
     for (const f of [...(s.js || []), ...(s.css || [])]) assert.ok(exists(f), `${f} missing`);
+  }
+});
+
+test('Firefox manifest only differs from manifest.json in the browser-specific keys', () => {
+  const allowed = new Set(['background', 'browser_specific_settings', 'minimum_chrome_version']);
+  for (const k of new Set([...Object.keys(manifest), ...Object.keys(firefoxManifest)])) {
+    if (!allowed.has(k)) assert.deepEqual(firefoxManifest[k], manifest[k], `manifest.firefox.json "${k}" drifted from manifest.json`);
   }
 });
 

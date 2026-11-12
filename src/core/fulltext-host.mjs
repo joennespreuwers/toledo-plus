@@ -18,7 +18,6 @@ import './fulltext-engine.js';
 const E = globalThis.TPFT;
 const DB_NAME = 'tplus-fulltext';
 const ORIGINS = ['https://toledo.kuleuven.be', 'https://ultra.edu.kuleuven.cloud'];
-const NONCE_TTL = 30e3;
 const WORKER_IDLE = 60e3;
 
 // ---------------------------------------------------------------- IndexedDB helpers
@@ -261,7 +260,6 @@ const ops = {
 };
 
 // ---------------------------------------------------------------- handshake + port
-const nonces = new Map(); // nonce → time
 const ports = new Set();
 
 function pushStatus() {
@@ -269,26 +267,19 @@ function pushStatus() {
   ready.then(() => { const s = status(); for (const p of ports) { try { p.postMessage({ push: 'status', status: s }); } catch (_) { ports.delete(p); } } }, () => {});
 }
 
-try {
-  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-    if (!msg || msg.type !== 'tp-ft-hello' || typeof msg.nonce !== 'string') return false;
-    const origin = sender && (sender.origin || (() => { try { return new URL(sender.url).origin; } catch (_) { return ''; } })());
-    if (!sender || sender.id !== chrome.runtime.id || !sender.tab || !ORIGINS.includes(origin)) return false;
-    const now = Date.now();
-    for (const [n, t] of nonces) if (now - t > NONCE_TTL) nonces.delete(n);
-    nonces.set(msg.nonce, now);
-    sendResponse({ ok: true });
-    return false;
+// The nonce our content script registered with background.js ('tp-ft-hello') proves the port isn't from a page script.
+// Asked of the background because Firefox never delivers a content script's message to an extension frame in its own tab.
+function nonceOk(nonce) {
+  return new Promise((res) => {
+    try { chrome.runtime.sendMessage({ type: 'tp-ft-check', nonce }, (r) => { void chrome.runtime.lastError; res(!!(r && r.ok)); }); } catch (_) { res(false); }
   });
-} catch (_) { /* not an extension context (tests) */ }
+}
 
-window.addEventListener('message', (ev) => {
+window.addEventListener('message', async (ev) => {
   const m = ev.data || {};
-  if (m.type !== 'tp-ft-port' || !ORIGINS.includes(ev.origin) || !ev.ports || !ev.ports[0]) return;
-  const t = nonces.get(m.nonce);
-  if (!t || Date.now() - t > NONCE_TTL) return;
-  nonces.delete(m.nonce);
+  if (m.type !== 'tp-ft-port' || !ORIGINS.includes(ev.origin) || !ev.ports || !ev.ports[0] || typeof m.nonce !== 'string') return;
   const port = ev.ports[0];
+  if (!(await nonceOk(m.nonce))) return;
   ports.add(port);
   port.onmessage = async (e) => {
     const r = e.data || {};

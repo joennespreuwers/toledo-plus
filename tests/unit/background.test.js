@@ -22,7 +22,7 @@ function load(fetchImpl) {
   const ctx = {
     console, setTimeout, clearTimeout, URL, AbortController, JSON, Promise,
     fetch: (url, init) => { calls.push({ url, init }); return fetchImpl(url, init); },
-    chrome: { runtime: { id: EXT, onMessage: { addListener: (fn) => { listener = fn; } } } },
+    chrome: { runtime: { id: EXT, getURL: (p) => `chrome-extension://${EXT}/${p}`, onMessage: { addListener: (fn) => { listener = fn; } } } },
   };
   ctx.globalThis = ctx;
   vm.createContext(ctx);
@@ -57,6 +57,18 @@ test('methods: GET/PATCH on Toledo + Ultra, GET only on KU Loket and TimeEdit; n
   for (const m of ['POST', 'PUT', 'DELETE', 'OPTIONS']) {
     assert.equal((await send(msg('https://toledo.kuleuven.be/portal/api/events', { method: m }))).error, 'blocked-method', m);
   }
+});
+
+test('full-text handshake: a content script registers a nonce, only our own extension page redeems it, once', async () => {
+  const { send } = load(async () => res('[]'));
+  const host = { id: EXT, url: `chrome-extension://${EXT}/src/core/fulltext-host.html` };
+  assert.equal((await send({ type: 'tp-ft-hello', nonce: 'a' }, { ...CS, tab: { id: 1 } })).ok, true);
+  assert.equal((await send({ type: 'tp-ft-check', nonce: 'a' }, { ...CS, tab: { id: 1 } })).ok, false, 'page origin cannot redeem');
+  assert.equal((await send({ type: 'tp-ft-hello', nonce: 'b' }, { id: EXT, origin: 'https://evil.example.com', tab: { id: 1 } })).ok, false);
+  assert.equal((await send({ type: 'tp-ft-check', nonce: 'b' }, host)).ok, false, 'nonce from a foreign page');
+  assert.equal((await send({ type: 'tp-ft-hello', nonce: 'c' }, { ...CS, tab: { id: 1 } })).ok, true);
+  assert.equal((await send({ type: 'tp-ft-check', nonce: 'c' }, host)).ok, true);
+  assert.equal((await send({ type: 'tp-ft-check', nonce: 'c' }, host)).ok, false, 'single use');
 });
 
 test('sender check: only our content scripts on Toledo/Ultra or our own extension pages', async () => {

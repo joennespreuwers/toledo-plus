@@ -14,6 +14,7 @@ mkdirSync(profile, { recursive: true });
 await webExt.cmd.run({
   sourceDir,
   target: ['firefox-desktop'],
+  firefox: process.env.FIREFOX_BIN || 'firefox', // e.g. FIREFOX_BIN=/usr/bin/zen-browser
   firefoxProfile: profile,
   keepProfileChanges: true,
   startUrl: ['https://toledo.kuleuven.be/portal/'],

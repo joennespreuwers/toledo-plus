@@ -4,11 +4,6 @@
   "short_name": "Toledo+",
   "version": "1.7.0",
   "description": "Een rustige, overzichtelijke Toledo: deadlines, nieuwe items, vakken, agenda en KU Loket in één app, volgens Apple's ontwerprichtlijnen.",
-  "browser_specific_settings": {
-    "gecko": {
-      "id": "toledo-plus@toledoplus.be"
-    }
-  },
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -16,7 +11,8 @@
     "128": "icons/icon128.png"
   },
   "permissions": [
-    "storage"
+    "storage",
+    "declarativeNetRequestWithHostAccess"
   ],
   "host_permissions": [
     "https://toledo.kuleuven.be/*",
@@ -26,6 +22,15 @@
     "https://api.toledoplus.be/*",
     "https://icts-p-toledo-valvas.cloud.icts.kuleuven.be/*"
   ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "landing",
+        "enabled": true,
+        "path": "rules/landing.json"
+      }
+    ]
+  },
   "background": {
     "scripts": [
       "background.js"
@@ -160,5 +165,22 @@
         "https://ultra.edu.kuleuven.cloud/*"
       ]
     }
-  ]
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "toledo-plus@toledoplus.be",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ],
+        "optional": [
+          "technicalAndInteraction"
+        ]
+      }
+    },
+    "gecko_android": {
+      "strict_min_version": "142.0"
+    }
+  }
 }

@@ -48,8 +48,7 @@ Toledo+ staat (nog) niet in de Chrome Web Store. Installeren duurt 1 minuut:
 
 Gebruik in Firefox het Firefox-zipbestand (`toledo-plus-<versie>-firefox.zip`) en
 klik op **Tijdelijke add-on laden**. Kies het uitgepakte `manifest.json`.
-Firefox gebruikt de bestaande Toledo+-fallback voor de startpagina in plaats van
-de optionele Chrome-netwerkredirect.
+Vereist Firefox 140+ (desktop) of Firefox 142+ (Android).
 
 > Chrome kan bij het opstarten melden dat er ontwikkelaarsextensies actief zijn – dat is normaal voor extensies buiten de Web Store.
 
@@ -83,7 +82,8 @@ npm install && npx playwright install chromium
 npm test            # unit + e2e (headless Chromium met de extensie en een gemockte Toledo)
 npm run pack        # dist/toledo-plus-<versie>.zip
 npm run pack:firefox # dist/toledo-plus-<versie>-firefox.zip
-npm run dev:firefox  # start de Firefox-build met web-ext
+npm run dev:firefox  # start de Firefox-build met web-ext (FIREFOX_BIN=… voor een andere browser)
+npm run dev:android -- --android-device=<adb-id>  # Firefox voor Android via USB-debugging
 ```
 
 Geen build-stap: laad de map rechtstreeks via *Uitgepakte extensie laden*. Lees eerst [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) en [`docs/DESIGN.md`](docs/DESIGN.md).
