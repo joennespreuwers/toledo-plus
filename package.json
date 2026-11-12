@@ -14,7 +14,10 @@
     "test:unit": "node scripts/run-tests.mjs unit",
     "test:e2e": "node scripts/run-tests.mjs e2e",
     "pack": "node scripts/pack.mjs",
-    "dev": "node scripts/dev.mjs"
+    "pack:firefox": "node scripts/pack.mjs --firefox",
+    "dev": "node scripts/dev.mjs",
+    "dev:firefox": "npm run pack:firefox && node scripts/dev-firefox.mjs",
+    "dev:android": "npm run pack:firefox && web-ext run -t firefox-android -s dist/firefox --ignore-files _metadata"
   },
   "devDependencies": {
     "playwright": "1.63.0",

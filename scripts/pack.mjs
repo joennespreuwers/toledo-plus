@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-// Packs the extension into dist/toledo-plus-<version>.zip (version from manifest.json).
+// Packs the extension into dist/toledo-plus-<version>.zip, or the Firefox variant
+// with `--firefox` (version from the selected manifest).
 // Uses the `zip` CLI when available, otherwise a small built-in zip writer (deflate via zlib).
-// Usage: node scripts/pack.mjs [--out dir] [--node]   (--node forces the built-in writer)
+// Usage: node scripts/pack.mjs [--out dir] [--node] [--firefox]
 // Only manifest-referenced files (+ LICENSE) are packed — see packFiles().
-import { readFileSync, writeFileSync, readdirSync, statSync, mkdirSync, rmSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, readdirSync, statSync, mkdirSync, rmSync, existsSync, cpSync } from 'node:fs';
 import { join, relative, dirname } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { deflateRawSync, crc32 as zlibCrc32 } from 'node:zlib';
@@ -26,11 +27,12 @@ function expand(root, pattern) {
  * content scripts + css, web_accessible_resources incl. globs, icons, action icons, options/popup pages),
  * plus LICENSE. Nothing else (no tests, docs, legacy, dotfiles, stray files). Throws when a referenced file is missing.
  */
-export function packFiles(root = ROOT) {
-  const manifest = JSON.parse(readFileSync(join(root, 'manifest.json'), 'utf8'));
-  const refs = new Set(['manifest.json']);
+export function packFiles(root = ROOT, manifestFilename = 'manifest.json') {
+  const manifest = JSON.parse(readFileSync(join(root, manifestFilename), 'utf8'));
+  const refs = new Set([manifestFilename]);
   const add = (p) => { if (typeof p === 'string' && p) refs.add(p.replace(/^\.?\//, '')); };
   add(manifest.background && manifest.background.service_worker);
+  for (const script of manifest.background && manifest.background.scripts || []) add(script);
   for (const cs of manifest.content_scripts || []) { (cs.js || []).forEach(add); (cs.css || []).forEach(add); }
   Object.values(manifest.icons || {}).forEach(add);
   const action = manifest.action || {};
@@ -57,18 +59,33 @@ function main() {
   const argv = process.argv.slice(2);
   const outDir = argv.includes('--out') ? argv[argv.indexOf('--out') + 1] : join(ROOT, 'dist');
   const forceNode = argv.includes('--node');
-  const manifest = JSON.parse(readFileSync(join(ROOT, 'manifest.json'), 'utf8'));
-  const zipName = `toledo-plus-${manifest.version}.zip`;
-  const files = packFiles(ROOT);
+  const firefox = argv.includes('--firefox');
+  const manifestFilename = firefox ? 'manifest.firefox.json' : 'manifest.json';
+  const manifest = JSON.parse(readFileSync(join(ROOT, manifestFilename), 'utf8'));
+  const zipName = `toledo-plus-${manifest.version}${firefox ? '-firefox' : ''}.zip`;
+  let packRoot = ROOT;
+  let files = packFiles(ROOT, manifestFilename);
+  if (firefox) {
+    packRoot = join(outDir, 'firefox');
+    rmSync(packRoot, { recursive: true, force: true });
+    mkdirSync(packRoot, { recursive: true });
+    for (const file of files) {
+      const source = join(ROOT, file);
+      const target = join(packRoot, file === manifestFilename ? 'manifest.json' : file);
+      mkdirSync(dirname(target), { recursive: true });
+      cpSync(source, target);
+    }
+    files = packFiles(packRoot);
+  }
   mkdirSync(outDir, { recursive: true });
   const target = join(outDir, zipName);
   if (existsSync(target)) rmSync(target);
   const hasZip = !forceNode && spawnSync('zip', ['-v'], { stdio: 'ignore' }).status === 0;
   if (hasZip) {
-    const r = spawnSync('zip', ['-X', '-q', '-9', target, ...files], { cwd: ROOT, stdio: 'inherit' });
+    const r = spawnSync('zip', ['-X', '-q', '-9', target, ...files], { cwd: packRoot, stdio: 'inherit' });
     if (r.status !== 0) process.exit(r.status || 1);
   } else {
-    writeFileSync(target, buildZip(files));
+    writeFileSync(target, buildZip(files, packRoot));
   }
   console.log(`${relative(ROOT, target)}  (${files.length} files, ${(statSync(target).size / 1024).toFixed(1)} kB, ${hasZip ? 'zip' : 'node'})`);
 }
@@ -92,16 +109,16 @@ function dosTime(d) {
     date: ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate(),
   };
 }
-function buildZip(list) {
+function buildZip(list, root = ROOT) {
   const locals = []; const centrals = []; let offset = 0;
   for (const rel of list) {
-    const data = readFileSync(join(ROOT, rel));
+    const data = readFileSync(join(root, rel));
     const comp = deflateRawSync(data, { level: 9 });
     const useDeflate = comp.length < data.length;
     const body = useDeflate ? comp : data;
     const name = Buffer.from(rel, 'utf8');
     const crc = crc32(data);
-    const { time, date } = dosTime(statSync(join(ROOT, rel)).mtime);
+    const { time, date } = dosTime(statSync(join(root, rel)).mtime);
     const lh = Buffer.alloc(30);
     lh.writeUInt32LE(0x04034b50, 0); lh.writeUInt16LE(20, 4); lh.writeUInt16LE(0x0800, 6); lh.writeUInt16LE(useDeflate ? 8 : 0, 8);
     lh.writeUInt16LE(time, 10); lh.writeUInt16LE(date, 12); lh.writeUInt32LE(crc, 14);

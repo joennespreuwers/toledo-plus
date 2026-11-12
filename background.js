@@ -46,7 +46,7 @@ function tpSenderOk(sender) {
   if (sender.id && sender.id !== self) return false;
   const origin = sender.origin || tpOrigin(sender.url || (sender.tab && sender.tab.url) || '');
   if (!origin) return false;
-  return TP_SENDER_ORIGINS.includes(origin) || origin === `chrome-extension://${self}`;
+  return TP_SENDER_ORIGINS.includes(origin) || origin === chrome.runtime.getURL('').replace(/\/$/, ''); // Firefox: moz-extension://<uuid>, not the runtime id
 }
 
 function tpHeaders(h) {
@@ -106,6 +106,7 @@ async function tpRelay(msg) {
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg && (msg.type === 'tp-ft-hello' || msg.type === 'tp-ft-check')) return tpFtHandshake(msg, sender, sendResponse);
   if (!msg || msg.type !== 'tp-fetch') return false;
   if (!tpSenderOk(sender)) {
     sendResponse({ ok: false, status: 0, data: null, error: 'blocked-sender' });
@@ -114,6 +115,27 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   tpRelay(msg).then(sendResponse, (e) => sendResponse({ ok: false, status: 0, data: null, error: String(e) }));
   return true; // async response
 });
+
+// Full-text handshake: src/core/fulltext.js registers a nonce ('tp-ft-hello'), src/core/fulltext-host.mjs redeems it
+// ('tp-ft-check'). Through here because Firefox doesn't deliver a content script's message to an extension frame in its tab.
+const TP_FT_TTL = 30e3;
+const tpFtNonces = new Map(); // nonce → time
+function tpFtHandshake(msg, sender, sendResponse) {
+  if (typeof msg.nonce !== 'string') return false;
+  const now = Date.now();
+  for (const [n, t] of tpFtNonces) if (now - t > TP_FT_TTL) tpFtNonces.delete(n);
+  if (msg.type === 'tp-ft-hello') {
+    const ok = !!(sender && sender.tab) && tpSenderOk(sender);
+    if (ok) tpFtNonces.set(msg.nonce, now);
+    sendResponse({ ok });
+    return false;
+  }
+  const own = !!sender && sender.id === chrome.runtime.id && String(sender.url || '').startsWith(chrome.runtime.getURL(''));
+  const ok = own && tpFtNonces.has(msg.nonce);
+  tpFtNonces.delete(msg.nonce);
+  sendResponse({ ok });
+  return false;
+}
 
 // ---------------------------------------------------------------- skip Toledo's landing page
 // https://toledo.kuleuven.be/ only shows an "Inloggen met Toledo" button → /portal/. A static declarativeNetRequest rule

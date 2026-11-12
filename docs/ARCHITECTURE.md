@@ -1,6 +1,6 @@
 # Toledo+ — architecture contract (v1.1)
 
-Toledo+ is a Manifest V3 Chrome/Edge extension that **wraps** KU Leuven Toledo for students:
+Toledo+ is a Manifest V3 Chromium/Firefox extension that **wraps** KU Leuven Toledo for students:
 the portal (`https://toledo.kuleuven.be/portal/`) and Blackboard Learn Ultra (`https://ultra.edu.kuleuven.cloud/ultra/`)
 are replaced by one consistent app shell (sidebar / tab bar / toolbar) with our own views.
 No build step: plain ES2020 scripts, loaded as content scripts in a fixed order, sharing one global `TP` namespace
